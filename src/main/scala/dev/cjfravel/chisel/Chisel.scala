@@ -39,7 +39,7 @@ object Chisel {
   
   /**
    * Generate Scala case classes from a template.
-   * Uses the basePackage, outputDir, and useOptionTypes specified in the template.
+   * Uses the basePackage, outputDir, useOptionTypes, and listType specified in the template.
    *
    * @param template The template to generate code from
    * @return Either GeneratorError or WriteReport containing successes and failures
@@ -48,7 +48,8 @@ object Chisel {
     val config = GeneratorConfig(
       template.basePackage,
       template.outputDir,
-      template.useOptionTypes
+      template.useOptionTypes,
+      template.listType
     )
     val generator = new CodeGenerator(config)
     val writer = new FileWriter()

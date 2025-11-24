@@ -8,11 +8,13 @@ import java.io.File
  * @param basePackage The base package for generated code (e.g., "com.myapp")
  * @param outputDir The directory where generated code will be written
  * @param useOptionTypes Whether to use Option[T] for optional fields (true) or nullable types (false). Default is true.
+ * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  */
 case class GeneratorConfig(
   basePackage: String,
   outputDir: String,
-  useOptionTypes: Boolean = true
+  useOptionTypes: Boolean = true,
+  listType: String = "List"
 ) {
   /**
    * Validates the configuration
@@ -64,5 +66,12 @@ object GeneratorConfig {
    */
   def withNullableTypes(basePackage: String, outputDir: String): GeneratorConfig = {
     GeneratorConfig(basePackage, outputDir, useOptionTypes = false)
+  }
+  
+  /**
+   * Creates a configuration that uses Array instead of List for collections
+   */
+  def withArrayType(basePackage: String, outputDir: String): GeneratorConfig = {
+    GeneratorConfig(basePackage, outputDir, listType = "Array")
   }
 }

@@ -283,9 +283,9 @@ class CodeGenerator(config: GeneratorConfig) {
       case BooleanType() => "Boolean"
       case ArrayType(obj @ ObjectType(_)) =>
         val elementTypeName = ScalaCodeBuilder.toPascalCase(fieldName).stripSuffix("s")
-        s"List[$elementTypeName]"
+        s"${config.listType}[$elementTypeName]"
       case ArrayType(elementType) =>
-        s"List[${scalaTypeWithNested(elementType, fieldName, optional = false, parentName)}]"
+        s"${config.listType}[${scalaTypeWithNested(elementType, fieldName, optional = false, parentName)}]"
       case obj @ ObjectType(_) =>
         ScalaCodeBuilder.toPascalCase(fieldName)
       case RecursiveRef(typeName) => typeName
@@ -322,7 +322,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case StringType(_) => "String"
       case NumberType(_) => "Double"
       case BooleanType() => "Boolean"
-      case ArrayType(elementType) => s"List[${scalaType(elementType, optional = false)}]"
+      case ArrayType(elementType) => s"${config.listType}[${scalaType(elementType, optional = false)}]"
       case ObjectType(_) => "???" // This would need nested type generation
       case RecursiveRef(typeName) => typeName
       case ReferenceType(typeName) => typeName
@@ -540,7 +540,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case NumberType(_) => "Double"
       case BooleanType() => "Boolean"
       case ArrayType(elementType) =>
-        s"List[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
+        s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
       case ObjectType(_) =>

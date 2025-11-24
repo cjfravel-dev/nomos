@@ -99,13 +99,15 @@ case class TemplateDefinition(
  * @param mainClass Name of the primary/entry type
  * @param definitions List of type definitions
  * @param useOptionTypes Whether to use Option[T] for optional fields (default: true)
+ * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  */
 case class MultiTemplate(
   basePackage: String,
   outputDir: String,
   mainClass: String,
   definitions: List[TemplateDefinition],
-  useOptionTypes: Boolean = true
+  useOptionTypes: Boolean = true,
+  listType: String = "List"
 ) {
   /**
    * Get the main definition (entry point)
