@@ -82,6 +82,8 @@ class Validator(template: Template) {
         Some(ValidationError.constraintViolation(path, "format: email", value))
       case "url" if !value.matches("""^https?://.*""") =>
         Some(ValidationError.constraintViolation(path, "format: url", value))
+      case "uuid" if !value.matches("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$""") =>
+        Some(ValidationError.constraintViolation(path, "format: uuid", value))
       case _ => None
     }
   }
@@ -149,7 +151,17 @@ class Validator(template: Template) {
           }
         }.toList
 
-        missingFields ++ fieldErrors
+        // Check for extra fields not in template
+        val extraFields = jsonFieldMap.keySet.diff(fields.keySet).toList.map { extraField =>
+          ValidationError(
+            s"$path.$extraField",
+            s"Unexpected field '$extraField' not defined in template",
+            s"one of: ${fields.keySet.mkString(", ")}",
+            extraField
+          )
+        }
+
+        missingFields ++ fieldErrors ++ extraFields
 
       case _ =>
         List(ValidationError.typeMismatch(path, "object", json.getClass.getSimpleName))
@@ -184,10 +196,30 @@ class Validator(template: Template) {
                   }
                 }.toList
 
-                // Validate variant-specific fields
-                val variantErrors = validateObject(variantType.fields, json, path)
+                // Validate variant-specific fields (without checking for extra fields)
+                val variantErrors = variantType.fields.flatMap { case (vfName, vfDef) =>
+                  jsonFieldMap.get(vfName) match {
+                    case Some(value) =>
+                      validateType(vfDef.fieldType, value, s"$path.$vfName")
+                    case None if !vfDef.optional =>
+                      List(ValidationError.missingField(path, vfName))
+                    case None =>
+                      List.empty
+                  }
+                }.toList
 
-                commonErrors ++ variantErrors
+                // Check for extra fields not in discriminator, common fields, or variant fields
+                val allowedFields = Set(fieldName) ++ commonFields.keySet ++ variantType.fields.keySet
+                val extraFields = jsonFieldMap.keySet.diff(allowedFields).toList.map { extraField =>
+                  ValidationError(
+                    s"$path.$extraField",
+                    s"Unexpected field '$extraField' not defined in template",
+                    s"one of: ${allowedFields.mkString(", ")}",
+                    extraField
+                  )
+                }
+
+                commonErrors ++ variantErrors ++ extraFields
 
               case None =>
                 List(ValidationError.invalidDiscriminator(path, fieldName, variants.keySet, discriminatorValue))

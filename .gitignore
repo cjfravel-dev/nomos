@@ -87,3 +87,6 @@ metals.sbt
 
 # Test coverage
 .coverage/
+
+# Scratch files
+playground/
