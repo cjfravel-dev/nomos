@@ -4,7 +4,7 @@ import dev.cjfravel.chisel.model.MultiTemplate
 import dev.cjfravel.chisel.parser.{TemplateParser, ParseError}
 import dev.cjfravel.chisel.generation.{CodeGenerator, FileWriter, GeneratorConfig, GeneratorError, WriteReport}
 import dev.cjfravel.chisel.validation.{MultiValidator, ValidationError}
-import org.json4s.JValue
+import com.fasterxml.jackson.databind.JsonNode
 
 /**
  * Main entry point for the Chisel library.
@@ -72,7 +72,7 @@ object Chisel {
     template: MultiTemplate,
     json: String,
     definitionName: String = null
-  ): Either[List[ValidationError], JValue] = {
+  ): Either[List[ValidationError], JsonNode] = {
     val validator = new MultiValidator(template)
     val actualDefinitionName = if (definitionName == null) template.mainClass else definitionName
     validator.validate(json, actualDefinitionName)

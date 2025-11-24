@@ -31,7 +31,15 @@ class CodeGenerator(config: GeneratorConfig) {
     if (errors.nonEmpty) {
       Left(errors.head) // Return first error
     } else {
-      Right(fileResults.collect { case Right(file) => file })
+      val generatedFiles = fileResults.collect { case Right(file) => file }
+      
+      // Generate ChiselFormats if Jackson serialization is enabled
+      if (config.generateJson4s) {
+        val chiselFormatsFile = generateChiselFormats(multiTemplate.basePackage)
+        Right(chiselFormatsFile :: generatedFiles)
+      } else {
+        Right(generatedFiles)
+      }
     }
   }
 
@@ -365,19 +373,21 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"package $packageName")
     builder.emptyLine()
     
-    // Add imports if needed
-    if (imports.nonEmpty) {
-      imports.foreach(builder.line)
+    // No Jackson imports needed in generated code - ChiselFormats provides everything
+    val allImports = imports
+    
+    if (allImports.nonEmpty) {
+      allImports.foreach(builder.line)
       builder.emptyLine()
     }
     
     // Generate based on template type
     definition.templateType match {
       case obj: ObjectType =>
-        generateObjectForDefinition(definition.name, obj, builder, definitionsMap)
+        generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName)
       
       case disc: TypeDiscriminator =>
-        generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap)
+        generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap, basePackage, packageName)
       
       case _ =>
         return Left(GeneratorError.TemplateError(
@@ -396,7 +406,9 @@ class CodeGenerator(config: GeneratorConfig) {
     name: String,
     objectType: ObjectType,
     builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition]
+    definitionsMap: Map[String, TemplateDefinition],
+    basePackage: String,
+    currentPackage: String
   ): Unit = {
     val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
       val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
@@ -404,7 +416,43 @@ class CodeGenerator(config: GeneratorConfig) {
     }.toList
     
     builder.caseClass(name, fieldList, None)
+    
+    // Generate companion object with Jackson serialization if enabled
+    if (config.generateJson4s) {
+      builder.emptyLine()
+      builder.companionObject(name) {
+        // Only add import if not in basePackage
+        if (currentPackage != basePackage) {
+          builder.line(s"import $basePackage.ChiselFormats")
+        }
+        builder.line("import ChiselFormats._")
+        builder.emptyLine()
+        
+        // Generate simple fromJson using Jackson Scala module
+        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
+        builder.indent()
+        builder.line("try {")
+        builder.indent()
+        builder.line("Right(mapper.readValue(json, classOf[" + name + "]))")
+        builder.dedent()
+        builder.line("} catch {")
+        builder.indent()
+        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("}")
+        
+        builder.emptyLine()
+        builder.line("def toJson(obj: " + name + "): String = {")
+        builder.indent()
+        builder.line("mapper.writeValueAsString(obj)")
+        builder.dedent()
+        builder.line("}")
+      }
+    }
   }
+
 
   /**
    * Generates a discriminator for a definition
@@ -413,7 +461,9 @@ class CodeGenerator(config: GeneratorConfig) {
     name: String,
     discriminator: TypeDiscriminator,
     builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition]
+    definitionsMap: Map[String, TemplateDefinition],
+    basePackage: String,
+    currentPackage: String
   ): Unit = {
     // Check for ambiguity if discriminator is not included
     if (!discriminator.includeInOutput) {
@@ -425,10 +475,10 @@ class CodeGenerator(config: GeneratorConfig) {
     
     // If variantNames is provided, use custom naming and grouping logic
     if (discriminator.variantNames.nonEmpty) {
-      generateDiscriminatorWithVariantNames(name, discriminator, builder, definitionsMap)
+      generateDiscriminatorWithVariantNames(name, discriminator, builder, definitionsMap, basePackage, currentPackage)
     } else {
       // Original behavior: one case class per variant
-      generateDiscriminatorOriginal(name, discriminator, builder, definitionsMap)
+      generateDiscriminatorOriginal(name, discriminator, builder, definitionsMap, basePackage, currentPackage)
     }
   }
 
@@ -439,7 +489,9 @@ class CodeGenerator(config: GeneratorConfig) {
     name: String,
     discriminator: TypeDiscriminator,
     builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition]
+    definitionsMap: Map[String, TemplateDefinition],
+    basePackage: String,
+    currentPackage: String
   ): Unit = {
     // Generate sealed trait
     builder.sealedTrait(name)
@@ -468,6 +520,53 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.caseClass(caseClassName, fieldList, Some(name))
       builder.emptyLine()
     }
+    
+    // Generate companion object with Jackson deserialization if enabled
+    if (config.generateJson4s) {
+      val variantMap = discriminator.variants.map { case (variantName, _) =>
+        (variantName, ScalaCodeBuilder.toPascalCase(variantName))
+      }
+      
+      // Generate companion object with simple Jackson Scala module deserialization
+      builder.companionObject(name) {
+        // Only add import if not in basePackage
+        if (currentPackage != basePackage) {
+          builder.line(s"import $basePackage.ChiselFormats")
+        }
+        builder.line("import ChiselFormats._")
+        builder.line("import com.fasterxml.jackson.databind.JsonNode")
+        builder.emptyLine()
+        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
+        builder.indent()
+        builder.line("try {")
+        builder.indent()
+        builder.line("val jsonNode = mapper.readTree(json)")
+        builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
+        builder.line("discriminatorValue match {")
+        builder.indent()
+        variantMap.foreach { case (variantKey, className) =>
+          builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+        }
+        builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("} catch {")
+        builder.indent()
+        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("}")
+        builder.emptyLine()
+        builder.line("def toJson(obj: " + name + "): String = {")
+        builder.indent()
+        builder.line("mapper.writeValueAsString(obj)")
+        builder.dedent()
+        builder.line("}")
+      }
+      builder.emptyLine()
+    }
   }
 
   /**
@@ -478,7 +577,9 @@ class CodeGenerator(config: GeneratorConfig) {
     name: String,
     discriminator: TypeDiscriminator,
     builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition]
+    definitionsMap: Map[String, TemplateDefinition],
+    basePackage: String,
+    currentPackage: String
   ): Unit = {
     // Get the trait fields (discriminator + common fields)
     val traitFieldNames = Set(discriminator.fieldName) ++ discriminator.commonFields.keys
@@ -523,6 +624,27 @@ class CodeGenerator(config: GeneratorConfig) {
       val allFields = discriminatorField :: (commonFieldsList ++ variantFieldsList)
       
       builder.caseClassWithOverride(caseClassName, allFields, Some(name))
+      builder.emptyLine()
+    }
+    
+    // Generate companion object with custom serializer if json4s is enabled
+    if (config.generateJson4s) {
+      // Map discriminator values to class names (respecting variantNames mapping)
+      val variantMap = discriminator.variants.map { case (variantKey, _) =>
+        val className = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
+        (variantKey, className)
+      }
+      
+      // Generate companion object with Jackson deserialization
+      builder.companionObject(name) {
+        // Only add import if not in basePackage
+        if (currentPackage != basePackage) {
+          builder.line(s"import $basePackage.ChiselFormats")
+        }
+        builder.line("import ChiselFormats._")
+        builder.emptyLine()
+        builder.customSerializer(name, discriminator.fieldName, variantMap)
+      }
       builder.emptyLine()
     }
   }
@@ -636,6 +758,39 @@ class CodeGenerator(config: GeneratorConfig) {
     }
     
     None
+  }
+  
+  /**
+   * Generates ChiselFormats object with standard Jackson and Scala module.
+   * With BOM approach, we can use Jackson directly without shading.
+   */
+  private def generateChiselFormats(basePackage: String): GeneratedFile = {
+    val builder = ScalaCodeBuilder()
+    
+    builder.line(s"package $basePackage")
+    builder.emptyLine()
+    builder.line("import com.fasterxml.jackson.databind.ObjectMapper")
+    builder.line("import com.fasterxml.jackson.module.scala.DefaultScalaModule")
+    builder.emptyLine()
+    builder.line("/**")
+    builder.line(" * Provides Jackson ObjectMapper with Scala module support.")
+    builder.line(" * The Scala module enables automatic serialization/deserialization of case classes.")
+    builder.line(" * Import ChiselFormats._ to use the mapper in your code.")
+    builder.line(" */")
+    builder.line("object ChiselFormats {")
+    builder.indent()
+    builder.line("// Create a shared ObjectMapper instance with Scala module")
+    builder.line("val mapper: ObjectMapper = {")
+    builder.indent()
+    builder.line("val m = new ObjectMapper()")
+    builder.line("m.registerModule(DefaultScalaModule)")
+    builder.line("m")
+    builder.dedent()
+    builder.line("}")
+    builder.dedent()
+    builder.line("}")
+    
+    GeneratedFile(basePackage, "ChiselFormats", builder.build())
   }
 }
 

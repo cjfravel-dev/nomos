@@ -44,6 +44,11 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     }
     this
   }
+  
+  /**
+   * Alias for dedent()
+   */
+  def outdent(): ScalaCodeBuilder = dedent()
 
   /**
    * Executes a block with increased indentation
@@ -139,6 +144,65 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
       }
       line("}")
     }
+    this
+  }
+
+  /**
+   * Appends a companion object with json4s formats
+   */
+  def companionObject(name: String)(body: => Unit): ScalaCodeBuilder = {
+    line(s"object $name {")
+    indented(body)
+    line("}")
+    this
+  }
+
+  /**
+   * Appends an implicit val declaration
+   */
+  def implicitVal(name: String, typeName: String, value: String): ScalaCodeBuilder = {
+    line(s"implicit val $name: $typeName = $value")
+    this
+  }
+  
+  /**
+   * Adds a custom json4s serializer for a discriminated type
+   */
+  def customSerializer(
+    traitName: String,
+    discriminatorField: String,
+    variants: Map[String, String] // discriminator value -> class name
+  ): ScalaCodeBuilder = {
+    line(s"implicit val ${traitName.toLowerCase}Serializer: Serializer[$traitName] = new Serializer[$traitName] {")
+    indent()
+    
+    // deserialize method
+    line(s"def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), $traitName] = {")
+    indent()
+    line(s"case (TypeInfo(clazz, _), json: JObject) if clazz == classOf[$traitName] =>")
+    indent()
+    line(s"""val discriminator = (json \\\\ "$discriminatorField").extract[String]""")
+    line("discriminator match {")
+    indent()
+    variants.foreach { case (discriminatorValue, className) =>
+      line(s"""case "$discriminatorValue" => json.extract[$className]""")
+    }
+    line(s"""case other => throw new MappingException(s"Unknown discriminator value: $$other")""")
+    outdent()
+    line("}")
+    outdent()
+    outdent()
+    line("}")
+    
+    // serialize method
+    line(s"def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {")
+    indent()
+    line(s"case obj: $traitName => Extraction.decompose(obj)")
+    outdent()
+    line("}")
+    
+    outdent()
+    line("}")
     this
   }
 

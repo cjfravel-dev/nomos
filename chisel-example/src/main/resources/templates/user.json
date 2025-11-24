@@ -1,0 +1,24 @@
+{
+  "basePackage": "com.example.models",
+  "outputDir": "src/main/scala",
+  "mainClass": "User",
+  "useOptionTypes": true,
+  "listType": "List",
+  "generateJson4s": true,
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "user",
+      "description": "User model with basic information",
+      "template": {
+        "id": "string",
+        "username": "string",
+        "email": "string",
+        "age": {
+          "$optional": "number"
+        },
+        "roles": ["string"]
+      }
+    }
+  ]
+}
