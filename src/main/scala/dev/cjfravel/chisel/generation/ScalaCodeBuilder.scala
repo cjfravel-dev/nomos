@@ -90,10 +90,55 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
   }
 
   /**
+   * Appends a case class definition with override support
+   * Fields are (name, type, isOverride)
+   */
+  def caseClassWithOverride(name: String, fields: List[(String, String, Boolean)], parent: Option[String] = None): ScalaCodeBuilder = {
+    val extendsClause = parent.map(p => s" extends $p").getOrElse("")
+    
+    if (fields.isEmpty) {
+      line(s"case class $name()$extendsClause")
+    } else if (fields.length == 1) {
+      val (fieldName, fieldType, isOverride) = fields.head
+      val overrideKeyword = if (isOverride) "override " else ""
+      line(s"case class $name(${overrideKeyword}val $fieldName: $fieldType)$extendsClause")
+    } else {
+      line(s"case class $name(")
+      indented {
+        fields.zipWithIndex.foreach { case ((fieldName, fieldType, isOverride), idx) =>
+          val comma = if (idx < fields.length - 1) "," else ""
+          val overrideKeyword = if (isOverride) "override " else ""
+          line(s"${overrideKeyword}val $fieldName: $fieldType$comma")
+        }
+      }
+      line(s")$extendsClause")
+    }
+    this
+  }
+
+  /**
    * Appends a sealed trait definition
    */
   def sealedTrait(name: String): ScalaCodeBuilder = {
     line(s"sealed trait $name")
+    this
+  }
+
+  /**
+   * Appends a sealed trait definition with abstract val fields
+   */
+  def sealedTraitWithFields(name: String, fields: List[(String, String)]): ScalaCodeBuilder = {
+    if (fields.isEmpty) {
+      line(s"sealed trait $name")
+    } else {
+      line(s"sealed trait $name {")
+      indented {
+        fields.foreach { case (fieldName, fieldType) =>
+          line(s"val $fieldName: $fieldType")
+        }
+      }
+      line("}")
+    }
     this
   }
 

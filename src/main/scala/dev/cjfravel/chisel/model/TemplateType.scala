@@ -42,12 +42,14 @@ case class ObjectType(
  * @param variants Map of discriminator values to their respective object types
  * @param commonFields Fields that are common across all variants
  * @param includeInOutput Whether to include the discriminator field in generated case classes
+ * @param variantNames Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
  */
 case class TypeDiscriminator(
   fieldName: String,
   variants: Map[String, ObjectType],
   commonFields: Map[String, FieldDef] = Map.empty,
-  includeInOutput: Boolean = true
+  includeInOutput: Boolean = true,
+  variantNames: Map[String, String] = Map.empty
 ) extends TemplateType
 
 /**

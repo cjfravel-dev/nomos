@@ -290,7 +290,7 @@ class CodeGenerator(config: GeneratorConfig) {
         ScalaCodeBuilder.toPascalCase(fieldName)
       case RecursiveRef(typeName) => typeName
       case ReferenceType(typeName) => typeName
-      case TypeDiscriminator(_, _, _, _) =>
+      case TypeDiscriminator(_, _, _, _, _) =>
         ScalaCodeBuilder.toPascalCase(fieldName)
     }
 
@@ -326,7 +326,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ObjectType(_) => "???" // This would need nested type generation
       case RecursiveRef(typeName) => typeName
       case ReferenceType(typeName) => typeName
-      case TypeDiscriminator(_, _, _, _) => "???" // This would need nested type generation
+      case TypeDiscriminator(_, _, _, _, _) => "???" // This would need nested type generation
     }
 
     if (optional) {
@@ -423,6 +423,24 @@ class CodeGenerator(config: GeneratorConfig) {
       }
     }
     
+    // If variantNames is provided, use custom naming and grouping logic
+    if (discriminator.variantNames.nonEmpty) {
+      generateDiscriminatorWithVariantNames(name, discriminator, builder, definitionsMap)
+    } else {
+      // Original behavior: one case class per variant
+      generateDiscriminatorOriginal(name, discriminator, builder, definitionsMap)
+    }
+  }
+
+  /**
+   * Generates discriminator with original behavior (one case class per variant)
+   */
+  private def generateDiscriminatorOriginal(
+    name: String,
+    discriminator: TypeDiscriminator,
+    builder: ScalaCodeBuilder,
+    definitionsMap: Map[String, TemplateDefinition]
+  ): Unit = {
     // Generate sealed trait
     builder.sealedTrait(name)
     builder.emptyLine()
@@ -453,6 +471,63 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
+   * Generates discriminator with custom variant names
+   * Groups variants by their mapped names and puts common fields on the trait
+   */
+  private def generateDiscriminatorWithVariantNames(
+    name: String,
+    discriminator: TypeDiscriminator,
+    builder: ScalaCodeBuilder,
+    definitionsMap: Map[String, TemplateDefinition]
+  ): Unit = {
+    // Get the trait fields (discriminator + common fields)
+    val traitFieldNames = Set(discriminator.fieldName) ++ discriminator.commonFields.keys
+    
+    // Generate sealed trait with common fields as abstract vals
+    if (discriminator.commonFields.nonEmpty) {
+      val commonFieldList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
+        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
+        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
+      }.toList
+      
+      // Always include discriminator field on trait
+      val allTraitFields = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String") :: commonFieldList
+      builder.sealedTraitWithFields(name, allTraitFields)
+    } else {
+      // Just discriminator field on trait
+      builder.sealedTraitWithFields(name, List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String")))
+    }
+    builder.emptyLine()
+    
+    // Group variants by their mapped class names
+    val variantsByClassName = discriminator.variants.groupBy { case (variantKey, _) =>
+      discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
+    }
+    
+    // Generate one case class per unique mapped name
+    variantsByClassName.foreach { case (caseClassName, variants) =>
+      // Merge all variant-specific fields (they should be compatible if mapping to same class)
+      val variantFields = variants.values.flatMap(_.fields).toMap
+      
+      // Build field list with override for trait fields
+      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)  // override = true
+      val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
+        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
+        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName, true)  // override = true
+      }.toList
+      val variantFieldsList = variantFields.map { case (fieldName, fieldDef) =>
+        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
+        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName, false)  // override = false
+      }.toList
+      
+      val allFields = discriminatorField :: (commonFieldsList ++ variantFieldsList)
+      
+      builder.caseClassWithOverride(caseClassName, allFields, Some(name))
+      builder.emptyLine()
+    }
+  }
+
+  /**
    * Converts a TemplateType to Scala type for multi-definition mode
    */
   private def scalaTypeForDefinition(
@@ -470,7 +545,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case RecursiveRef(typeName) => typeName
       case ObjectType(_) =>
         "???" // Inline objects not supported in multi-definition mode
-      case TypeDiscriminator(_, _, _, _) =>
+      case TypeDiscriminator(_, _, _, _, _) =>
         "???" // Inline discriminators not supported in multi-definition mode
     }
     
@@ -490,7 +565,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType) => collectReferences(elementType)
       case ObjectType(fields) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
-      case TypeDiscriminator(_, variants, commonFields, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => collectReferences(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => collectReferences(f.fieldType))
         variantRefs.toSet ++ commonRefs

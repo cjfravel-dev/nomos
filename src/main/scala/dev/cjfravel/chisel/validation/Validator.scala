@@ -50,7 +50,7 @@ class Validator(template: Template) {
       case BooleanType() => validateBoolean(json, path)
       case ArrayType(elementType) => validateArray(elementType, json, path)
       case ObjectType(fields) => validateObject(fields, json, path)
-      case TypeDiscriminator(fieldName, variants, commonFields, _) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, _, _) =>
         validateDiscriminator(fieldName, variants, commonFields, json, path)
       case ReferenceType(typeName) =>
         // References should be resolved before validation in multi-template mode
@@ -302,7 +302,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case BooleanType() => validateBoolean(json, path)
       case ArrayType(elementType) => validateArray(elementType, json, path, definitions)
       case ObjectType(fields) => validateObject(fields, json, path, definitions)
-      case TypeDiscriminator(fieldName, variants, commonFields, _) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, _, _) =>
         validateDiscriminator(fieldName, variants, commonFields, json, path, definitions)
       case ReferenceType(typeName) =>
         // Resolve reference and validate

@@ -183,7 +183,8 @@ class TemplateParser {
       variants <- parseVariants(variantsJson, s"$path.$$type.variants")
       commonFields <- parseCommonFields(typeObj, s"$path.$$type")
       includeInOutput = extractOptionalBoolean(typeObj, "includeDiscriminator").getOrElse(true)
-    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput)
+      variantNames = parseVariantNames(typeObj, s"$path.$$type")
+    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames)
   }
 
   /**
@@ -217,6 +218,20 @@ class TemplateParser {
         parseObjectType(commonJson, s"$path.commonFields").map(_.fields)
       case None =>
         Right(Map.empty)
+    }
+  }
+
+  /**
+   * Parses variant names mapping for discriminator
+   */
+  private def parseVariantNames(json: JValue, path: String): Map[String, String] = {
+    extractOptionalField(json, "variantNames") match {
+      case Some(JObject(fields)) =>
+        fields.collect {
+          case (key, JString(value)) => key -> value
+        }.toMap
+      case _ =>
+        Map.empty
     }
   }
 
