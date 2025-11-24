@@ -1,15 +1,15 @@
 package dev.cjfravel.chisel
 
-import dev.cjfravel.chisel.model.Template
+import dev.cjfravel.chisel.model.MultiTemplate
 import dev.cjfravel.chisel.parser.{TemplateParser, ParseError}
 import dev.cjfravel.chisel.generation.{CodeGenerator, FileWriter, GeneratorConfig, GeneratorError, WriteReport}
-import dev.cjfravel.chisel.validation.{Validator, ValidationError}
+import dev.cjfravel.chisel.validation.{MultiValidator, ValidationError}
 import org.json4s.JValue
 
 /**
  * Main entry point for the Chisel library.
  * 
- * Chisel allows you to define JSON templates and then:
+ * Chisel allows you to define JSON templates with multiple type definitions and then:
  * 1. Generate Scala case classes from templates
  * 2. Validate JSON strings against templates
  * 
@@ -18,10 +18,10 @@ import org.json4s.JValue
  * // Parse a template from JSON
  * val template = Chisel.parseTemplate(templateJson).right.get
  * 
- * // Generate case classes
- * val result = Chisel.generateCode(template, "src/main/scala")
+ * // Generate case classes (uses basePackage and outputDir from template)
+ * val result = Chisel.generateCode(template)
  * 
- * // Validate JSON data
+ * // Validate JSON data against the main class
  * val validationResult = Chisel.validate(template, jsonData)
  * }}}
  */
@@ -30,32 +30,27 @@ object Chisel {
   /**
    * Parse a template from JSON string.
    *
-   * @param json The JSON string containing the template definition
-   * @return Either ParseError or Template
+   * @param json The JSON string containing the template definition with definitions array
+   * @return Either ParseError or MultiTemplate
    */
-  def parseTemplate(json: String): Either[ParseError, Template] = {
-    TemplateParser.parseString(json)
+  def parseTemplate(json: String): Either[ParseError, MultiTemplate] = {
+    TemplateParser.parseMultiTemplateString(json)
   }
   
   /**
    * Generate Scala case classes from a template.
+   * Uses the basePackage and outputDir specified in the template.
    *
    * @param template The template to generate code from
-   * @param basePackage The base package for generated code
-   * @param outputDir The directory to write generated files to
    * @return Either GeneratorError or WriteReport containing successes and failures
    */
-  def generateCode(
-    template: Template,
-    basePackage: String,
-    outputDir: String
-  ): Either[GeneratorError, WriteReport] = {
-    val config = GeneratorConfig(basePackage, outputDir)
+  def generateCode(template: MultiTemplate): Either[GeneratorError, WriteReport] = {
+    val config = GeneratorConfig(template.basePackage, template.outputDir)
     val generator = new CodeGenerator(config)
     val writer = new FileWriter()
-    val outputDirFile = new java.io.File(outputDir)
+    val outputDirFile = new java.io.File(template.outputDir)
     
-    generator.generate(template).map { generatedFiles =>
+    generator.generateMulti(template).map { generatedFiles =>
       writer.writeFilesWithReport(generatedFiles, outputDirFile)
     }
   }
@@ -65,29 +60,29 @@ object Chisel {
    * 
    * @param template The template to validate against
    * @param json The JSON string to validate
+   * @param definitionName The name of the definition to validate against (defaults to mainClass)
    * @return Either a list of validation errors or the parsed JSON value
    */
-  def validate(template: Template, json: String): Either[List[ValidationError], JValue] = {
-    val validator = new Validator(template)
-    validator.validate(json)
+  def validate(
+    template: MultiTemplate,
+    json: String,
+    definitionName: String = null
+  ): Either[List[ValidationError], JValue] = {
+    val validator = new MultiValidator(template)
+    val actualDefinitionName = if (definitionName == null) template.mainClass else definitionName
+    validator.validate(json, actualDefinitionName)
   }
   
   /**
    * Complete workflow: parse template, generate code, and provide a validator.
    *
    * @param templateJson The JSON template definition
-   * @param basePackage The base package for generated code
-   * @param outputDir The directory to write generated files to
    * @return Either error or ChiselResult with template and write report
    */
-  def process(
-    templateJson: String,
-    basePackage: String,
-    outputDir: String
-  ): Either[ChiselError, ChiselResult] = {
+  def process(templateJson: String): Either[ChiselError, ChiselResult] = {
     (for {
       template <- parseTemplate(templateJson).left.map(ChiselError.ParseFailed)
-      report <- generateCode(template, basePackage, outputDir).left.map(ChiselError.GenerationFailed)
+      report <- generateCode(template).left.map(ChiselError.GenerationFailed)
     } yield ChiselResult(template, report)).left.map(identity)
   }
   
@@ -95,10 +90,10 @@ object Chisel {
    * Parse template and create a validator for it.
    * 
    * @param templateJson The JSON template definition
-   * @return Either ParseError or Validator
+   * @return Either ParseError or MultiValidator
    */
-  def createValidator(templateJson: String): Either[ParseError, Validator] = {
-    parseTemplate(templateJson).map(new Validator(_))
+  def createValidator(templateJson: String): Either[ParseError, MultiValidator] = {
+    parseTemplate(templateJson).map(new MultiValidator(_))
   }
 }
 
@@ -126,13 +121,13 @@ object ChiselError {
  * @param writeReport The report from writing generated files
  */
 case class ChiselResult(
-  template: Template,
+  template: MultiTemplate,
   writeReport: WriteReport
 ) {
   /**
    * Create a validator for this template.
    */
-  def validator: Validator = new Validator(template)
+  def validator: MultiValidator = new MultiValidator(template)
   
   /**
    * Check if code generation was successful.

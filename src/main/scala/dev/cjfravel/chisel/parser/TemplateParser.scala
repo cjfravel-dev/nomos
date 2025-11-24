@@ -50,10 +50,10 @@ class TemplateParser {
       case JString("number") => Right(NumberType())
       case JString("boolean") => Right(BooleanType())
       
-      // Recursive reference
+      // Reference to another definition (for multi-template mode)
       case JString(ref) if ref.startsWith("$ref:") =>
         val typeName = ref.substring(5)
-        Right(RecursiveRef(typeName))
+        Right(ReferenceType(typeName))
       
       // Array type
       case JArray(List(elementType)) =>
@@ -273,6 +273,79 @@ class TemplateParser {
       case _ => None
     }
   }
+
+  /**
+   * Parses a JSON string into a MultiTemplate
+   */
+  def parseMultiTemplate(jsonString: String): Either[ParseError, MultiTemplate] = {
+    try {
+      val json = JsonMethods.parse(jsonString)
+      parseMultiTemplateJson(json)
+    } catch {
+      case e: Exception =>
+        Left(ParseError.JsonSyntaxError(e.getMessage))
+    }
+  }
+
+  /**
+   * Parses a multi-template JSON structure
+   */
+  private def parseMultiTemplateJson(json: JValue): Either[ParseError, MultiTemplate] = {
+    val path = "root"
+    
+    for {
+      basePackage <- extractString(json, "basePackage", path)
+      outputDir <- extractString(json, "outputDir", path)
+      mainClass <- extractString(json, "mainClass", path)
+      definitionsJson <- extractField(json, "definitions", path)
+      definitions <- parseDefinitions(definitionsJson, s"$path.definitions")
+    } yield {
+      val multiTemplate = MultiTemplate(basePackage, outputDir, mainClass, definitions)
+      
+      // Validate the multi-template
+      multiTemplate.validate() match {
+        case Nil => multiTemplate
+        case errors => return Left(ParseError.MultipleErrors(errors.map(err => ParseError.InvalidFieldValue("template", "valid", err, path))))
+      }
+      
+      multiTemplate
+    }
+  }
+
+  /**
+   * Parses the definitions array
+   */
+  private def parseDefinitions(json: JValue, path: String): Either[ParseError, List[TemplateDefinition]] = {
+    json match {
+      case JArray(definitionJsons) =>
+        val definitionResults = definitionJsons.zipWithIndex.map { case (defJson, idx) =>
+          parseDefinition(defJson, s"$path[$idx]")
+        }
+        
+        val errors = definitionResults.collect { case Left(err) => err }
+        if (errors.nonEmpty) {
+          Left(ParseError.MultipleErrors(errors))
+        } else {
+          Right(definitionResults.collect { case Right(definition) => definition })
+        }
+      
+      case _ =>
+        Left(ParseError.InvalidType("array", path, "definitions must be an array"))
+    }
+  }
+
+  /**
+   * Parses a single definition
+   */
+  private def parseDefinition(json: JValue, path: String): Either[ParseError, TemplateDefinition] = {
+    for {
+      name <- extractString(json, "name", path)
+      subPackage = extractOptionalString(json, "subPackage")
+      description = extractOptionalString(json, "description")
+      templateJson <- extractField(json, "template", path)
+      templateType <- parseType(templateJson, s"$path.template")
+    } yield TemplateDefinition(name, templateType, subPackage, description)
+  }
 }
 
 object TemplateParser {
@@ -283,5 +356,12 @@ object TemplateParser {
    */
   def parseString(jsonString: String): Either[ParseError, Template] = {
     new TemplateParser().parseTemplate(jsonString)
+  }
+  
+  /**
+   * Convenience method to parse multi-template from string
+   */
+  def parseMultiTemplateString(jsonString: String): Either[ParseError, MultiTemplate] = {
+    new TemplateParser().parseMultiTemplate(jsonString)
   }
 }

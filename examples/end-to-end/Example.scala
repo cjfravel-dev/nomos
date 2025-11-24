@@ -4,7 +4,7 @@ import dev.cjfravel.chisel.Chisel
 
 /**
  * End-to-end example demonstrating the complete Chisel workflow:
- * 1. Define a JSON template
+ * 1. Define a JSON template with multiple definitions and references
  * 2. Parse the template
  * 3. Generate Scala case classes
  * 4. Validate JSON data against the template
@@ -14,38 +14,63 @@ object EndToEndExample {
   def main(args: Array[String]): Unit = {
     println("=== Chisel End-to-End Example ===\n")
     
-    // Step 1: Define a JSON template for a User type
+    // Step 1: Define a JSON template with multiple definitions
     val templateJson = """
     {
-      "name": "User",
-      "subPackage": "models",
-      "description": "A user in the system",
-      "version": "1.0.0",
-      "template": {
-        "id": {
-          "type": "string",
-          "format": "uuid"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100
-        },
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "age": {
-          "$optional": {
-            "type": "number",
-            "min": 0,
-            "max": 150
+      "basePackage": "com.example",
+      "outputDir": "examples/end-to-end/generated",
+      "mainClass": "User",
+      "definitions": [
+        {
+          "name": "User",
+          "subPackage": "models",
+          "description": "A user in the system",
+          "template": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            },
+            "age": {
+              "$optional": {
+                "type": "number",
+                "min": 0,
+                "max": 150
+              }
+            },
+            "address": "$ref:Address",
+            "tags": [
+              "string"
+            ]
           }
         },
-        "tags": [
-          "string"
-        ]
-      }
+        {
+          "name": "Address",
+          "subPackage": "models",
+          "description": "A postal address",
+          "template": {
+            "street": "string",
+            "city": "string",
+            "state": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 2
+            },
+            "zipCode": {
+              "type": "string",
+              "pattern": "^[0-9]{5}$"
+            }
+          }
+        }
+      ]
     }
     """
     
@@ -64,10 +89,15 @@ object EndToEndExample {
         println(s"ERROR: Failed to parse template: ${error.message}")
         return
       case Right(template) =>
-        println(s"✓ Successfully parsed template: ${template.name}")
-        println(s"  Package: ${template.fullPackage("com.example")}")
-        println(s"  Description: ${template.description.getOrElse("N/A")}")
-        println(s"  Version: ${template.version.getOrElse("N/A")}")
+        println(s"✓ Successfully parsed template")
+        println(s"  Base Package: ${template.basePackage}")
+        println(s"  Output Dir: ${template.outputDir}")
+        println(s"  Main Class: ${template.mainClass}")
+        println(s"  Definitions:")
+        template.definitions.foreach { defn =>
+          val pkg = template.basePackage + defn.subPackage.map("." + _).getOrElse("")
+          println(s"    - ${defn.name} (${pkg})")
+        }
         println()
     }
     
@@ -76,11 +106,7 @@ object EndToEndExample {
     // Step 3: Generate Scala case classes
     println("Step 3: Generate Code")
     println("---------------------")
-    val codeResult = Chisel.generateCode(
-      template,
-      basePackage = "com.example",
-      outputDir = "examples/end-to-end/generated"
-    )
+    val codeResult = Chisel.generateCode(template)
     
     codeResult match {
       case Left(error) =>
@@ -112,6 +138,12 @@ object EndToEndExample {
       "name": "John Doe",
       "email": "john@example.com",
       "age": 30,
+      "address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "state": "IL",
+        "zipCode": "62701"
+      },
       "tags": ["developer", "scala"]
     }
     """
@@ -132,6 +164,12 @@ object EndToEndExample {
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
       "email": "john@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "state": "IL",
+        "zipCode": "62701"
+      },
       "tags": ["developer"]
     }
     """
@@ -147,13 +185,19 @@ object EndToEndExample {
     }
     println()
     
-    // Invalid JSON - constraint violation
+    // Invalid JSON - constraint violation in nested object
     val invalidJson2 = """
     {
       "id": "not-a-uuid",
       "name": "",
       "email": "invalid-email",
       "age": 200,
+      "address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "state": "ILLINOIS",
+        "zipCode": "1234"
+      },
       "tags": ["developer"]
     }
     """
@@ -172,18 +216,15 @@ object EndToEndExample {
     // Step 5: Using the process() convenience method
     println("Step 5: Using Chisel.process() convenience method")
     println("--------------------------------------------------")
-    val processResult = Chisel.process(
-      templateJson,
-      basePackage = "com.example.alternate",
-      outputDir = "examples/end-to-end/generated-alt"
-    )
+    val processResult = Chisel.process(templateJson)
     
     processResult match {
       case Left(error) =>
         println(s"ERROR: Process failed: ${error.message}")
       case Right(result) =>
         println(s"✓ Process completed successfully")
-        println(s"  Template: ${result.template.name}")
+        println(s"  Main Class: ${result.template.mainClass}")
+        println(s"  Definitions: ${result.template.definitions.length}")
         println(s"  Files written: ${result.writeReport.successCount}")
         println(s"  Can validate: ${result.validator != null}")
         

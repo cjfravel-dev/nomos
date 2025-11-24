@@ -2,6 +2,52 @@
 
 This document defines the JSON template format used by Chisel to generate case classes and validators.
 
+## Template Structure
+
+All Chisel templates use a multi-definition format that allows you to define multiple related types in a single file:
+
+```json
+{
+  "basePackage": "com.example",
+  "outputDir": "src/main/scala",
+  "mainClass": "User",
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "models",
+      "description": "A user in the system",
+      "template": {
+        // ... type definition
+      }
+    },
+    {
+      "name": "Address",
+      "subPackage": "models",
+      "description": "A postal address",
+      "template": {
+        // ... type definition
+      }
+    }
+  ]
+}
+```
+
+### Top-Level Fields
+
+- **`basePackage`** (required): The base package for all generated code
+- **`outputDir`** (required): The directory where generated files will be written
+- **`mainClass`** (required): The name of the primary type definition (used for validation)
+- **`definitions`** (required): Array of type definitions
+
+### Definition Fields
+
+Each definition in the `definitions` array has:
+
+- **`name`** (required): The name of the type (must start with uppercase)
+- **`template`** (required): The type structure definition
+- **`subPackage`** (optional): Additional package path (e.g., "models" → "com.example.models")
+- **`description`** (optional): Human-readable description of the type
+
 ## Basic Types
 
 Templates support the following primitive types:
@@ -49,56 +95,75 @@ Templates support the following primitive types:
 
 ## Advanced Features
 
-### 1. Type Discriminators (Enum-like Behavior)
+### 1. Type References
 
-Use the `$type` field to define a discriminator that determines which properties are valid:
+Use `$ref:TypeName` to reference other type definitions:
 
 ```json
 {
-  "$type": {
-    "discriminator": "shapeType",
-    "variants": {
-      "circle": {
-        "radius": "number"
-      },
-      "rectangle": {
-        "width": "number",
-        "height": "number"
-      },
-      "triangle": {
-        "base": "number",
-        "height": "number"
+  "basePackage": "com.example",
+  "outputDir": "src/main/scala",
+  "mainClass": "User",
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "models",
+      "template": {
+        "name": "string",
+        "email": "string",
+        "address": "$ref:Address"
+      }
+    },
+    {
+      "name": "Address",
+      "subPackage": "models",
+      "template": {
+        "street": "string",
+        "city": "string",
+        "state": "string",
+        "zipCode": "string"
       }
     }
-  }
-}
-```
-
-**Example Valid JSON:**
-```json
-{
-  "shapeType": "circle",
-  "radius": 10
+  ]
 }
 ```
 
 **Generated Case Classes:**
 ```scala
-sealed trait Shape
-case class Circle(radius: Double) extends Shape
-case class Rectangle(width: Double, height: Double) extends Shape
-case class Triangle(base: Double, height: Double) extends Shape
+package com.example.models
+
+case class User(
+  name: String,
+  email: String,
+  address: Address
+)
+
+case class Address(
+  street: String,
+  city: String,
+  state: String,
+  zipCode: String
+)
 ```
 
 ### 2. Recursive Types
 
-Use `$ref` to create self-referential structures:
+Use `$ref:TypeName` for self-referential structures:
 
 ```json
 {
-  "name": "TreeNode",
-  "value": "number",
-  "children": ["$ref:TreeNode"]
+  "basePackage": "com.example",
+  "outputDir": "src/main/scala",
+  "mainClass": "TreeNode",
+  "definitions": [
+    {
+      "name": "TreeNode",
+      "template": {
+        "value": "number",
+        "children": ["$ref:TreeNode"]
+      }
+    }
+  ]
 }
 ```
 
@@ -155,10 +220,84 @@ case class Person(
 )
 ```
 
-### 4. Constraints
+### 4. Type Discriminators (Enum-like Behavior)
+
+Use the `$type` field to define a discriminator that determines which properties are valid:
+
+```json
+{
+  "basePackage": "com.example",
+  "outputDir": "src/main/scala",
+  "mainClass": "Shape",
+  "definitions": [
+    {
+      "name": "Shape",
+      "template": {
+        "$type": {
+          "discriminator": "shapeType",
+          "includeDiscriminator": true,
+          "commonFields": {
+            "color": "string"
+          },
+          "variants": {
+            "circle": {
+              "radius": "number"
+            },
+            "rectangle": {
+              "width": "number",
+              "height": "number"
+            },
+            "triangle": {
+              "base": "number",
+              "height": "number"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Example Valid JSON:**
+```json
+{
+  "shapeType": "circle",
+  "color": "red",
+  "radius": 10
+}
+```
+
+**Generated Case Classes:**
+```scala
+sealed trait Shape
+
+case class Circle(
+  shapeType: String,
+  color: String,
+  radius: Double
+) extends Shape
+
+case class Rectangle(
+  shapeType: String,
+  color: String,
+  width: Double,
+  height: Double
+) extends Shape
+
+case class Triangle(
+  shapeType: String,
+  color: String,
+  base: Double,
+  height: Double
+) extends Shape
+```
+
+### 5. Constraints
 
 Add validation constraints to fields:
 
+#### String Constraints
 ```json
 {
   "username": {
@@ -167,14 +306,34 @@ Add validation constraints to fields:
     "maxLength": 20,
     "pattern": "^[a-zA-Z0-9_]+$"
   },
+  "email": {
+    "type": "string",
+    "format": "email"
+  },
+  "id": {
+    "type": "string",
+    "format": "uuid"
+  }
+}
+```
+
+Supported string formats:
+- `email` - Valid email address
+- `url` - Valid HTTP/HTTPS URL
+- `uuid` - Valid UUID format
+
+#### Number Constraints
+```json
+{
   "age": {
     "type": "number",
     "min": 0,
     "max": 150
   },
-  "email": {
-    "type": "string",
-    "format": "email"
+  "price": {
+    "type": "number",
+    "min": 0,
+    "multipleOf": 0.01
   }
 }
 ```
@@ -183,58 +342,118 @@ Add validation constraints to fields:
 
 ```json
 {
-  "name": "User",
-  "template": {
-    "id": "string",
-    "username": {
-      "type": "string",
-      "minLength": 3,
-      "maxLength": 20
-    },
-    "profile": {
-      "email": "string",
-      "age": {
-        "type": "number",
-        "min": 0
-      },
-      "bio": {
-        "$optional": "string"
+  "basePackage": "com.example",
+  "outputDir": "src/main/scala",
+  "mainClass": "User",
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "models",
+      "description": "A user in the system",
+      "template": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 20
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "age": {
+          "$optional": {
+            "type": "number",
+            "min": 0,
+            "max": 150
+          }
+        },
+        "address": "$ref:Address",
+        "tags": ["string"]
       }
     },
-    "role": {
-      "$type": {
-        "discriminator": "type",
-        "variants": {
-          "admin": {
-            "permissions": ["string"]
-          },
-          "user": {
-            "subscription": "string"
-          }
+    {
+      "name": "Address",
+      "subPackage": "models",
+      "description": "A postal address",
+      "template": {
+        "street": "string",
+        "city": "string",
+        "state": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 2
+        },
+        "zipCode": {
+          "type": "string",
+          "pattern": "^[0-9]{5}$"
         }
       }
     }
-  }
+  ]
 }
 ```
 
-## Template Metadata
+## Cross-Package References
 
-Templates can include metadata:
+When definitions have different `subPackage` values, Chisel automatically generates import statements:
 
 ```json
 {
-  "name": "MyType",
-  "description": "Description of the type",
-  "version": "1.0.0",
-  "template": {
-    // ... actual template definition
-  }
+  "basePackage": "com.example",
+  "outputDir": "src/main/scala",
+  "mainClass": "DataContract",
+  "definitions": [
+    {
+      "name": "DataContract",
+      "subPackage": "contracts",
+      "template": {
+        "name": "string",
+        "owner": "$ref:Owner"
+      }
+    },
+    {
+      "name": "Owner",
+      "subPackage": "owners",
+      "template": {
+        "service": "string",
+        "team": "string"
+      }
+    }
+  ]
 }
+```
+
+Generates:
+```scala
+// com/example/contracts/DataContract.scala
+package com.example.contracts
+
+import com.example.owners.Owner
+
+case class DataContract(
+  name: String,
+  owner: Owner
+)
+```
+
+```scala
+// com/example/owners/Owner.scala
+package com.example.owners
+
+case class Owner(
+  service: String,
+  team: String
+)
 ```
 
 ## Notes
 
 - All field names must be valid Scala identifiers
 - Type names must start with an uppercase letter
-- Recursive references must be named and defined before use
+- References must use the exact name of another definition in the same template
+- Circular references are supported (e.g., TreeNode can reference itself)
+- The `mainClass` must match one of the definition names

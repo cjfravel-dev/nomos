@@ -136,7 +136,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
-    objType.fields("children").fieldType shouldBe ArrayType(RecursiveRef("TreeNode"))
+    objType.fields("children").fieldType shouldBe ArrayType(ReferenceType("TreeNode"))
   }
 
   it should "parse string constraints" in {

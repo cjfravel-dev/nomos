@@ -27,8 +27,12 @@ case class ArrayType(elementType: TemplateType) extends TemplateType
 
 /**
  * Object type with named fields
+ *
+ * @param fields The fields in this object
  */
-case class ObjectType(fields: Map[String, FieldDef]) extends TemplateType
+case class ObjectType(
+  fields: Map[String, FieldDef]
+) extends TemplateType
 
 /**
  * Type discriminator that allows different object structures based on a discriminator field value.
@@ -47,7 +51,14 @@ case class TypeDiscriminator(
 ) extends TemplateType
 
 /**
- * Reference to another named type, used for recursive structures
+ * Reference to another named type definition in the same template file.
+ * Used for $ref:TypeName syntax to enable type reuse and composition.
+ */
+case class ReferenceType(typeName: String) extends TemplateType
+
+/**
+ * Reference to a recursive type (self-reference).
+ * Used for recursive structures like trees.
  */
 case class RecursiveRef(typeName: String) extends TemplateType
 
