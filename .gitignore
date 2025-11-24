@@ -1,0 +1,89 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# SBT (if used)
+dist/*
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+.history
+.cache
+.lib/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Mac OS
+.DS_Store
+
+# Generated files from examples
+examples/*/generated/
+examples/*/generated-alt/
+examples/end-to-end/generated/
+examples/end-to-end/generated-alt/
+
+# Metals (Scala Language Server)
+.metals/
+.bloop/
+metals.sbt
+
+# Ensime
+.ensime
+.ensime_cache/
+
+# Scala compiler output
+*.tasty
+
+# Temporary files
+*.swp
+*.swo
+*~
+.tmp
+
+# Build tools
+.zinc/
+
+# Package Files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Test coverage
+.coverage/
