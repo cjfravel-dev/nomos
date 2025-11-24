@@ -107,8 +107,7 @@ case class MultiTemplate(
   mainClass: String,
   definitions: List[TemplateDefinition],
   useOptionTypes: Boolean = true,
-  listType: String = "List",
-  generateJson4s: Boolean = true
+  listType: String = "List"
 ) {
   /**
    * Get the main definition (entry point)

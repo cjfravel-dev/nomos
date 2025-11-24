@@ -9,14 +9,12 @@ import java.io.File
  * @param outputDir The directory where generated code will be written
  * @param useOptionTypes Whether to use Option[T] for optional fields (true) or nullable types (false). Default is true.
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
- * @param generateJson4s Whether to generate json4s serialization/deserialization code (default: true)
  */
 case class GeneratorConfig(
   basePackage: String,
   outputDir: String,
   useOptionTypes: Boolean = true,
-  listType: String = "List",
-  generateJson4s: Boolean = true
+  listType: String = "List"
 ) {
   /**
    * Validates the configuration

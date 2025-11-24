@@ -33,13 +33,9 @@ class CodeGenerator(config: GeneratorConfig) {
     } else {
       val generatedFiles = fileResults.collect { case Right(file) => file }
       
-      // Generate ChiselFormats if Jackson serialization is enabled
-      if (config.generateJson4s) {
-        val chiselFormatsFile = generateChiselFormats(multiTemplate.basePackage)
-        Right(chiselFormatsFile :: generatedFiles)
-      } else {
-        Right(generatedFiles)
-      }
+      // Always generate ChiselFormats with Jackson serialization
+      val chiselFormatsFile = generateChiselFormats(multiTemplate.basePackage)
+      Right(chiselFormatsFile :: generatedFiles)
     }
   }
 
@@ -417,39 +413,37 @@ class CodeGenerator(config: GeneratorConfig) {
     
     builder.caseClass(name, fieldList, None)
     
-    // Generate companion object with Jackson serialization if enabled
-    if (config.generateJson4s) {
-      builder.emptyLine()
-      builder.companionObject(name) {
-        // Only add import if not in basePackage
-        if (currentPackage != basePackage) {
-          builder.line(s"import $basePackage.ChiselFormats")
-        }
-        builder.line("import ChiselFormats._")
-        builder.emptyLine()
-        
-        // Generate simple fromJson using Jackson Scala module
-        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
-        builder.indent()
-        builder.line("try {")
-        builder.indent()
-        builder.line("Right(mapper.readValue(json, classOf[" + name + "]))")
-        builder.dedent()
-        builder.line("} catch {")
-        builder.indent()
-        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("}")
-        
-        builder.emptyLine()
-        builder.line("def toJson(obj: " + name + "): String = {")
-        builder.indent()
-        builder.line("mapper.writeValueAsString(obj)")
-        builder.dedent()
-        builder.line("}")
+    // Always generate companion object with Jackson serialization
+    builder.emptyLine()
+    builder.companionObject(name) {
+      // Only add import if not in basePackage
+      if (currentPackage != basePackage) {
+        builder.line(s"import $basePackage.ChiselFormats")
       }
+      builder.line("import ChiselFormats._")
+      builder.emptyLine()
+      
+      // Generate simple fromJson using Jackson Scala module
+      builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
+      builder.indent()
+      builder.line("try {")
+      builder.indent()
+      builder.line("Right(mapper.readValue(json, classOf[" + name + "]))")
+      builder.dedent()
+      builder.line("} catch {")
+      builder.indent()
+      builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
+      builder.dedent()
+      builder.line("}")
+      builder.dedent()
+      builder.line("}")
+      
+      builder.emptyLine()
+      builder.line("def toJson(obj: " + name + "): String = {")
+      builder.indent()
+      builder.line("mapper.writeValueAsString(obj)")
+      builder.dedent()
+      builder.line("}")
     }
   }
 
@@ -521,52 +515,50 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
     
-    // Generate companion object with Jackson deserialization if enabled
-    if (config.generateJson4s) {
-      val variantMap = discriminator.variants.map { case (variantName, _) =>
-        (variantName, ScalaCodeBuilder.toPascalCase(variantName))
-      }
-      
-      // Generate companion object with simple Jackson Scala module deserialization
-      builder.companionObject(name) {
-        // Only add import if not in basePackage
-        if (currentPackage != basePackage) {
-          builder.line(s"import $basePackage.ChiselFormats")
-        }
-        builder.line("import ChiselFormats._")
-        builder.line("import com.fasterxml.jackson.databind.JsonNode")
-        builder.emptyLine()
-        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
-        builder.indent()
-        builder.line("try {")
-        builder.indent()
-        builder.line("val jsonNode = mapper.readTree(json)")
-        builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
-        builder.line("discriminatorValue match {")
-        builder.indent()
-        variantMap.foreach { case (variantKey, className) =>
-          builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
-        }
-        builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("} catch {")
-        builder.indent()
-        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("}")
-        builder.emptyLine()
-        builder.line("def toJson(obj: " + name + "): String = {")
-        builder.indent()
-        builder.line("mapper.writeValueAsString(obj)")
-        builder.dedent()
-        builder.line("}")
-      }
-      builder.emptyLine()
+    // Always generate companion object with Jackson deserialization
+    val variantMap = discriminator.variants.map { case (variantName, _) =>
+      (variantName, ScalaCodeBuilder.toPascalCase(variantName))
     }
+    
+    // Generate companion object with simple Jackson Scala module deserialization
+    builder.companionObject(name) {
+      // Only add import if not in basePackage
+      if (currentPackage != basePackage) {
+        builder.line(s"import $basePackage.ChiselFormats")
+      }
+      builder.line("import ChiselFormats._")
+      builder.line("import com.fasterxml.jackson.databind.JsonNode")
+      builder.emptyLine()
+      builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
+      builder.indent()
+      builder.line("try {")
+      builder.indent()
+      builder.line("val jsonNode = mapper.readTree(json)")
+      builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
+      builder.line("discriminatorValue match {")
+      builder.indent()
+      variantMap.foreach { case (variantKey, className) =>
+        builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+      }
+      builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
+      builder.dedent()
+      builder.line("}")
+      builder.dedent()
+      builder.line("} catch {")
+      builder.indent()
+      builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
+      builder.dedent()
+      builder.line("}")
+      builder.dedent()
+      builder.line("}")
+      builder.emptyLine()
+      builder.line("def toJson(obj: " + name + "): String = {")
+      builder.indent()
+      builder.line("mapper.writeValueAsString(obj)")
+      builder.dedent()
+      builder.line("}")
+    }
+    builder.emptyLine()
   }
 
   /**
@@ -627,26 +619,24 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
     
-    // Generate companion object with custom serializer if json4s is enabled
-    if (config.generateJson4s) {
-      // Map discriminator values to class names (respecting variantNames mapping)
-      val variantMap = discriminator.variants.map { case (variantKey, _) =>
-        val className = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
-        (variantKey, className)
-      }
-      
-      // Generate companion object with Jackson deserialization
-      builder.companionObject(name) {
-        // Only add import if not in basePackage
-        if (currentPackage != basePackage) {
-          builder.line(s"import $basePackage.ChiselFormats")
-        }
-        builder.line("import ChiselFormats._")
-        builder.emptyLine()
-        builder.customSerializer(name, discriminator.fieldName, variantMap)
-      }
-      builder.emptyLine()
+    // Always generate companion object with custom serializer
+    // Map discriminator values to class names (respecting variantNames mapping)
+    val variantMap = discriminator.variants.map { case (variantKey, _) =>
+      val className = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
+      (variantKey, className)
     }
+    
+    // Generate companion object with Jackson deserialization
+    builder.companionObject(name) {
+      // Only add import if not in basePackage
+      if (currentPackage != basePackage) {
+        builder.line(s"import $basePackage.ChiselFormats")
+      }
+      builder.line("import ChiselFormats._")
+      builder.emptyLine()
+      builder.customSerializer(name, discriminator.fieldName, variantMap)
+    }
+    builder.emptyLine()
   }
 
   /**

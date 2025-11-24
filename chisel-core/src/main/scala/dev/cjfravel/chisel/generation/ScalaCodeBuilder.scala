@@ -166,41 +166,41 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
   }
   
   /**
-   * Adds a custom json4s serializer for a discriminated type
+   * Adds custom Jackson-based serialization methods for a discriminated type
    */
   def customSerializer(
     traitName: String,
     discriminatorField: String,
     variants: Map[String, String] // discriminator value -> class name
   ): ScalaCodeBuilder = {
-    line(s"implicit val ${traitName.toLowerCase}Serializer: Serializer[$traitName] = new Serializer[$traitName] {")
+    line("import com.fasterxml.jackson.databind.JsonNode")
+    emptyLine()
+    line(s"def fromJson(json: String): Either[String, $traitName] = {")
     indent()
-    
-    // deserialize method
-    line(s"def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), $traitName] = {")
+    line("try {")
     indent()
-    line(s"case (TypeInfo(clazz, _), json: JObject) if clazz == classOf[$traitName] =>")
-    indent()
-    line(s"""val discriminator = (json \\\\ "$discriminatorField").extract[String]""")
-    line("discriminator match {")
+    line("val jsonNode = mapper.readTree(json)")
+    line(s"""val discriminatorValue = jsonNode.get("$discriminatorField").asText()""")
+    line("discriminatorValue match {")
     indent()
     variants.foreach { case (discriminatorValue, className) =>
-      line(s"""case "$discriminatorValue" => json.extract[$className]""")
+      line(s"""case "$discriminatorValue" => Right(mapper.treeToValue(jsonNode, classOf[$className]))""")
     }
-    line(s"""case other => throw new MappingException(s"Unknown discriminator value: $$other")""")
+    line(s"""case other => Left(s"Unknown $discriminatorField value: $$other")""")
     outdent()
     line("}")
     outdent()
-    outdent()
-    line("}")
-    
-    // serialize method
-    line(s"def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {")
+    line("} catch {")
     indent()
-    line(s"case obj: $traitName => Extraction.decompose(obj)")
+    line(s"""case e: Exception => Left(s"Failed to parse JSON: $${e.getMessage}")""")
     outdent()
     line("}")
-    
+    outdent()
+    line("}")
+    emptyLine()
+    line(s"def toJson(obj: $traitName): String = {")
+    indent()
+    line("mapper.writeValueAsString(obj)")
     outdent()
     line("}")
     this

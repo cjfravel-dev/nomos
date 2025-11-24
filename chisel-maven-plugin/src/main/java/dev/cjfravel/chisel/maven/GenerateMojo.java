@@ -111,7 +111,6 @@ public class GenerateMojo extends AbstractMojo {
                 getLog().info("  Base package: " + template.basePackage());
                 getLog().info("  Output dir: " + template.outputDir());
                 getLog().info("  Definitions: " + template.definitions().size());
-                getLog().info("  Generate JSON4s: " + template.generateJson4s());
                 
                 // Resolve output directory relative to project basedir
                 String resolvedOutputDir = new File(basedir, template.outputDir()).getAbsolutePath();
@@ -123,8 +122,7 @@ public class GenerateMojo extends AbstractMojo {
                     template.mainClass(),
                     template.definitions(),
                     template.useOptionTypes(),
-                    template.listType(),
-                    template.generateJson4s()
+                    template.listType()
                 );
                 
                 // Generate code using the Chisel.generateCode method
