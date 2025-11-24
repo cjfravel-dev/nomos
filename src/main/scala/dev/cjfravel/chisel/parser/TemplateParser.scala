@@ -315,7 +315,8 @@ class TemplateParser {
       definitionsJson <- extractField(json, "definitions", path)
       definitions <- parseDefinitions(definitionsJson, s"$path.definitions")
     } yield {
-      val multiTemplate = MultiTemplate(basePackage, outputDir, mainClass, definitions)
+      val useOptionTypes = extractOptionalBoolean(json, "useOptionTypes").getOrElse(true)
+      val multiTemplate = MultiTemplate(basePackage, outputDir, mainClass, definitions, useOptionTypes)
       
       // Validate the multi-template
       multiTemplate.validate() match {

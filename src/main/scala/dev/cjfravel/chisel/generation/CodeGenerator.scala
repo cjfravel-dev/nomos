@@ -294,7 +294,7 @@ class CodeGenerator(config: GeneratorConfig) {
         ScalaCodeBuilder.toPascalCase(fieldName)
     }
 
-    if (optional) {
+    if (optional && config.useOptionTypes) {
       s"Option[$baseType]"
     } else {
       baseType
@@ -329,7 +329,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case TypeDiscriminator(_, _, _, _, _) => "???" // This would need nested type generation
     }
 
-    if (optional) {
+    if (optional && config.useOptionTypes) {
       s"Option[$baseType]"
     } else {
       baseType
@@ -549,7 +549,7 @@ class CodeGenerator(config: GeneratorConfig) {
         "???" // Inline discriminators not supported in multi-definition mode
     }
     
-    if (optional) {
+    if (optional && config.useOptionTypes) {
       s"Option[$baseType]"
     } else {
       baseType

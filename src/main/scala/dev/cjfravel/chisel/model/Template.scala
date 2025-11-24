@@ -98,12 +98,14 @@ case class TemplateDefinition(
  * @param outputDir Output directory for generated files
  * @param mainClass Name of the primary/entry type
  * @param definitions List of type definitions
+ * @param useOptionTypes Whether to use Option[T] for optional fields (default: true)
  */
 case class MultiTemplate(
   basePackage: String,
   outputDir: String,
   mainClass: String,
-  definitions: List[TemplateDefinition]
+  definitions: List[TemplateDefinition],
+  useOptionTypes: Boolean = true
 ) {
   /**
    * Get the main definition (entry point)
