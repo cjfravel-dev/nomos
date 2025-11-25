@@ -7,21 +7,21 @@ Chisel is organized as a multi-module Maven project using a **Bill of Materials 
 ## Module Structure
 
 ```
-chisel/
+nomos/
 ├── pom.xml                      # Parent POM
-├── chisel-bom/                  # BOM for dependency management
+├── nomos-bom/                  # BOM for dependency management
 │   └── pom.xml
-├── chisel-core/                 # Core library
+├── nomos-core/                 # Core library
 │   ├── pom.xml
 │   └── src/
 │       ├── main/scala/          # Template parsing & code generation
 │       └── test/scala/          # Unit tests
-├── chisel-maven-plugin/         # Maven plugin for build integration
+├── nomos-maven-plugin/         # Maven plugin for build integration
 │   ├── pom.xml
 │   └── src/
 │       ├── main/java/           # Maven plugin implementation
 │       └── test/java/           # Plugin tests
-└── chisel-example/              # Example project
+└── nomos-example/              # Example project
     ├── pom.xml
     └── src/
         ├── main/
@@ -33,7 +33,7 @@ chisel/
 
 ## Module Details
 
-### 1. chisel-bom
+### 1. nomos-bom
 
 **Purpose**: Bill of Materials for centralized dependency version management.
 
@@ -55,7 +55,7 @@ chisel/
     <dependencies>
         <dependency>
             <groupId>dev.cjfravel</groupId>
-            <artifactId>chisel-bom</artifactId>
+            <artifactId>nomos-bom</artifactId>
             <version>0.1.0-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
@@ -64,27 +64,27 @@ chisel/
 </dependencyManagement>
 ```
 
-### 2. chisel-core
+### 2. nomos-core
 
 **Purpose**: Core functionality for template processing and code generation.
 
 **Components**:
-- **Template Parsing**: [`TemplateParser`](../chisel-core/src/main/scala/dev/cjfravel/chisel/parser/TemplateParser.scala) - Parses JSON templates
-- **Code Generation**: [`CodeGenerator`](../chisel-core/src/main/scala/dev/cjfravel/chisel/generation/CodeGenerator.scala) - Generates Scala case classes
-- **Validation**: [`Validator`](../chisel-core/src/main/scala/dev/cjfravel/chisel/validation/Validator.scala) - Runtime JSON validation
-- **Models**: [`Template`](../chisel-core/src/main/scala/dev/cjfravel/chisel/model/Template.scala), [`TemplateType`](../chisel-core/src/main/scala/dev/cjfravel/chisel/model/TemplateType.scala) - Core data structures
-- **File I/O**: [`FileWriter`](../chisel-core/src/main/scala/dev/cjfravel/chisel/io/FileWriter.scala) - File writing utilities
+- **Template Parsing**: [`TemplateParser`](../nomos-core/src/main/scala/dev/cjfravel/nomos/parser/TemplateParser.scala) - Parses JSON templates
+- **Code Generation**: [`CodeGenerator`](../nomos-core/src/main/scala/dev/cjfravel/nomos/generation/CodeGenerator.scala) - Generates Scala case classes
+- **Validation**: [`Validator`](../nomos-core/src/main/scala/dev/cjfravel/nomos/validation/Validator.scala) - Runtime JSON validation
+- **Models**: [`Template`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/Template.scala), [`TemplateType`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/TemplateType.scala) - Core data structures
+- **File I/O**: [`FileWriter`](../nomos-core/src/main/scala/dev/cjfravel/nomos/io/FileWriter.scala) - File writing utilities
 
 **Dependencies** (versions managed by BOM):
 - `scala-library`
 - `jackson-databind`
 - `jackson-module-scala`
 
-### 3. chisel-maven-plugin
+### 3. nomos-maven-plugin
 
 **Purpose**: Maven plugin for automatic code generation during builds.
 
-**Goal**: `chisel:generate`
+**Goal**: `nomos:generate`
 - **Default Phase**: `generate-sources`
 - **Purpose**: Generate Scala case classes from JSON templates
 - **Parameters**:
@@ -109,7 +109,7 @@ This provides:
 ```xml
 <plugin>
     <groupId>dev.cjfravel</groupId>
-    <artifactId>chisel-maven-plugin</artifactId>
+    <artifactId>nomos-maven-plugin</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <executions>
         <execution>
@@ -140,8 +140,8 @@ case class User(
 )
 
 object User {
-  import com.example.models.ChiselFormats
-  import ChiselFormats._
+  import com.example.models.NomosFormats
+  import NomosFormats._
 
   def fromJson(json: String): Either[String, User] = {
     try {
@@ -157,7 +157,7 @@ object User {
 }
 ```
 
-### ChiselFormats Object
+### NomosFormats Object
 
 ```scala
 package com.example.models
@@ -165,7 +165,7 @@ package com.example.models
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
-object ChiselFormats {
+object NomosFormats {
   val mapper: ObjectMapper = {
     val m = new ObjectMapper()
     m.registerModule(DefaultScalaModule)
@@ -193,8 +193,8 @@ case class Rectangle(
 ) extends Shape
 
 object Shape {
-  import com.example.models.ChiselFormats
-  import ChiselFormats._
+  import com.example.models.NomosFormats
+  import NomosFormats._
   import com.fasterxml.jackson.databind.JsonNode
 
   def fromJson(json: String): Either[String, Shape] = {
@@ -228,7 +228,7 @@ Add BOM and dependencies to `pom.xml`:
     <dependencies>
         <dependency>
             <groupId>dev.cjfravel</groupId>
-            <artifactId>chisel-bom</artifactId>
+            <artifactId>nomos-bom</artifactId>
             <version>0.1.0-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
@@ -259,7 +259,7 @@ Add BOM and dependencies to `pom.xml`:
     <plugins>
         <plugin>
             <groupId>dev.cjfravel</groupId>
-            <artifactId>chisel-maven-plugin</artifactId>
+            <artifactId>nomos-maven-plugin</artifactId>
             <version>0.1.0-SNAPSHOT</version>
             <executions>
                 <execution>
@@ -319,7 +319,7 @@ val userResult = User.fromJson("""{"id":"123","username":"john",...}""")
 val json = User.toJson(user)
 
 // With validation
-import dev.cjfravel.chisel.Chisel
+import dev.cjfravel.nomos.Chisel
 
 val template = Chisel.parseTemplate(templateJson).right.get
 Chisel.validate(template, jsonData, "User") match {

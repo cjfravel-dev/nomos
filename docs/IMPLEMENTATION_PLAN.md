@@ -208,14 +208,14 @@ sequenceDiagram
 ## Module Structure
 
 ```
-chisel/
+nomos/
 ├── pom.xml
 ├── src/
 │   ├── main/
 │   │   └── scala/
 │   │       └── dev/
 │   │           └── cjfravel/
-│   │               └── chisel/
+│   │               └── nomos/
 │   │                   ├── model/
 │   │                   │   ├── Template.scala
 │   │                   │   ├── TemplateType.scala
@@ -238,7 +238,7 @@ chisel/
 │       └── scala/
 │           └── dev/
 │               └── cjfravel/
-│                   └── chisel/
+│                   └── nomos/
 │                       ├── TemplateParserSpec.scala
 │                       ├── ValidatorSpec.scala
 │                       ├── CodeGeneratorSpec.scala
@@ -283,8 +283,8 @@ case class ProcessResult(
 ### Usage Example
 
 ```scala
-import dev.cjfravel.chisel._
-import dev.cjfravel.chisel.generation.GeneratorConfig
+import dev.cjfravel.nomos._
+import dev.cjfravel.nomos.generation.GeneratorConfig
 
 // Define configuration
 val config = GeneratorConfig(

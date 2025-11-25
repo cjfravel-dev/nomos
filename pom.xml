@@ -5,18 +5,18 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.cjfravel</groupId>
-    <artifactId>chisel-parent</artifactId>
+    <artifactId>nomos-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>Chisel Parent</name>
+    <name>Nomos Parent</name>
     <description>Parent POM for Chisel multi-module project</description>
     <url>https://github.com/cjfravel/chisel</url>
 
     <modules>
-        <module>chisel-bom</module>
-        <module>chisel-core</module>
-        <module>chisel-maven-plugin</module>
+        <module>nomos-bom</module>
+        <module>nomos-core</module>
+        <module>nomos-maven-plugin</module>
     </modules>
 
     <properties>
@@ -78,7 +78,7 @@
             <!-- Chisel Modules -->
             <dependency>
                 <groupId>dev.cjfravel</groupId>
-                <artifactId>chisel-core</artifactId>
+                <artifactId>nomos-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

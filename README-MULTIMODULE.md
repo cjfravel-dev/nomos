@@ -5,25 +5,25 @@ A Scala library for defining JSON templates and generating type-safe case classe
 ## Project Structure
 
 ```
-chisel/
+nomos/
 ├── pom.xml                  # Parent POM (aggregator)
 ├── pom-single-module-backup.xml  # Original single-module POM (backup)
-├── chisel-runtime/          # Runtime library with shaded json4s
+├── nomos-runtime/          # Runtime library with shaded json4s
 │   ├── pom.xml
 │   ├── README.md
 │   └── src/main/scala/
-│       └── dev/cjfravel/chisel/runtime/
-│           ├── ChiselFormats.scala      # Base trait for formats
+│       └── dev/cjfravel/nomos/runtime/
+│           ├── NomosFormats.scala      # Base trait for formats
 │           └── ChiselSerializer.scala    # Discriminator helper
-├── chisel-core/             # Core library (template parsing & code gen)
+├── nomos-core/             # Core library (template parsing & code gen)
 │   ├── pom.xml
 │   └── (uses ../src for source code)
-├── chisel-maven-plugin/     # Maven plugin for build integration
+├── nomos-maven-plugin/     # Maven plugin for build integration
 │   ├── pom.xml
 │   └── src/main/java/
-│       └── dev/cjfravel/chisel/maven/
+│       └── dev/cjfravel/nomos/maven/
 │           └── GenerateMojo.java        # Maven goal implementation
-└── chisel-example/          # Example project
+└── nomos-example/          # Example project
     ├── pom.xml
     ├── README.md
     ├── src/main/resources/templates/
@@ -34,18 +34,18 @@ chisel/
 
 ## Module Descriptions
 
-### chisel-runtime
+### nomos-runtime
 
 Runtime support library for generated code.
 
 **Features:**
-- `ChiselFormats`: Base trait providing default json4s formats
+- `NomosFormats`: Base trait providing default json4s formats
 - `ChiselSerializer`: Helper for creating discriminated type serializers
 - **Shaded dependencies**: json4s relocated to prevent version conflicts
 
-**Artifact:** `dev.cjfravel:chisel-runtime:0.1.0-SNAPSHOT`
+**Artifact:** `dev.cjfravel:nomos-runtime:0.1.0-SNAPSHOT`
 
-### chisel-core
+### nomos-core
 
 Core functionality for template parsing and code generation.
 
@@ -55,25 +55,25 @@ Core functionality for template parsing and code generation.
 - JSON validator generation
 - Support for discriminators, recursion, references
 
-**Artifact:** `dev.cjfravel:chisel-core:0.1.0-SNAPSHOT`
+**Artifact:** `dev.cjfravel:nomos-core:0.1.0-SNAPSHOT`
 
-### chisel-maven-plugin
+### nomos-maven-plugin
 
 Maven plugin for automatic code generation during build.
 
-**Goal:** `chisel:generate` (bound to `generate-sources` phase)
+**Goal:** `nomos:generate` (bound to `generate-sources` phase)
 
 **Configuration:**
 - `templateDirectory` (default: `src/main/resources/templates`)
 - All other config in template files themselves
 
-**Artifact:** `dev.cjfravel:chisel-maven-plugin:0.1.0-SNAPSHOT`
+**Artifact:** `dev.cjfravel:nomos-maven-plugin:0.1.0-SNAPSHOT`
 
-### chisel-example
+### nomos-example
 
 Complete example project demonstrating Chisel usage.
 
-See [chisel-example/README.md](chisel-example/README.md) for details.
+See [nomos-example/README.md](nomos-example/README.md) for details.
 
 ## Building the Project
 
@@ -85,25 +85,25 @@ mvn clean install
 ```
 
 This builds modules in order:
-1. chisel-runtime (with shading)
-2. chisel-core
-3. chisel-maven-plugin
-4. chisel-example (generates code and runs example)
+1. nomos-runtime (with shading)
+2. nomos-core
+3. nomos-maven-plugin
+4. nomos-example (generates code and runs example)
 
 ### Build Individual Modules
 
 ```bash
 # Build runtime
-cd chisel-runtime && mvn clean install
+cd nomos-runtime && mvn clean install
 
 # Build core (requires runtime)
-cd chisel-core && mvn clean install
+cd nomos-core && mvn clean install
 
 # Build plugin (requires core)
-cd chisel-maven-plugin && mvn clean install
+cd nomos-maven-plugin && mvn clean install
 
 # Build example (requires all)
-cd chisel-example && mvn clean compile
+cd nomos-example && mvn clean compile
 ```
 
 ## Using Chisel in Your Project
@@ -114,7 +114,7 @@ cd chisel-example && mvn clean compile
 <dependencies>
   <dependency>
     <groupId>dev.cjfravel</groupId>
-    <artifactId>chisel-runtime</artifactId>
+    <artifactId>nomos-runtime</artifactId>
     <version>0.1.0-SNAPSHOT</version>
   </dependency>
 </dependencies>
@@ -127,7 +127,7 @@ cd chisel-example && mvn clean compile
   <plugins>
     <plugin>
       <groupId>dev.cjfravel</groupId>
-      <artifactId>chisel-maven-plugin</artifactId>
+      <artifactId>nomos-maven-plugin</artifactId>
       <version>0.1.0-SNAPSHOT</version>
       <executions>
         <execution>
@@ -151,7 +151,7 @@ Create `src/main/resources/templates/mymodel.json`:
 ```json
 {
   "basePackage": "com.mycompany.models",
-  "outputDir": "target/generated-sources/chisel",
+  "outputDir": "target/generated-sources/nomos",
   "useOptionTypes": true,
   "listType": "List",
   "generateJson4s": true,
@@ -175,7 +175,7 @@ Create `src/main/resources/templates/mymodel.json`:
 mvn compile
 ```
 
-Generated code appears in `target/generated-sources/chisel/`.
+Generated code appears in `target/generated-sources/nomos/`.
 
 ```scala
 import com.mycompany.models.mymodel.MyModel
@@ -207,7 +207,7 @@ All paths resolved relative to `${project.basedir}`:
 Runtime uses shaded json4s:
 - Prevents version conflicts
 - Isolated from user's dependencies
-- `org.json4s` → `dev.cjfravel.chisel.shaded.json4s`
+- `org.json4s` → `dev.cjfravel.nomos.shaded.json4s`
 
 ### 4. Build Integration
 
@@ -231,7 +231,7 @@ If you have existing code using the single-module version:
 ### Option 1: Keep Single Module
 
 The original `pom.xml` still works. Just:
-1. Update to use `chisel-runtime` dependency
+1. Update to use `nomos-runtime` dependency
 2. Update generated code imports to use runtime
 
 ### Option 2: Use Multi-Module
@@ -246,23 +246,23 @@ The original `pom.xml` still works. Just:
 
 ### Adding Features
 
-1. Add to `chisel-core` for parsing/generation
-2. Add to `chisel-runtime` for runtime support
-3. Update `chisel-maven-plugin` if new config needed
-4. Add example to `chisel-example`
+1. Add to `nomos-core` for parsing/generation
+2. Add to `nomos-runtime` for runtime support
+3. Update `nomos-maven-plugin` if new config needed
+4. Add example to `nomos-example`
 5. Update documentation
 
 ### Testing
 
 ```bash
 # Test runtime
-cd chisel-runtime && mvn test
+cd nomos-runtime && mvn test
 
 # Test core
-cd chisel-core && mvn test
+cd nomos-core && mvn test
 
 # Test plugin with example
-cd chisel-example && mvn clean compile
+cd nomos-example && mvn clean compile
 ```
 
 ## Documentation
@@ -270,7 +270,7 @@ cd chisel-example && mvn clean compile
 - [Multi-Module Design](docs/MULTI_MODULE_DESIGN.md) - Architecture details
 - [Template Format](docs/TEMPLATE_FORMAT.md) - Template syntax
 - [Examples](docs/EXAMPLES.md) - Usage examples
-- [Example Project](chisel-example/README.md) - Complete working example
+- [Example Project](nomos-example/README.md) - Complete working example
 
 ## Advantages of Multi-Module
 

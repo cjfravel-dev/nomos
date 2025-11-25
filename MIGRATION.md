@@ -25,13 +25,13 @@ The project currently has a single-module structure with `pom.xml` at the root.
 
 4. **The new structure**:
    ```
-   chisel/
+   nomos/
    ├── pom.xml                    # Now the parent/aggregator POM
-   ├── src/                       # Original source (used by chisel-core)
-   ├── chisel-runtime/
-   ├── chisel-core/              # References ../src
-   ├── chisel-maven-plugin/
-   └── chisel-example/
+   ├── src/                       # Original source (used by nomos-core)
+   ├── nomos-runtime/
+   ├── nomos-core/              # References ../src
+   ├── nomos-maven-plugin/
+   └── nomos-example/
    ```
 
 ### Option 2: Gradual Migration (For Active Development)
@@ -70,13 +70,13 @@ Keep both POMs temporarily:
 mvn clean install
 
 # Build specific module
-mvn -pl chisel-runtime clean install
+mvn -pl nomos-runtime clean install
 
 # Build runtime + core
-mvn -pl chisel-runtime,chisel-core clean install
+mvn -pl nomos-runtime,nomos-core clean install
 
 # Build example (includes generation)
-mvn -pl chisel-example clean compile
+mvn -pl nomos-example clean compile
 ```
 
 ### For Users
@@ -86,13 +86,13 @@ Projects using Chisel just need:
 ```xml
 <dependency>
   <groupId>dev.cjfravel</groupId>
-  <artifactId>chisel-runtime</artifactId>
+  <artifactId>nomos-runtime</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>
 
 <plugin>
   <groupId>dev.cjfravel</groupId>
-  <artifactId>chisel-maven-plugin</artifactId>
+  <artifactId>nomos-maven-plugin</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   ...
 </plugin>

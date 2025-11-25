@@ -65,8 +65,8 @@ Create a file `user-template.json`:
 ## Step 2: Parse and Generate
 
 ```scala
-import dev.cjfravel.chisel.parser.TemplateParser
-import dev.cjfravel.chisel.generation.{CodeGenerator, GeneratorConfig, FileWriter}
+import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, FileWriter}
 import scala.io.Source
 
 object UserModelGenerator {

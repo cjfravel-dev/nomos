@@ -20,7 +20,7 @@ A Scala library for generating case classes and JSON validators from declarative
     <dependencies>
         <dependency>
             <groupId>dev.cjfravel</groupId>
-            <artifactId>chisel-bom</artifactId>
+            <artifactId>nomos-bom</artifactId>
             <version>0.1.0-SNAPSHOT</version>
             <type>pom</type>
             <scope>import</scope>
@@ -31,7 +31,7 @@ A Scala library for generating case classes and JSON validators from declarative
 <dependencies>
     <dependency>
         <groupId>dev.cjfravel</groupId>
-        <artifactId>chisel-core</artifactId>
+        <artifactId>nomos-core</artifactId>
     </dependency>
 </dependencies>
 ```
@@ -41,7 +41,7 @@ A Scala library for generating case classes and JSON validators from declarative
 ```xml
 <plugin>
     <groupId>dev.cjfravel</groupId>
-    <artifactId>chisel-maven-plugin</artifactId>
+    <artifactId>nomos-maven-plugin</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <executions>
         <execution>
@@ -103,7 +103,7 @@ object User {
 
 ```scala
 import com.example.models.user.User
-import dev.cjfravel.chisel.Chisel
+import dev.cjfravel.nomos.Chisel
 
 // Parse JSON
 val user = User.fromJson("""{"id":"123","username":"john",...}""")
@@ -126,11 +126,11 @@ Chisel.validate(template, jsonData, "User") match {
 ## Project Structure
 
 ```
-chisel/
-├── chisel-bom/          # Dependency management BOM
-├── chisel-core/         # Core library (parser, validator, generator)
-├── chisel-maven-plugin/ # Maven plugin
-└── chisel-example/      # Example project
+nomos/
+├── nomos-bom/          # Dependency management BOM
+├── nomos-core/         # Core library (parser, validator, generator)
+├── nomos-maven-plugin/ # Maven plugin
+└── nomos-example/      # Example project
 ```
 
 ## Building

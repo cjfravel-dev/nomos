@@ -15,7 +15,7 @@ This directory contains comprehensive documentation for the Chisel project.
   - Reference types and multi-definition templates
 
 - **[MULTI_MODULE_DESIGN.md](MULTI_MODULE_DESIGN.md)** - Project architecture
-  - Module structure (chisel-bom, chisel-core, chisel-maven-plugin)
+  - Module structure (nomos-bom, nomos-core, nomos-maven-plugin)
   - Dependency management with BOM pattern
   - Build configuration and plugin usage
 
@@ -58,15 +58,15 @@ Maven pattern for centralized dependency version management, ensuring consistent
 ## Module Structure
 
 ```
-chisel/
-├── chisel-bom/          # Dependency version management
-├── chisel-core/         # Core library (parser, validator, generator)
-├── chisel-maven-plugin/ # Maven build integration
-└── chisel-example/      # Working example project
+nomos/
+├── nomos-bom/          # Dependency version management
+├── nomos-core/         # Core library (parser, validator, generator)
+├── nomos-maven-plugin/ # Maven build integration
+└── nomos-example/      # Working example project
 ```
 
 ## Additional Resources
 
 - **Root README**: See [../README.md](../README.md) for quick start guide
-- **Example Project**: See [../chisel-example](../chisel-example) for working code
-- **Tests**: See test files in chisel-core for detailed examples
+- **Example Project**: See [../nomos-example](../nomos-example) for working code
+- **Tests**: See test files in nomos-core for detailed examples

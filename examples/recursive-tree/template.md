@@ -9,8 +9,8 @@ We'll create a TreeNode type that can contain child TreeNodes.
 ## Running the Example
 
 ```scala
-import dev.cjfravel.chisel.model._
-import dev.cjfravel.chisel.generation._
+import dev.cjfravel.nomos.model._
+import dev.cjfravel.nomos.generation._
 
 // Define the template
 val treeTemplate = Template(

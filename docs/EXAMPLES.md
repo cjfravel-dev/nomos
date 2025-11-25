@@ -419,7 +419,7 @@ case class UnaryOp(
 ## Usage in Scala
 
 ```scala
-import dev.cjfravel.chisel._
+import dev.cjfravel.nomos._
 
 // Load template from file or string
 val template = ChiselTemplate.fromFile("templates/order.json")

@@ -4,7 +4,7 @@ This document defines the JSON template format used by Chisel to generate case c
 
 ## Template Structure
 
-All Chisel templates use a multi-definition format that allows you to define multiple related types in a single file:
+All Nomos templates use a multi-definition format that allows you to define multiple related types in a single file:
 
 ```json
 {

@@ -1,9 +1,9 @@
 package examples
 
-import dev.cjfravel.chisel.Chisel
+import dev.cjfravel.nomos.Nomos
 
 /**
- * End-to-end example demonstrating the complete Chisel workflow:
+ * End-to-end example demonstrating the complete Nomos workflow:
  * 1. Define a JSON template with multiple definitions and references
  * 2. Parse the template
  * 3. Generate Scala case classes
@@ -12,7 +12,7 @@ import dev.cjfravel.chisel.Chisel
 object EndToEndExample {
   
   def main(args: Array[String]): Unit = {
-    println("=== Chisel End-to-End Example ===\n")
+    println("=== Nomos End-to-End Example ===\n")
     
     // Step 1: Define a JSON template with multiple definitions
     val templateJson = """
@@ -82,7 +82,7 @@ object EndToEndExample {
     // Step 2: Parse the template
     println("Step 2: Parse Template")
     println("----------------------")
-    val templateResult = Chisel.parseTemplate(templateJson)
+    val templateResult = Nomos.parseTemplate(templateJson)
     
     templateResult match {
       case Left(error) =>
@@ -106,7 +106,7 @@ object EndToEndExample {
     // Step 3: Generate Scala case classes
     println("Step 3: Generate Code")
     println("---------------------")
-    val codeResult = Chisel.generateCode(template)
+    val codeResult = Nomos.generateCode(template)
     
     codeResult match {
       case Left(error) =>
@@ -149,7 +149,7 @@ object EndToEndExample {
     """
     
     println("Testing valid JSON:")
-    val validResult = Chisel.validate(template, validJson)
+    val validResult = Nomos.validate(template, validJson)
     validResult match {
       case Left(errors) =>
         println(s"  ✗ Validation failed with ${errors.length} error(s):")
@@ -175,7 +175,7 @@ object EndToEndExample {
     """
     
     println("Testing invalid JSON (missing required 'name' field):")
-    val invalidResult1 = Chisel.validate(template, invalidJson1)
+    val invalidResult1 = Nomos.validate(template, invalidJson1)
     invalidResult1 match {
       case Left(errors) =>
         println(s"  ✗ Validation failed with ${errors.length} error(s):")
@@ -203,7 +203,7 @@ object EndToEndExample {
     """
     
     println("Testing invalid JSON (multiple constraint violations):")
-    val invalidResult2 = Chisel.validate(template, invalidJson2)
+    val invalidResult2 = Nomos.validate(template, invalidJson2)
     invalidResult2 match {
       case Left(errors) =>
         println(s"  ✗ Validation failed with ${errors.length} error(s):")
@@ -214,9 +214,9 @@ object EndToEndExample {
     println()
     
     // Step 5: Using the process() convenience method
-    println("Step 5: Using Chisel.process() convenience method")
+    println("Step 5: Using Nomos.process() convenience method")
     println("--------------------------------------------------")
-    val processResult = Chisel.process(templateJson)
+    val processResult = Nomos.process(templateJson)
     
     processResult match {
       case Left(error) =>
