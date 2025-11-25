@@ -87,6 +87,8 @@ class Validator(template: Template) {
         Some(ValidationError.constraintViolation(path, "format: url", value))
       case "uuid" if !value.matches("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$""") =>
         Some(ValidationError.constraintViolation(path, "format: uuid", value))
+      case "iso8601" if !value.matches("""^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$""") =>
+        Some(ValidationError.constraintViolation(path, "format: iso8601", value))
       case _ => None
     }
   }
@@ -348,6 +350,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         Some(ValidationError.constraintViolation(path, "format: url", value))
       case "uuid" if !value.matches("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$""") =>
         Some(ValidationError.constraintViolation(path, "format: uuid", value))
+      case "iso8601" if !value.matches("""^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$""") =>
+        Some(ValidationError.constraintViolation(path, "format: iso8601", value))
       case _ => None
     }
   }
