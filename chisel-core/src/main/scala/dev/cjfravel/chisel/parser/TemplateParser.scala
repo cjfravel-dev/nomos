@@ -3,6 +3,7 @@ package dev.cjfravel.chisel.parser
 import dev.cjfravel.chisel.model._
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import scala.collection.JavaConverters._
+import scala.collection.immutable.ListMap
 
 /**
  * Parses JSON template definitions into Template objects using Jackson
@@ -150,7 +151,8 @@ class TemplateParser {
       if (errors.nonEmpty) {
         Left(ParseError.MultipleErrors(errors))
       } else {
-        val fieldMap = fieldResults.collect { case Right(pair) => pair }.toMap
+        // Use ListMap to preserve field order from JSON
+        val fieldMap = ListMap(fieldResults.collect { case Right(pair) => pair }: _*)
         Right(ObjectType(fieldMap))
       }
     } else {
@@ -190,7 +192,7 @@ class TemplateParser {
   /**
    * Parses discriminator variants
    */
-  private def parseVariants(json: JsonNode, path: String): Either[ParseError, Map[String, ObjectType]] = {
+  private def parseVariants(json: JsonNode, path: String): Either[ParseError, ListMap[String, ObjectType]] = {
     if (json.isObject) {
       val fields = json.fields().asScala.toList
       val variantResults = fields.map { entry =>
@@ -203,7 +205,8 @@ class TemplateParser {
       if (errors.nonEmpty) {
         Left(ParseError.MultipleErrors(errors))
       } else {
-        Right(variantResults.collect { case Right(pair) => pair }.toMap)
+        // Use ListMap to preserve variant order from JSON
+        Right(ListMap(variantResults.collect { case Right(pair) => pair }: _*))
       }
     } else {
       Left(ParseError.InvalidDiscriminator("variants must be an object", path))
@@ -213,12 +216,12 @@ class TemplateParser {
   /**
    * Parses common fields for discriminator
    */
-  private def parseCommonFields(json: JsonNode, path: String): Either[ParseError, Map[String, FieldDef]] = {
+  private def parseCommonFields(json: JsonNode, path: String): Either[ParseError, ListMap[String, FieldDef]] = {
     extractOptionalField(json, "commonFields") match {
       case Some(commonJson) =>
         parseObjectType(commonJson, s"$path.commonFields").map(_.fields)
       case None =>
-        Right(Map.empty)
+        Right(ListMap.empty)
     }
   }
 

@@ -1,5 +1,7 @@
 package dev.cjfravel.chisel.model
 
+import scala.collection.immutable.ListMap
+
 /**
  * Represents the different types that can be defined in a Chisel template.
  */
@@ -28,10 +30,10 @@ case class ArrayType(elementType: TemplateType) extends TemplateType
 /**
  * Object type with named fields
  *
- * @param fields The fields in this object
+ * @param fields The fields in this object (order-preserving)
  */
 case class ObjectType(
-  fields: Map[String, FieldDef]
+  fields: ListMap[String, FieldDef]
 ) extends TemplateType
 
 /**
@@ -39,15 +41,15 @@ case class ObjectType(
  * This creates a sealed trait with case class variants in the generated code.
  *
  * @param fieldName The name of the discriminator field (e.g., "type", "kind")
- * @param variants Map of discriminator values to their respective object types
- * @param commonFields Fields that are common across all variants
+ * @param variants Map of discriminator values to their respective object types (order-preserving)
+ * @param commonFields Fields that are common across all variants (order-preserving)
  * @param includeInOutput Whether to include the discriminator field in generated case classes
  * @param variantNames Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
  */
 case class TypeDiscriminator(
   fieldName: String,
-  variants: Map[String, ObjectType],
-  commonFields: Map[String, FieldDef] = Map.empty,
+  variants: ListMap[String, ObjectType],
+  commonFields: ListMap[String, FieldDef] = ListMap.empty,
   includeInOutput: Boolean = true,
   variantNames: Map[String, String] = Map.empty
 ) extends TemplateType

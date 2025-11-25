@@ -4,13 +4,14 @@ import dev.cjfravel.chisel.model._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues
+import scala.collection.immutable.ListMap
 
 class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "Validator" should "validate a simple valid JSON" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "age" -> FieldDef(NumberType(), optional = false)
       ))
@@ -26,7 +27,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "fail on missing required field" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "age" -> FieldDef(NumberType(), optional = false)
       ))
@@ -47,7 +48,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "accept optional fields when missing" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "bio" -> FieldDef(StringType(), optional = true)
       ))
@@ -63,7 +64,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate optional fields when present" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "bio" -> FieldDef(StringType(), optional = true)
       ))
@@ -79,7 +80,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "fail on type mismatch" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "age" -> FieldDef(NumberType(), optional = false)
       ))
@@ -98,7 +99,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate string constraints - minLength" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "username" -> FieldDef(StringType(List(MinLength(3))), optional = false)
       ))
     )
@@ -118,7 +119,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate string constraints - maxLength" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "username" -> FieldDef(StringType(List(MaxLength(10))), optional = false)
       ))
     )
@@ -137,7 +138,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate string constraints - pattern" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "username" -> FieldDef(StringType(List(Pattern("^[a-z]+$"))), optional = false)
       ))
     )
@@ -156,7 +157,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate string format - email" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "email" -> FieldDef(StringType(List(Format("email"))), optional = false)
       ))
     )
@@ -175,7 +176,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate number constraints - min" in {
     val template = Template.simple(
       "Product",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "price" -> FieldDef(NumberType(List(Min(0))), optional = false)
       ))
     )
@@ -195,7 +196,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate number constraints - max" in {
     val template = Template.simple(
       "Age",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "value" -> FieldDef(NumberType(List(Max(150))), optional = false)
       ))
     )
@@ -215,7 +216,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate arrays" in {
     val template = Template.simple(
       "Post",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "tags" -> FieldDef(ArrayType(StringType()), optional = false)
       ))
     )
@@ -235,9 +236,9 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate nested objects" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
-        "address" -> FieldDef(ObjectType(Map(
+        "address" -> FieldDef(ObjectType(ListMap(
           "street" -> FieldDef(StringType(), optional = false),
           "city" -> FieldDef(StringType(), optional = false)
         )), optional = false)
@@ -262,11 +263,11 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
       "Shape",
       TypeDiscriminator(
         fieldName = "type",
-        variants = Map(
-          "circle" -> ObjectType(Map(
+        variants = ListMap(
+          "circle" -> ObjectType(ListMap(
             "radius" -> FieldDef(NumberType(), optional = false)
           )),
-          "rectangle" -> ObjectType(Map(
+          "rectangle" -> ObjectType(ListMap(
             "width" -> FieldDef(NumberType(), optional = false),
             "height" -> FieldDef(NumberType(), optional = false)
           ))
@@ -298,16 +299,16 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
       "Event",
       TypeDiscriminator(
         fieldName = "eventType",
-        variants = Map(
-          "click" -> ObjectType(Map(
+        variants = ListMap(
+          "click" -> ObjectType(ListMap(
             "x" -> FieldDef(NumberType(), optional = false),
             "y" -> FieldDef(NumberType(), optional = false)
           )),
-          "scroll" -> ObjectType(Map(
+          "scroll" -> ObjectType(ListMap(
             "delta" -> FieldDef(NumberType(), optional = false)
           ))
         ),
-        commonFields = Map(
+        commonFields = ListMap(
           "timestamp" -> FieldDef(StringType(), optional = false)
         )
       )
@@ -329,7 +330,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "collect multiple errors" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "age" -> FieldDef(NumberType(), optional = false),
         "email" -> FieldDef(StringType(), optional = false)
@@ -349,8 +350,8 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "provide detailed error paths" in {
     val template = Template.simple(
       "Data",
-      ObjectType(Map(
-        "users" -> FieldDef(ArrayType(ObjectType(Map(
+      ObjectType(ListMap(
+        "users" -> FieldDef(ArrayType(ObjectType(ListMap(
           "name" -> FieldDef(StringType(), optional = false)
         ))), optional = false)
       ))
@@ -369,7 +370,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "validate boolean types" in {
     val template = Template.simple(
       "Config",
-      ObjectType(Map(
+      ObjectType(ListMap(
         "enabled" -> FieldDef(BooleanType(), optional = false)
       ))
     )
@@ -389,7 +390,7 @@ class ValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "handle invalid JSON syntax" in {
     val template = Template.simple(
       "User",
-      ObjectType(Map("name" -> FieldDef(StringType(), optional = false)))
+      ObjectType(ListMap("name" -> FieldDef(StringType(), optional = false)))
     )
 
     val validator = new Validator(template)

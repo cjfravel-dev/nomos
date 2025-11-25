@@ -4,6 +4,7 @@ import dev.cjfravel.chisel.model._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues
+import scala.collection.immutable.ListMap
 
 class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -18,7 +19,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "User",
       subPackage = Some("models"),
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "name" -> FieldDef(StringType(), optional = false),
         "age" -> FieldDef(NumberType(), optional = false),
         "email" -> FieldDef(StringType(), optional = false)
@@ -44,7 +45,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "Profile",
       subPackage = None,
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "username" -> FieldDef(StringType(), optional = false),
         "bio" -> FieldDef(StringType(), optional = true)
       ))
@@ -62,7 +63,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "Post",
       subPackage = None,
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "title" -> FieldDef(StringType(), optional = false),
         "tags" -> FieldDef(ArrayType(StringType()), optional = false)
       ))
@@ -81,11 +82,11 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
       subPackage = None,
       templateType = TypeDiscriminator(
         fieldName = "type",
-        variants = Map(
-          "circle" -> ObjectType(Map(
+        variants = ListMap(
+          "circle" -> ObjectType(ListMap(
             "radius" -> FieldDef(NumberType(), optional = false)
           )),
-          "rectangle" -> ObjectType(Map(
+          "rectangle" -> ObjectType(ListMap(
             "width" -> FieldDef(NumberType(), optional = false),
             "height" -> FieldDef(NumberType(), optional = false)
           ))
@@ -117,16 +118,16 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
       subPackage = None,
       templateType = TypeDiscriminator(
         fieldName = "eventType",
-        variants = Map(
-          "click" -> ObjectType(Map(
+        variants = ListMap(
+          "click" -> ObjectType(ListMap(
             "x" -> FieldDef(NumberType(), optional = false),
             "y" -> FieldDef(NumberType(), optional = false)
           )),
-          "scroll" -> ObjectType(Map(
+          "scroll" -> ObjectType(ListMap(
             "delta" -> FieldDef(NumberType(), optional = false)
           ))
         ),
-        commonFields = Map(
+        commonFields = ListMap(
           "timestamp" -> FieldDef(StringType(), optional = false)
         ),
         includeInOutput = true
@@ -147,11 +148,11 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
       subPackage = None,
       templateType = TypeDiscriminator(
         fieldName = "type",
-        variants = Map(
-          "circle" -> ObjectType(Map(
+        variants = ListMap(
+          "circle" -> ObjectType(ListMap(
             "radius" -> FieldDef(NumberType(), optional = false)
           )),
-          "sphere" -> ObjectType(Map(
+          "sphere" -> ObjectType(ListMap(
             "radius" -> FieldDef(NumberType(), optional = false)
           ))
         ),
@@ -174,11 +175,11 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
       subPackage = None,
       templateType = TypeDiscriminator(
         fieldName = "type",
-        variants = Map(
-          "circle" -> ObjectType(Map(
+        variants = ListMap(
+          "circle" -> ObjectType(ListMap(
             "radius" -> FieldDef(NumberType(), optional = false)
           )),
-          "rectangle" -> ObjectType(Map(
+          "rectangle" -> ObjectType(ListMap(
             "width" -> FieldDef(NumberType(), optional = false),
             "height" -> FieldDef(NumberType(), optional = false)
           ))
@@ -195,7 +196,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "Config",
       subPackage = None,
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "type" -> FieldDef(StringType(), optional = false),
         "match" -> FieldDef(StringType(), optional = false),
         "class" -> FieldDef(StringType(), optional = false)
@@ -216,7 +217,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "TreeNode",
       subPackage = None,
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "value" -> FieldDef(NumberType(), optional = false),
         "children" -> FieldDef(ArrayType(RecursiveRef("TreeNode")), optional = false)
       ))
@@ -234,7 +235,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val invalidTemplate = Template(
       name = "invalid-name",
       subPackage = None,
-      templateType = ObjectType(Map.empty)
+      templateType = ObjectType(ListMap.empty)
     )
 
     val result = generator.generate(invalidTemplate)
@@ -245,7 +246,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val invalidTemplate = Template(
       name = "user",
       subPackage = None,
-      templateType = ObjectType(Map.empty)
+      templateType = ObjectType(ListMap.empty)
     )
 
     val result = generator.generate(invalidTemplate)
@@ -257,7 +258,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "User",
       subPackage = Some("models.user"),
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "id" -> FieldDef(StringType(), optional = false)
       ))
     )
@@ -274,7 +275,7 @@ class CodeGeneratorSpec extends AnyFlatSpec with Matchers with EitherValues {
     val template = Template(
       name = "User",
       subPackage = None,
-      templateType = ObjectType(Map(
+      templateType = ObjectType(ListMap(
         "id" -> FieldDef(StringType(), optional = false)
       ))
     )
