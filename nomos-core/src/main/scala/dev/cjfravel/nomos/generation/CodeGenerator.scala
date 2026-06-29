@@ -409,7 +409,7 @@ class CodeGenerator(config: GeneratorConfig) {
         s"Map[String, ${scalaTypeForDefinition(valueType, optional = false, definitionsMap)}]"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
-      case ObjectType(_) =>
+      case ObjectType(_, _) =>
         "???" // Inline objects not supported in multi-definition mode
       case TypeDiscriminator(_, _, _, _, _) =>
         "???" // Inline discriminators not supported in multi-definition mode
@@ -429,7 +429,7 @@ class CodeGenerator(config: GeneratorConfig) {
     templateType match {
       case ReferenceType(typeName) => Set(typeName)
       case ArrayType(elementType, _) => collectReferences(elementType)
-      case ObjectType(fields) =>
+      case ObjectType(fields, _) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
       case TypeDiscriminator(_, variants, commonFields, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => collectReferences(f.fieldType)))

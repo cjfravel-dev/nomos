@@ -120,7 +120,7 @@ case class MultiTemplate(
     def findInType(tt: TemplateType): Set[String] = tt match {
       case ReferenceType(typeName) if !definedTypes.contains(typeName) => Set(typeName)
       case ArrayType(elementType, _) => findInType(elementType)
-      case ObjectType(fields) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
+      case ObjectType(fields, _) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
       case TypeDiscriminator(_, variants, commonFields, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => findInType(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => findInType(f.fieldType))

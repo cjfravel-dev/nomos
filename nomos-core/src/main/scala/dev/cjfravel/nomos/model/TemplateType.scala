@@ -48,12 +48,22 @@ case class ArrayType(elementType: TemplateType, constraints: List[Constraint] = 
 case class MapType(valueType: TemplateType) extends TemplateType
 
 /**
+ * Policy for keys not declared in an object type.
+ */
+sealed trait AdditionalProperties
+case object ForbidExtra extends AdditionalProperties
+case object AllowExtra extends AdditionalProperties
+case class TypedExtra(valueType: TemplateType) extends AdditionalProperties
+
+/**
  * Object type with named fields
  *
  * @param fields The fields in this object (order-preserving)
+ * @param additional Policy for keys not declared in fields (default: forbid)
  */
 case class ObjectType(
-  fields: ListMap[String, FieldDef]
+  fields: ListMap[String, FieldDef],
+  additional: AdditionalProperties = ForbidExtra
 ) extends TemplateType
 
 /**

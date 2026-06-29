@@ -165,7 +165,7 @@ class TemplateParser {
    */
   private def parseObjectType(json: JsonNode, path: String): Either[ParseError, ObjectType] = {
     if (json.isObject) {
-      val fields = json.fields().asScala.toList
+      val fields = json.fields().asScala.toList.filterNot(_.getKey == "$additionalProperties")
       val fieldResults = fields.map { entry =>
         val fieldName = entry.getKey
         val fieldValue = entry.getValue
@@ -176,12 +176,23 @@ class TemplateParser {
       if (errors.nonEmpty) {
         Left(ParseError.MultipleErrors(errors))
       } else {
-        // Use ListMap to preserve field order from JSON
         val fieldMap = ListMap(fieldResults.collect { case Right(pair) => pair }: _*)
-        Right(ObjectType(fieldMap))
+        Right(ObjectType(fieldMap, parseAdditional(json, path)))
       }
     } else {
       Left(ParseError.InvalidType("object", path, "Expected JSON object"))
+    }
+  }
+
+  /**
+   * Parses the $additionalProperties policy: true allows extras, false forbids, a type validates extras.
+   */
+  private def parseAdditional(json: JsonNode, path: String): AdditionalProperties = {
+    if (!json.has("$additionalProperties")) ForbidExtra
+    else {
+      val node = json.get("$additionalProperties")
+      if (node.isBoolean) { if (node.asBoolean()) AllowExtra else ForbidExtra }
+      else parseType(node, s"$path.$$additionalProperties").map(TypedExtra).getOrElse(ForbidExtra)
     }
   }
 
@@ -233,7 +244,12 @@ class TemplateParser {
       val variantResults = fields.map { entry =>
         val variantName = entry.getKey
         val variantJson = entry.getValue
-        parseObjectType(variantJson, s"$path.$variantName").map(variantName -> _)
+        if (variantJson.isTextual && variantJson.asText().startsWith("$ref:")) {
+          val refName = variantJson.asText().substring(5)
+          Right(variantName -> ObjectType(ListMap("$ref" -> FieldDef(ReferenceType(refName)))))
+        } else {
+          parseObjectType(variantJson, s"$path.$variantName").map(variantName -> _)
+        }
       }
       
       val errors = variantResults.collect { case Left(err) => err }
@@ -350,6 +366,25 @@ class TemplateParser {
   /**
    * Parses a JSON string into a MultiTemplate
    */
+  /**
+   * Replaces $ref variant markers in discriminators with the referenced definition's object fields.
+   */
+  private def resolveRefVariants(definitions: List[TemplateDefinition]): List[TemplateDefinition] = {
+    val byName = definitions.map(d => d.name -> d).toMap
+    def resolveVariant(v: ObjectType): ObjectType = v.fields.get("$ref") match {
+      case Some(FieldDef(ReferenceType(name), _, _)) =>
+        byName.get(name).map(_.templateType).collect { case o: ObjectType => o }.getOrElse(v)
+      case _ => v
+    }
+    definitions.map { d =>
+      d.templateType match {
+        case td: TypeDiscriminator =>
+          d.copy(templateType = td.copy(variants = td.variants.map { case (k, v) => k -> resolveVariant(v) }))
+        case _ => d
+      }
+    }
+  }
+
   def parseMultiTemplate(jsonString: String, basePackage: String): Either[ParseError, MultiTemplate] = {
     try {
       val json = mapper.readTree(jsonString)
@@ -368,8 +403,9 @@ class TemplateParser {
     
     for {
       definitionsJson <- extractField(json, "definitions", path)
-      definitions <- parseDefinitions(definitionsJson, s"$path.definitions")
+      parsed <- parseDefinitions(definitionsJson, s"$path.definitions")
     } yield {
+      val definitions = resolveRefVariants(parsed)
       val useOptionTypes = extractOptionalBoolean(json, "useOptionTypes").getOrElse(true)
       val listType = extractOptionalString(json, "listType").getOrElse("List")
       val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType)

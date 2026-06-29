@@ -65,7 +65,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case BooleanType() => validateBoolean(json, path)
       case ArrayType(elementType, constraints) => validateArray(elementType, json, path, definitions, constraints)
       case MapType(valueType) => validateMap(valueType, json, path, definitions)
-      case ObjectType(fields) => validateObject(fields, json, path, definitions)
+      case ObjectType(fields, additional) => validateObject(fields, json, path, definitions, additional)
       case TypeDiscriminator(fieldName, variants, commonFields, _, _) =>
         validateDiscriminator(fieldName, variants, commonFields, json, path, definitions)
       case ReferenceType(typeName) =>
@@ -210,7 +210,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     fields: Map[String, FieldDef],
     json: JsonNode,
     path: String,
-    definitions: Map[String, TemplateDefinition]
+    definitions: Map[String, TemplateDefinition],
+    additional: AdditionalProperties = ForbidExtra
   ): List[ValidationError] = {
     if (json.isObject) {
       val jsonFieldMap = json.fields().asScala.toList.map(entry => entry.getKey -> entry.getValue).toMap
@@ -234,13 +235,18 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       }.toList
       
       // Check for extra fields not in template
-      val extraFields = jsonFieldMap.keySet.diff(fields.keySet).toList.map { extraField =>
-        ValidationError(
-          s"$path.$extraField",
-          s"Unexpected field '$extraField' not defined in template",
-          s"one of: ${fields.keySet.mkString(", ")}",
-          extraField
-        )
+      val extraKeys = jsonFieldMap.keySet.diff(fields.keySet).toList
+      val extraFields = additional match {
+        case AllowExtra => List.empty
+        case TypedExtra(t) => extraKeys.flatMap(k => validateTypeWithRefs(t, jsonFieldMap(k), s"$path.$k", definitions))
+        case ForbidExtra => extraKeys.map { extraField =>
+          ValidationError(
+            s"$path.$extraField",
+            s"Unexpected field '$extraField' not defined in template",
+            s"one of: ${fields.keySet.mkString(", ")}",
+            extraField
+          )
+        }
       }
       
       missingFields ++ fieldErrors ++ extraFields

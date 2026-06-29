@@ -72,11 +72,11 @@ object TemplateSerializer {
       case MapType(valueType) =>
         s"MapType(${serializeTemplateType(valueType)})"
       
-      case ObjectType(fields) =>
+      case ObjectType(fields, additional) =>
         val fieldsList = fields.map { case (name, fieldDef) =>
           s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
         }.mkString(", ")
-        s"ObjectType(ListMap($fieldsList))"
+        s"ObjectType(ListMap($fieldsList), ${serializeAdditional(additional)})"
       
       case ReferenceType(typeName) =>
         s"""ReferenceType("${escapeString(typeName)}")"""
@@ -113,6 +113,12 @@ object TemplateSerializer {
   /**
    * Serializes just the ObjectType fields (for use in TypeDiscriminator variants)
    */
+  private def serializeAdditional(a: AdditionalProperties): String = a match {
+    case ForbidExtra => "ForbidExtra"
+    case AllowExtra => "AllowExtra"
+    case TypedExtra(t) => s"TypedExtra(${serializeTemplateType(t)})"
+  }
+
   private def serializeObjectTypeFields(objType: ObjectType): String = {
     val fieldsList = objType.fields.map { case (name, fieldDef) =>
       s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
