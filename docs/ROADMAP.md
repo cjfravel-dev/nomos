@@ -5,6 +5,7 @@
 P0-1..5, P1-1..4, P2, and P3-1..4 are implemented. Adapters (P1-4) ship as a registry plus
 template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
 P3 parity gaps (escaped keys, prefix-matched variants, union value types, round-trip) are closed.
+P4 captures multi-template adoption gaps found while replacing a real model layer (open).
 
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing
@@ -213,6 +214,48 @@ Valid JSON:
 
 ---
 
+## P4 — Multi-template adoption gaps
+
+Found replacing a large hand-written model split across many sub-packages with generated code.
+
+### P4-1. Cross-template `$ref` resolution — **High**
+A `$ref` only resolves to definitions in the same template file, so a model can't be split
+one-template-per-package: a root type referencing types in sibling files fails with
+"references undefined type". Resolve refs across all templates under the templates root
+(shared definition space) so large schemas stay manageable as many small files.
+
+`a/root.json`:
+```json
+{ "definitions": [ { "name": "Root", "template": { "child": "$ref:Child" } } ] }
+```
+`a/child.json`:
+```json
+{ "definitions": [ { "name": "Child", "template": { "id": "string" } } ] }
+```
+*Effort: M.*
+
+### P4-2. Open-map-only objects generate `???` — **High**
+An object whose only declared policy is `$additionalProperties` (no named fields) emits an
+uncompilable `???` field type. Generate `Map[String, T]` (or `Map[String, Any]` for `true`).
+
+Template:
+```json
+{ "extras": { "$additionalProperties": true } }
+```
+Valid JSON:
+```json
+{ "extras": { "a": 1, "b": "x" } }
+```
+*Effort: S.*
+
+### P4-3. Variant sub-package placement — **Medium**
+A discriminator emits the sealed trait and all variant case classes into one package; large
+families can't place variants in a dedicated sub-package separate from the trait. Allow a
+per-discriminator variant sub-package.
+*Effort: M.*
+
+---
+
 ## Suggested sequencing
 
 1. P0-1..4 — unlocks the bulk of typed models.
@@ -220,6 +263,7 @@ Valid JSON:
 3. P1-1 + P1-2 — large variant families + tolerant objects.
 4. P1-3 + P1-4 — serialization parity.
 5. P3-1..4 — real-payload parity blockers (escaped keys + parameterized variants are highest impact).
+6. P4-1..3 — multi-template adoption blockers (cross-template refs + open-map objects are highest impact).
 
 ---
 
