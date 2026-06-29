@@ -38,6 +38,16 @@ case class DecimalType(constraints: List[Constraint] = List.empty) extends Templ
 case class BooleanType() extends TemplateType
 
 /**
+ * Date type (maps to java.time.LocalDate).
+ */
+case class DateType() extends TemplateType
+
+/**
+ * Date-time type (maps to java.time.LocalDateTime).
+ */
+case class DateTimeType() extends TemplateType
+
+/**
  * Array type containing elements of a specific type, with optional item constraints.
  */
 case class ArrayType(elementType: TemplateType, constraints: List[Constraint] = List.empty) extends TemplateType

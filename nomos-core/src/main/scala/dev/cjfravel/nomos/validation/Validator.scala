@@ -63,6 +63,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case LongType(constraints) => validateWholeNumber(json, path, "long", constraints)
       case DecimalType(constraints) => validateNumber(json, path, constraints)
       case BooleanType() => validateBoolean(json, path)
+      case DateType() => validateTemporal(json, path, "date", s => java.time.LocalDate.parse(s))
+      case DateTimeType() => validateTemporal(json, path, "datetime", s => java.time.LocalDateTime.parse(s))
       case ArrayType(elementType, constraints) => validateArray(elementType, json, path, definitions, constraints)
       case MapType(valueType) => validateMap(valueType, json, path, definitions)
       case UnionType(types) =>
@@ -153,6 +155,15 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       List.empty
     } else {
       List(ValidationError.typeMismatch(path, "boolean", json.getNodeType.toString))
+    }
+  }
+  
+  private def validateTemporal(json: JsonNode, path: String, expected: String, parse: String => Any): List[ValidationError] = {
+    if (!json.isTextual) {
+      List(ValidationError.typeMismatch(path, expected, json.getNodeType.toString))
+    } else {
+      try { parse(json.asText()); List.empty }
+      catch { case _: Exception => List(ValidationError.constraintViolation(path, s"format: $expected", json.asText())) }
     }
   }
   

@@ -1,7 +1,9 @@
 package com.example.models
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError}
 import com.fasterxml.jackson.databind.JsonNode
@@ -18,6 +20,8 @@ object NomosFormats {
   val mapper: ObjectMapper = {
     val m = new ObjectMapper()
     m.registerModule(DefaultScalaModule)
+    m.registerModule(new JavaTimeModule())
+    m.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     m
   }
 
@@ -50,7 +54,7 @@ object NomosFormats {
           ),
           TemplateDefinition(
             name = "Account",
-            templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false)), ForbidExtra),
+            templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false), "openedOn" -> FieldDef(DateType(), optional = false)), ForbidExtra),
             subPackage = Some("account"),
             description = Some("Account model in a sibling package"),
             validators = List()

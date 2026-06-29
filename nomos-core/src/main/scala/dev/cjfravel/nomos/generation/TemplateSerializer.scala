@@ -66,6 +66,9 @@ object TemplateSerializer {
       case BooleanType() =>
         "BooleanType()"
       
+      case DateType() => "DateType()"
+      case DateTimeType() => "DateTimeType()"
+      
       case ArrayType(elementType, constraints) =>
         s"ArrayType(${serializeTemplateType(elementType)}, List(${constraints.map(serializeConstraint).mkString(", ")}))"
       

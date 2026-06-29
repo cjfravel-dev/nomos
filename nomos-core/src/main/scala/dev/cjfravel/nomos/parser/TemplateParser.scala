@@ -26,6 +26,8 @@ class TemplateParser {
         case "long" => Right(LongType())
         case "decimal" => Right(DecimalType())
         case "boolean" => Right(BooleanType())
+        case "date" => Right(DateType())
+        case "datetime" => Right(DateTimeType())
         
         // Reference to another definition (for multi-template mode)
         case ref if ref.startsWith("$ref:") =>

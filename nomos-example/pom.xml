@@ -51,6 +51,11 @@
             <artifactId>jackson-module-scala_${scala.binary.version}</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
         <!-- Nomos Core - for validation API -->
         <dependency>
             <groupId>dev.cjfravel</groupId>

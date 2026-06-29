@@ -2,7 +2,8 @@ package com.example.models.account
 
 case class Account(
   accountId: String,
-  active: Boolean
+  active: Boolean,
+  openedOn: java.time.LocalDate
 )
 
 object Account {

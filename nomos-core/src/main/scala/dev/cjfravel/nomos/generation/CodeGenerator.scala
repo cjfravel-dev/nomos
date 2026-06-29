@@ -425,6 +425,8 @@ class CodeGenerator(config: GeneratorConfig) {
       case LongType(_) => "Long"
       case DecimalType(_) => "BigDecimal"
       case BooleanType() => "Boolean"
+      case DateType() => "java.time.LocalDate"
+      case DateTimeType() => "java.time.LocalDateTime"
       case ArrayType(elementType, _) =>
         s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
       case MapType(valueType) =>
@@ -541,7 +543,9 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"package $basePackage")
     builder.emptyLine()
     builder.line("import com.fasterxml.jackson.databind.ObjectMapper")
+    builder.line("import com.fasterxml.jackson.databind.SerializationFeature")
     builder.line("import com.fasterxml.jackson.module.scala.DefaultScalaModule")
+    builder.line("import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule")
     builder.line("import dev.cjfravel.nomos.model._")
     builder.line("import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError}")
     builder.line("import com.fasterxml.jackson.databind.JsonNode")
@@ -560,6 +564,8 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.indent()
     builder.line("val m = new ObjectMapper()")
     builder.line("m.registerModule(DefaultScalaModule)")
+    builder.line("m.registerModule(new JavaTimeModule())")
+    builder.line("m.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)")
     builder.line("m")
     builder.dedent()
     builder.line("}")
