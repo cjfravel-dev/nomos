@@ -30,6 +30,10 @@ This directory contains comprehensive documentation for the Nomos project.
   - Feature specifications
   - Design patterns and principles
 
+- **[ROADMAP.md](ROADMAP.md)** - Prioritized feature hit list
+  - P0 blockers: typed scalars, enums, maps, defaults, named custom validators
+  - P1/P2: variant unions, additionalProperties, pluggable formats/adapters
+
 ## Quick Navigation
 
 **Getting Started:**
