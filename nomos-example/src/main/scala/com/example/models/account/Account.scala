@@ -1,0 +1,35 @@
+package com.example.models.account
+
+case class Account(
+  accountId: String,
+  active: Boolean
+)
+
+object Account {
+  import com.example.models.NomosFormats
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+
+  def fromJson(json: String): Either[String, Account] = {
+    try {
+      Right(mapper.readValue(json, classOf[Account]))
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: Account): String = {
+    mapper.writeValueAsString(obj)
+  }
+
+  /**
+   * Validates JSON against the embedded template and returns a parsed instance.
+   * This allows validation without needing the original template file.
+   */
+  def validate(json: String): Either[List[ValidationError], Account] = {
+    validator.validate(json, "com.example.models.account.Account") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}

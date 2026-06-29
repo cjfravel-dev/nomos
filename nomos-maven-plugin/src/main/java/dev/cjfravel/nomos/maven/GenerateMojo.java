@@ -106,7 +106,7 @@ public class GenerateMojo extends AbstractMojo {
                 String basePackage = packageFromPath(templateDir.toPath(), templateFile.toPath());
                 getLog().info("  Base package: " + basePackage);
 
-                scala.util.Either<?, ?> parseResult = Nomos.parseTemplate(templateContent, basePackage);
+                scala.util.Either<?, ?> parseResult = Nomos.parseTemplateDeferred(templateContent, basePackage);
                 if (parseResult.isLeft()) {
                     getLog().error("  Failed to parse template: " + parseResult.left().get());
                     parseFailures++;

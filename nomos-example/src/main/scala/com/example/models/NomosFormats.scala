@@ -32,6 +32,13 @@ object NomosFormats {
             subPackage = Some("user"),
             description = Some("User model with basic information"),
             validators = List()
+          ),
+          TemplateDefinition(
+            name = "Account",
+            templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false)), ForbidExtra),
+            subPackage = Some("account"),
+            description = Some("Account model in a sibling package"),
+            validators = List()
           )
           ),
           useOptionTypes = true,

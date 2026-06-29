@@ -1,0 +1,14 @@
+{
+  "useOptionTypes": true,
+  "listType": "List",
+  "definitions": [
+    {
+      "name": "Account",
+      "description": "Account model in a sibling package",
+      "template": {
+        "accountId": "string",
+        "active": "boolean"
+      }
+    }
+  ]
+}

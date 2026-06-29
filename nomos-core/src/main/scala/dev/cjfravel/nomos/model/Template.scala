@@ -78,7 +78,7 @@ case class MultiTemplate(
   /**
    * Validates the multi-template structure
    */
-  def validate(): List[String] = {
+  def validate(checkRefs: Boolean = true): List[String] = {
     var errors = List.empty[String]
     
     // Validate that all definition names are valid
@@ -103,11 +103,13 @@ case class MultiTemplate(
     }
     
     // Validate that all references point to existing definitions
-    val definitionNames = definitions.map(_.name).toSet
-    definitions.foreach { definition =>
-      val unresolvedRefs = findUnresolvedReferences(definition.templateType, definitionNames)
-      unresolvedRefs.foreach { refName =>
-        errors = s"Definition '${definition.name}' references undefined type: $refName" :: errors
+    if (checkRefs) {
+      val definitionNames = definitions.map(_.name).toSet
+      definitions.foreach { definition =>
+        val unresolvedRefs = findUnresolvedReferences(definition.templateType, definitionNames)
+        unresolvedRefs.foreach { refName =>
+          errors = s"Definition '${definition.name}' references undefined type: $refName" :: errors
+        }
       }
     }
     

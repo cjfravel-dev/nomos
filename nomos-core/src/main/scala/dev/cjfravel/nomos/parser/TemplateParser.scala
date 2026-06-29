@@ -397,10 +397,10 @@ class TemplateParser {
     }
   }
 
-  def parseMultiTemplate(jsonString: String, basePackage: String): Either[ParseError, MultiTemplate] = {
+  def parseMultiTemplate(jsonString: String, basePackage: String, validateRefs: Boolean = true): Either[ParseError, MultiTemplate] = {
     try {
       val json = mapper.readTree(jsonString)
-      parseMultiTemplateJson(json, basePackage)
+      parseMultiTemplateJson(json, basePackage, validateRefs)
     } catch {
       case e: Exception =>
         Left(ParseError.JsonSyntaxError(e.getMessage))
@@ -410,7 +410,7 @@ class TemplateParser {
   /**
    * Parses a multi-template JSON structure. basePackage is supplied by the caller.
    */
-  private def parseMultiTemplateJson(json: JsonNode, basePackage: String): Either[ParseError, MultiTemplate] = {
+  private def parseMultiTemplateJson(json: JsonNode, basePackage: String, validateRefs: Boolean): Either[ParseError, MultiTemplate] = {
     val path = "root"
     
     for {
@@ -422,8 +422,7 @@ class TemplateParser {
       val listType = extractOptionalString(json, "listType").getOrElse("List")
       val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType)
       
-      // Validate the multi-template
-      multiTemplate.validate() match {
+      multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate
         case errors => return Left(ParseError.MultipleErrors(errors.map(err => ParseError.InvalidFieldValue("template", "valid", err, path))))
       }
@@ -473,7 +472,7 @@ object TemplateParser {
   /**
    * Convenience method to parse multi-template from string
    */
-  def parseMultiTemplateString(jsonString: String, basePackage: String): Either[ParseError, MultiTemplate] = {
-    new TemplateParser().parseMultiTemplate(jsonString, basePackage)
+  def parseMultiTemplateString(jsonString: String, basePackage: String, validateRefs: Boolean = true): Either[ParseError, MultiTemplate] = {
+    new TemplateParser().parseMultiTemplate(jsonString, basePackage, validateRefs)
   }
 }

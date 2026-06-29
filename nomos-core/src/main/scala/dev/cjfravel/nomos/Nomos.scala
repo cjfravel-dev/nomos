@@ -47,6 +47,13 @@ object Nomos {
   }
   
   /**
+   * Parse a template without resolving cross-file references, for later merging via generateAll.
+   */
+  def parseTemplateDeferred(json: String, basePackage: String): Either[ParseError, MultiTemplate] = {
+    TemplateParser.parseMultiTemplateString(json, basePackage, validateRefs = false)
+  }
+  
+  /**
    * Generate Scala case classes from a template.
    * Uses the basePackage, useOptionTypes, and listType from the template; outputDir defaults
    * to the standard Maven source root.
