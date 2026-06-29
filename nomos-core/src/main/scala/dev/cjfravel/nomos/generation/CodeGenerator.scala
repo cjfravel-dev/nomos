@@ -270,7 +270,11 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("discriminatorValue match {")
       builder.indent()
       variantMap.foreach { case (variantKey, className) =>
-        builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+        if (discriminator.variantMatch == "prefix") {
+          builder.line("case d if d.startsWith(\"" + variantKey + "\") => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+        } else {
+          builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+        }
       }
       builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
       builder.dedent()
@@ -382,7 +386,7 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("import NomosFormats._")
       builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.emptyLine()
-      builder.customSerializer(name, discriminator.fieldName, variantMap)
+      builder.customSerializer(name, discriminator.fieldName, variantMap, discriminator.variantMatch == "prefix")
       builder.emptyLine()
       builder.line("/**")
       builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")

@@ -1,0 +1,47 @@
+package com.example.models.column
+
+sealed trait Column
+
+case class Decimal(
+  `type`: String,
+  scale: Int
+) extends Column
+
+case class Varchar(`type`: String) extends Column
+
+object Column {
+  import com.example.models.NomosFormats
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+  import com.fasterxml.jackson.databind.JsonNode
+
+  def fromJson(json: String): Either[String, Column] = {
+    try {
+      val jsonNode = mapper.readTree(json)
+      val discriminatorValue = jsonNode.get("type").asText()
+      discriminatorValue match {
+        case d if d.startsWith("Decimal") => Right(mapper.treeToValue(jsonNode, classOf[Decimal]))
+        case d if d.startsWith("Varchar") => Right(mapper.treeToValue(jsonNode, classOf[Varchar]))
+        case other => Left(s"Unknown type value: $other")
+      }
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: Column): String = {
+    mapper.writeValueAsString(obj)
+  }
+
+  /**
+   * Validates JSON against the embedded template and returns a parsed instance.
+   * This allows validation without needing the original template file.
+   */
+  def validate(json: String): Either[List[ValidationError], Column] = {
+    validator.validate(json, "com.example.models.column.Column") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}
+

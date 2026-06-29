@@ -171,7 +171,8 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
   def customSerializer(
     traitName: String,
     discriminatorField: String,
-    variants: Map[String, String] // discriminator value -> class name
+    variants: Map[String, String], // discriminator value -> class name
+    prefixMatch: Boolean = false
   ): ScalaCodeBuilder = {
     line("import com.fasterxml.jackson.databind.JsonNode")
     emptyLine()
@@ -184,7 +185,11 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     line("discriminatorValue match {")
     indent()
     variants.foreach { case (discriminatorValue, className) =>
-      line(s"""case "$discriminatorValue" => Right(mapper.treeToValue(jsonNode, classOf[$className]))""")
+      if (prefixMatch) {
+        line(s"""case d if d.startsWith("$discriminatorValue") => Right(mapper.treeToValue(jsonNode, classOf[$className]))""")
+      } else {
+        line(s"""case "$discriminatorValue" => Right(mapper.treeToValue(jsonNode, classOf[$className]))""")
+      }
     }
     line(s"""case other => Left(s"Unknown $discriminatorField value: $$other")""")
     outdent()

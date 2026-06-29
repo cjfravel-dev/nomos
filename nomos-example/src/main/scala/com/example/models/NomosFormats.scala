@@ -34,6 +34,21 @@ object NomosFormats {
             validators = List()
           ),
           TemplateDefinition(
+            name = "Column",
+            templateType = TypeDiscriminator(
+              fieldName = "type",
+              variants = ListMap("Decimal" -> ObjectType(ListMap("scale" -> FieldDef(IntType(List()), optional = false))), "Varchar" -> ObjectType(ListMap())),
+              commonFields = ListMap(),
+              includeInOutput = true,
+              variantNames = Map.empty[String, String],
+              variantMatch = "prefix",
+              variantSubPackage = None
+            ),
+            subPackage = Some("column"),
+            description = Some("Data contract column with parameterized type tags"),
+            validators = List()
+          ),
+          TemplateDefinition(
             name = "Account",
             templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false)), ForbidExtra),
             subPackage = Some("account"),

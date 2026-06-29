@@ -1,0 +1,20 @@
+{
+  "useOptionTypes": true,
+  "listType": "List",
+  "definitions": [
+    {
+      "name": "Column",
+      "description": "Data contract column with parameterized type tags",
+      "template": {
+        "$type": {
+          "discriminator": "type",
+          "variantMatch": "prefix",
+          "variants": {
+            "Decimal": { "scale": "int" },
+            "Varchar": {}
+          }
+        }
+      }
+    }
+  ]
+}
