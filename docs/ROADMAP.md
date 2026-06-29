@@ -2,9 +2,11 @@
 
 ## Status
 
-P0-1..5, P1-1..4, P2, P3-1..4, and P4-1..3 are implemented. Adapters (P1-4) ship as a registry plus
+P0-1..5, P1-1..4, P2, P3-1..4, P4-1..4, and P5-1..7 are implemented. Adapters (P1-4) ship as a registry plus
 template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
-P3 parity gaps and P4 multi-template adoption gaps (cross-template refs, open-map objects, variant sub-packages) are closed.
+P3 parity gaps and P4 multi-template adoption gaps (cross-template refs, open-map objects, variant sub-packages,
+prefix dispatch) are closed. P5 exact-parity gaps (nullable-raw fields, external-type refs, native date/datetime,
+generated enum types, helper methods, selectable fromJson style, source field order) are closed.
 
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing
