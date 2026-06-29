@@ -1,5 +1,10 @@
 # Nomos Roadmap — Feature Hit List
 
+## Status
+
+P0-1..5, P1-1..4, and P2 are implemented. Adapters (P1-4) ship as a registry plus
+template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
+
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing
 functionality.

@@ -65,6 +65,17 @@ Templates support the following primitive types:
 }
 ```
 
+### Integer / Long / Decimal
+Whole-number and high-precision scalars generate `Int`, `Long`, and `BigDecimal`; int/long reject fractional values.
+```json
+{
+  "retryCount": "int",
+  "fileSize": "long",
+  "rate": "decimal",
+  "depth": { "type": "int", "min": 1 }
+}
+```
+
 ### Boolean
 ```json
 {
@@ -72,11 +83,54 @@ Templates support the following primitive types:
 }
 ```
 
+### Maps
+Open string-keyed maps generate `Map[String, T]`; keys are unrestricted, values validated.
+```json
+{
+  "settings": { "$map": "string" }
+}
+```
+
 ### Array
 ```json
 {
   "tags": ["string"],
-  "scores": ["number"]
+  "scores": { "type": "array", "items": "number", "minItems": 1, "maxItems": 5, "uniqueItems": true }
+}
+```
+
+### Enums
+Closed value sets on a string or array items:
+```json
+{
+  "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+  "colors": { "type": "array", "items": "string", "enum": ["red", "green", "blue"] }
+}
+```
+
+### Defaults
+```json
+{
+  "verbose": { "type": "boolean", "default": false }
+}
+```
+
+### Additional Properties
+Per object, control unknown keys with `$additionalProperties`: `true` allows, `false` forbids (default), a type validates extras.
+```json
+{
+  "id": "string",
+  "$additionalProperties": "string"
+}
+```
+
+### Named Validators
+Definitions may run registered cross-field validators by name (see `Nomos.validators`).
+```json
+{
+  "name": "Reservation",
+  "validators": ["dates.startBeforeEnd"],
+  "template": { "startDate": "string", "endDate": "string" }
 }
 ```
 
