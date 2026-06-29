@@ -73,14 +73,15 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
   /**
    * Appends a case class definition
    */
-  def caseClass(name: String, fields: List[(String, String)], parent: Option[String] = None): ScalaCodeBuilder = {
+  def caseClass(name: String, fields: List[(String, String)], parent: Option[String] = None, body: List[String] = Nil): ScalaCodeBuilder = {
     val extendsClause = parent.map(p => s" extends $p").getOrElse("")
+    val open = if (body.nonEmpty) " {" else ""
     
     if (fields.isEmpty) {
-      line(s"case class $name()$extendsClause")
+      line(s"case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
       val (fieldName, fieldType) = fields.head
-      line(s"case class $name($fieldName: $fieldType)$extendsClause")
+      line(s"case class $name($fieldName: $fieldType)$extendsClause$open")
     } else {
       line(s"case class $name(")
       indented {
@@ -89,7 +90,13 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
           line(s"$fieldName: $fieldType$comma")
         }
       }
-      line(s")$extendsClause")
+      line(s")$extendsClause$open")
+    }
+    if (body.nonEmpty) {
+      indented {
+        body.foreach(m => m.split("\n").foreach(line))
+      }
+      line("}")
     }
     this
   }

@@ -61,7 +61,7 @@ object NomosFormats {
             subPackage = Some("account"),
             description = Some("Account model in a sibling package"),
             validators = List(),
-            methods = List()
+            methods = List("def label: String = accountId + \"/\" + active")
           )
           ),
           useOptionTypes = true,

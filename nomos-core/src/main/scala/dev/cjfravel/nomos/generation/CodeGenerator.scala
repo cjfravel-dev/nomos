@@ -48,6 +48,24 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
+   * Renders a field's Scala type. A nullable field becomes its raw type (no Option); when
+   * withNullDefault is set, nullable adds a "= null" default and a plain default is appended.
+   */
+  private def renderFieldType(
+    fieldDef: FieldDef,
+    definitionsMap: Map[String, TemplateDefinition],
+    withNullDefault: Boolean
+  ): String = {
+    if (fieldDef.nullable) {
+      val raw = scalaTypeForDefinition(fieldDef.fieldType, optional = false, definitionsMap)
+      if (withNullDefault) s"$raw = null" else raw
+    } else {
+      val t = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
+      if (withNullDefault) fieldDef.default.map(d => s"$t = $d").getOrElse(t) else t
+    }
+  }
+
+  /**
    * Header prepended to every generated file. Includes a Source pointer when the template
    * file is known, otherwise just the generic generated-by notice.
    */
@@ -131,16 +149,10 @@ class CodeGenerator(config: GeneratorConfig) {
     methods: List[String] = List.empty
   ): Unit = {
     val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
-      val withDefault = if (fieldDef.nullable) {
-        s"${scalaTypeForDefinition(fieldDef.fieldType, optional = false, definitionsMap)} = null"
-      } else {
-        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-        fieldDef.default.map(d => s"$typeName = $d").getOrElse(typeName)
-      }
-      (ScalaCodeBuilder.escapeKeyword(fieldName), withDefault)
+      (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
     }.toList
     
-    builder.caseClass(name, fieldList, None)
+    builder.caseClass(name, fieldList, None, methods)
     
     // Always generate companion object with Jackson serialization and validation
     builder.emptyLine()
@@ -198,11 +210,6 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("}")
       builder.dedent()
       builder.line("}")
-      
-      methods.foreach { m =>
-        builder.emptyLine()
-        m.split("\n").foreach(builder.line)
-      }
     }
   }
 
@@ -272,8 +279,7 @@ class CodeGenerator(config: GeneratorConfig) {
       
       // Convert to field list
       val fieldList = fieldsWithDiscriminator.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
+        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
       }.toList
       
       builder.caseClass(caseClassName, fieldList, Some(name))
@@ -371,8 +377,7 @@ class CodeGenerator(config: GeneratorConfig) {
     // Generate sealed trait with common fields as abstract vals
     if (discriminator.commonFields.nonEmpty) {
       val commonFieldList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
+        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false))
       }.toList
       
       // Always include discriminator field on trait
@@ -397,12 +402,10 @@ class CodeGenerator(config: GeneratorConfig) {
       // Build field list with override for trait fields
       val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)  // override = true
       val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName, true)  // override = true
+        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)  // override = true
       }.toList
       val variantFieldsList = variantFields.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName, false)  // override = false
+        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), false)  // override = false
       }.toList
       
       val allFields = discriminatorField :: (commonFieldsList ++ variantFieldsList)

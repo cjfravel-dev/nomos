@@ -11,18 +11,19 @@ class HelperMethodsSpec extends AnyFlatSpec with Matchers with EitherValues {
   val parser = new TemplateParser()
   def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
-  val tmpl = """{"name":"User","methods":["def codeName: String = \"USR\""],
+  val tmpl = """{"name":"User","methods":["def label: String = id + \"-\" + email"],
     "template":{"id":"string","email":"string"}}"""
 
   "parser" should "read a definition's methods list" in {
-    parse(tmpl).value.definitions.head.methods shouldBe List("def codeName: String = \"USR\"")
+    parse(tmpl).value.definitions.head.methods shouldBe List("def label: String = id + \"-\" + email")
   }
 
-  "generator" should "emit declared methods into the companion object" in {
+  "generator" should "emit declared methods as instance members in the case class body" in {
     val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
       .generateMulti(parse(tmpl).value).value.find(_.fileName == "User.scala").get.content
-    content should include("def codeName: String")
-    content.indexOf("def codeName") should be > content.indexOf("object User")
+    content should include("def label: String = id + \"-\" + email")
+    // instance method lives in the case class body, before the companion object
+    content.indexOf("def label") should be < content.indexOf("object User")
   }
 
   "serializer" should "round-trip methods" in {

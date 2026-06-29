@@ -166,7 +166,7 @@ object MultiTemplate {
     }
     val useOptionTypes = templates.headOption.forall(_.useOptionTypes)
     val listType = templates.headOption.map(_.listType).getOrElse("List")
-    val fromJsonStyle = templates.headOption.map(_.fromJsonStyle).getOrElse("either")
+    val fromJsonStyle = if (templates.exists(_.fromJsonStyle == "throwing")) "throwing" else "either"
     MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle)
   }
 
