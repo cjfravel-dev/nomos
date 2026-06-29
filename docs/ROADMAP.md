@@ -249,20 +249,21 @@ Valid JSON:
 ```
 *Effort: S.*
 
-### P4-3. Variant sub-package placement — **Medium**
-A discriminator emits the sealed trait and all variant case classes into one package; large
-families can't place variants in a dedicated sub-package separate from the trait. `variantSubPackage`
-is currently a no-op: variants still land in the trait's package (a sealed trait requires its
-variants in the same file). To honor it, either (a) generate a non-sealed base trait so variants
-can move to a sub-package, or (b) drop the option for sealed unions. Common fields are correctly
-hoisted to the trait as abstract vals, so a shared base already exists.
+### P4-3. Collapse identical variants to one shared class — **Medium**
+A discriminator generates a distinct case class per variant value even when several values
+share an identical shape, exploding into many redundant classes. Allow multiple discriminator
+values to map to a single shared variant class (e.g. via `variantNames` pointing several keys
+at the same name, or a default variant), so structurally identical variants reuse one class —
+distinguished only by the discriminator value at runtime.
 
-Template:
+Template (3 values, same shape → one class):
 ```json
-{ "$type": { "discriminator": "kind", "variantSubPackage": "kinds",
-  "variants": { "circle": { "radius": "number" }, "square": { "side": "number" } } } }
+{ "$type": { "discriminator": "type",
+  "variantNames": { "int": "Number", "long": "Number", "double": "Number" },
+  "variants": { "int": {}, "long": {}, "double": {} } } }
 ```
-Expected: `Circle`/`Square` under `...kinds`; actual: same package as the trait. *Effort: M.*
+Expected: one `Number` class; actual: `Int`/`Long`/`Double` classes. Sub-package placement of
+variants is fine; the issue is the class count. *Effort: M.*
 
 ---
 
@@ -273,7 +274,7 @@ Expected: `Circle`/`Square` under `...kinds`; actual: same package as the trait.
 3. P1-1 + P1-2 — large variant families + tolerant objects.
 4. P1-3 + P1-4 — serialization parity.
 5. P3-1..4 — real-payload parity blockers (escaped keys + parameterized variants are highest impact).
-6. P4-1..3 — multi-template adoption blockers (cross-template refs + open-map objects are highest impact).
+6. P4-1..3 — multi-template adoption blockers (cross-template refs + open-map + variant-collapse).
 
 ---
 
