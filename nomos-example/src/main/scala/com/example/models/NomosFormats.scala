@@ -30,7 +30,8 @@ object NomosFormats {
             name = "User",
             templateType = ObjectType(ListMap("id" -> FieldDef(StringType(List()), optional = false), "username" -> FieldDef(StringType(List()), optional = false), "email" -> FieldDef(StringType(List()), optional = false), "age" -> FieldDef(NumberType(List()), optional = true), "roles" -> FieldDef(ArrayType(StringType(List())), optional = false))),
             subPackage = Some("user"),
-            description = Some("User model with basic information")
+            description = Some("User model with basic information"),
+            validators = List()
           )
           ),
           useOptionTypes = true,

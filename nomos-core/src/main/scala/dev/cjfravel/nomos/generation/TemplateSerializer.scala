@@ -36,7 +36,8 @@ object TemplateSerializer {
         name = "${escapeString(definition.name)}",
         templateType = ${serializeTemplateType(definition.templateType)},
         subPackage = $subPackage,
-        description = $description
+        description = $description,
+        validators = List(${definition.validators.map(v => s""""${escapeString(v)}"""").mkString(", ")})
       )"""
   }
   

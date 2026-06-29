@@ -298,6 +298,14 @@ class TemplateParser {
     }
   }
 
+  private def extractStringList(json: JsonNode, fieldName: String): List[String] = {
+    if (json.has(fieldName) && json.get(fieldName).isArray) {
+      json.get(fieldName).elements().asScala.collect { case n if n.isTextual => n.asText() }.toList
+    } else {
+      List.empty
+    }
+  }
+
   private def extractOptionalInt(json: JsonNode, fieldName: String): Option[Int] = {
     if (json.has(fieldName)) {
       val node = json.get(fieldName)
@@ -392,9 +400,10 @@ class TemplateParser {
       name <- extractString(json, "name", path)
       subPackage = extractOptionalString(json, "subPackage")
       description = extractOptionalString(json, "description")
+      validators = extractStringList(json, "validators")
       templateJson <- extractField(json, "template", path)
       templateType <- parseType(templateJson, s"$path.template")
-    } yield TemplateDefinition(name, templateType, subPackage, description)
+    } yield TemplateDefinition(name, templateType, subPackage, description, validators)
   }
 }
 

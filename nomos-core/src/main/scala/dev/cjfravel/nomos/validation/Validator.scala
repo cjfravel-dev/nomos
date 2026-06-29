@@ -35,7 +35,11 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     multiTemplate.getDefinition(definitionName) match {
       case Some(definition) =>
         validateTypeWithRefs(definition.templateType, json, "root", multiTemplate.definitionsMap) match {
-          case Nil => Right(json)
+          case Nil =>
+            definition.validators.flatMap(name => ValidatorRegistry.run(name, json)) match {
+              case Nil => Right(json)
+              case customErrors => Left(customErrors)
+            }
           case errors => Left(errors)
         }
       case None =>

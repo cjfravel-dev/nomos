@@ -7,12 +7,14 @@ package dev.cjfravel.nomos.model
  * @param templateType The type definition
  * @param subPackage Optional sub-package relative to the base package
  * @param description Optional description of this definition
+ * @param validators Names of registered custom validators to run after schema validation
  */
 case class TemplateDefinition(
   name: String,
   templateType: TemplateType,
   subPackage: Option[String] = None,
-  description: Option[String] = None
+  description: Option[String] = None,
+  validators: List[String] = List.empty
 ) {
   /**
    * Validates that the definition name is a valid Scala identifier
