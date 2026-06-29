@@ -166,11 +166,14 @@ object MultiTemplate {
       val sub = if (base.nonEmpty && full == base) "" else if (base.nonEmpty) full.stripPrefix(base + ".") else full
       d.copy(subPackage = if (sub.isEmpty) None else Some(sub))
     }
-    val useOptionTypes = templates.headOption.forall(_.useOptionTypes)
-    val listType = templates.headOption.map(_.listType).getOrElse("List")
-    val fromJsonStyle = if (templates.exists(_.fromJsonStyle == "throwing")) "throwing" else "either"
-    val dateType = templates.headOption.map(_.dateType).getOrElse("java.time.LocalDate")
-    val dateTimeType = templates.headOption.map(_.dateTimeType).getOrElse("java.time.LocalDateTime")
+    // Generation settings: take any non-default value across files so a setting declared in
+    // any template is honored regardless of file-discovery order.
+    def firstNonDefault[A](values: List[A], default: A): A = values.find(_ != default).getOrElse(default)
+    val useOptionTypes = firstNonDefault(templates.map(_.useOptionTypes), true)
+    val listType = firstNonDefault(templates.map(_.listType), "List")
+    val fromJsonStyle = firstNonDefault(templates.map(_.fromJsonStyle), "either")
+    val dateType = firstNonDefault(templates.map(_.dateType), "java.time.LocalDate")
+    val dateTimeType = firstNonDefault(templates.map(_.dateTimeType), "java.time.LocalDateTime")
     MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType)
   }
 
