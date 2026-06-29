@@ -221,7 +221,9 @@ Found replacing a large hand-written model split across many sub-packages with g
 A `$ref` only resolves to definitions in the same template file, so a model can't be split
 one-template-per-package: a root type referencing types in sibling files fails with
 "references undefined type". Resolve refs across all templates under the templates root
-(shared definition space) so large schemas stay manageable as many small files.
+(shared definition space) so large schemas stay manageable as many small files. Note:
+parse-time validation must defer cross-file refs — validate after merging all templates, not
+per file — so the maven plugin (which parses each file) also benefits, not just `generateAll`.
 
 `a/root.json`:
 ```json
