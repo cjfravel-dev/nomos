@@ -364,6 +364,19 @@ construction and serialized key order. Preserve declaration order.
 
 ---
 
+## P6 — Multi-template config consistency
+
+### P6-1. `combine` drops per-file generation settings — **Medium**
+When generating from many template files (one per package), `MultiTemplate.combine` reads
+`dateType`/`dateTimeType`/`listType`/`useOptionTypes` from `headOption` (the first file only),
+while `fromJsonStyle` uses `exists` (any file). So a generation setting declared in a non-first
+file is silently dropped, and the result depends on file-discovery order. Treat these settings
+consistently — take any non-default value across files (or require they agree). Workaround today:
+declare the setting in every template file.
+*Effort: S.*
+
+---
+
 ## Suggested sequencing
 
 1. P0-1..4 — unlocks the bulk of typed models.
