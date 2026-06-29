@@ -88,7 +88,7 @@ class CodeGenerator(config: GeneratorConfig) {
     // Generate based on template type
     definition.templateType match {
       case obj: ObjectType =>
-        generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName)
+        generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName, definition.methods)
       
       case disc: TypeDiscriminator =>
         generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap, basePackage, packageName)
@@ -112,7 +112,8 @@ class CodeGenerator(config: GeneratorConfig) {
     builder: ScalaCodeBuilder,
     definitionsMap: Map[String, TemplateDefinition],
     basePackage: String,
-    currentPackage: String
+    currentPackage: String,
+    methods: List[String] = List.empty
   ): Unit = {
     val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
       val withDefault = if (fieldDef.nullable) {
@@ -137,20 +138,24 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.emptyLine()
       
-      // Generate simple fromJson using Jackson Scala module
-      builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
-      builder.indent()
-      builder.line("try {")
-      builder.indent()
-      builder.line("Right(mapper.readValue(json, classOf[" + name + "]))")
-      builder.dedent()
-      builder.line("} catch {")
-      builder.indent()
-      builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
-      builder.dedent()
-      builder.line("}")
-      builder.dedent()
-      builder.line("}")
+      // Generate fromJson (Either-returning by default, throwing when configured)
+      if (config.throwingFromJson) {
+        builder.line("def fromJson(json: String): " + name + " = mapper.readValue(json, classOf[" + name + "])")
+      } else {
+        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
+        builder.indent()
+        builder.line("try {")
+        builder.indent()
+        builder.line("Right(mapper.readValue(json, classOf[" + name + "]))")
+        builder.dedent()
+        builder.line("} catch {")
+        builder.indent()
+        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("}")
+      }
       
       builder.emptyLine()
       builder.line("def toJson(obj: " + name + "): String = {")
@@ -168,12 +173,21 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
       builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
       builder.indent()
-      builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      if (config.throwingFromJson) {
+        builder.line("case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError(\"root\", e.getMessage, \"valid JSON\", json))) }")
+      } else {
+        builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      }
       builder.line("case Left(errors) => Left(errors)")
       builder.dedent()
       builder.line("}")
       builder.dedent()
       builder.line("}")
+      
+      methods.foreach { m =>
+        builder.emptyLine()
+        m.split("\n").foreach(builder.line)
+      }
     }
   }
 

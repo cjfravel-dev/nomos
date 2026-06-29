@@ -430,7 +430,8 @@ class TemplateParser {
       val definitions = resolveRefVariants(parsed)
       val useOptionTypes = extractOptionalBoolean(json, "useOptionTypes").getOrElse(true)
       val listType = extractOptionalString(json, "listType").getOrElse("List")
-      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType)
+      val fromJsonStyle = extractOptionalString(json, "fromJsonStyle").getOrElse("either")
+      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType, fromJsonStyle)
       
       multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate
@@ -470,9 +471,10 @@ class TemplateParser {
       subPackage = extractOptionalString(json, "subPackage")
       description = extractOptionalString(json, "description")
       validators = extractStringList(json, "validators")
+      methods = extractStringList(json, "methods")
       templateJson <- extractField(json, "template", path)
       templateType <- parseType(templateJson, s"$path.template")
-    } yield TemplateDefinition(name, templateType, subPackage, description, validators)
+    } yield TemplateDefinition(name, templateType, subPackage, description, validators, methods)
   }
 }
 

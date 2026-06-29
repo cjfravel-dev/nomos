@@ -8,13 +8,15 @@ package dev.cjfravel.nomos.model
  * @param subPackage Optional sub-package relative to the base package
  * @param description Optional description of this definition
  * @param validators Names of registered custom validators to run after schema validation
+ * @param methods Raw Scala member declarations emitted into the generated case class body
  */
 case class TemplateDefinition(
   name: String,
   templateType: TemplateType,
   subPackage: Option[String] = None,
   description: Option[String] = None,
-  validators: List[String] = List.empty
+  validators: List[String] = List.empty,
+  methods: List[String] = List.empty
 ) {
   /**
    * Validates that the definition name is a valid Scala identifier
@@ -55,7 +57,8 @@ case class MultiTemplate(
   basePackage: String,
   definitions: List[TemplateDefinition],
   useOptionTypes: Boolean = true,
-  listType: String = "List"
+  listType: String = "List",
+  fromJsonStyle: String = "either"
 ) {
   /**
    * Fully-qualified name of a definition (basePackage + subPackage + name)
@@ -161,7 +164,8 @@ object MultiTemplate {
     }
     val useOptionTypes = templates.headOption.forall(_.useOptionTypes)
     val listType = templates.headOption.map(_.listType).getOrElse("List")
-    MultiTemplate(base, defs, useOptionTypes, listType)
+    val fromJsonStyle = templates.headOption.map(_.fromJsonStyle).getOrElse("either")
+    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle)
   }
 
   private def commonPrefix(pkgs: List[String]): String = {

@@ -14,7 +14,8 @@ case class GeneratorConfig(
   basePackage: String,
   outputDir: String,
   useOptionTypes: Boolean = true,
-  listType: String = "List"
+  listType: String = "List",
+  throwingFromJson: Boolean = false
 ) {
   /**
    * Validates the configuration

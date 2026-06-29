@@ -21,7 +21,8 @@ object TemplateSerializer {
       $definitions
       ),
       useOptionTypes = ${template.useOptionTypes},
-      listType = "${escapeString(template.listType)}"
+      listType = "${escapeString(template.listType)}",
+      fromJsonStyle = "${escapeString(template.fromJsonStyle)}"
     )"""
   }
   
@@ -37,7 +38,8 @@ object TemplateSerializer {
         templateType = ${serializeTemplateType(definition.templateType)},
         subPackage = $subPackage,
         description = $description,
-        validators = List(${definition.validators.map(v => s""""${escapeString(v)}"""").mkString(", ")})
+        validators = List(${definition.validators.map(v => s""""${escapeString(v)}"""").mkString(", ")}),
+        methods = List(${definition.methods.map(m => s""""${escapeString(m)}"""").mkString(", ")})
       )"""
   }
   

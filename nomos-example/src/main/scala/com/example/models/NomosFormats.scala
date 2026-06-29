@@ -35,7 +35,8 @@ object NomosFormats {
             templateType = ObjectType(ListMap("id" -> FieldDef(StringType(List()), optional = false), "username" -> FieldDef(StringType(List()), optional = false), "email" -> FieldDef(StringType(List()), optional = false), "age" -> FieldDef(NumberType(List()), optional = true), "roles" -> FieldDef(ArrayType(StringType(List()), List()), optional = false)), ForbidExtra),
             subPackage = Some("user"),
             description = Some("User model with basic information"),
-            validators = List()
+            validators = List(),
+            methods = List()
           ),
           TemplateDefinition(
             name = "Column",
@@ -50,18 +51,21 @@ object NomosFormats {
             ),
             subPackage = Some("column"),
             description = Some("Data contract column with parameterized type tags"),
-            validators = List()
+            validators = List(),
+            methods = List()
           ),
           TemplateDefinition(
             name = "Account",
             templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false), "openedOn" -> FieldDef(DateType(), optional = false), "tier" -> FieldDef(EnumType("Tier", List("free", "pro")), optional = false)), ForbidExtra),
             subPackage = Some("account"),
             description = Some("Account model in a sibling package"),
-            validators = List()
+            validators = List(),
+            methods = List()
           )
           ),
           useOptionTypes = true,
-          listType = "List"
+          listType = "List",
+          fromJsonStyle = "either"
         )
   }
 
