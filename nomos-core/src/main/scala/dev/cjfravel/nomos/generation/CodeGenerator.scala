@@ -33,9 +33,17 @@ class CodeGenerator(config: GeneratorConfig) {
     } else {
       val generatedFiles = fileResults.collect { case Right(file) => file }
       
+      // Generate a file per unique enum type, in its owning definition's package
+      val enumFiles = multiTemplate.definitions.flatMap { definition =>
+        val pkg = definition.fullPackage(multiTemplate.basePackage)
+        collectEnums(definition.templateType).map { case (enumName, values) =>
+          generateEnum(pkg, enumName, values)
+        }
+      }.groupBy(_.relativePath).values.map(_.head).toList
+      
       // Always generate NomosFormats with Jackson serialization and embedded template
       val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate)
-      Right(nomosFormatsFile :: generatedFiles)
+      Right(nomosFormatsFile :: generatedFiles ::: enumFiles)
     }
   }
 
@@ -435,6 +443,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
       case ExternalType(qn) => qn
+      case EnumType(enumName, _) => enumName
       case ObjectType(fields, AllowExtra) if fields.isEmpty => "Map[String, Any]"
       case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
         s"Map[String, ${scalaTypeForDefinition(vt, optional = false, definitionsMap)}]"
@@ -449,6 +458,85 @@ class CodeGenerator(config: GeneratorConfig) {
     } else {
       baseType
     }
+  }
+
+  /**
+   * Collects all enum (name, values) declarations from a template type.
+   */
+  private def collectEnums(templateType: TemplateType): List[(String, List[String])] = {
+    templateType match {
+      case EnumType(name, values) => List((name, values))
+      case ArrayType(elementType, _) => collectEnums(elementType)
+      case MapType(valueType) => collectEnums(valueType)
+      case UnionType(types) => types.flatMap(collectEnums)
+      case ObjectType(fields, _) => fields.values.flatMap(f => collectEnums(f.fieldType)).toList
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _) =>
+        val v = variants.values.flatMap(o => o.fields.values.flatMap(f => collectEnums(f.fieldType)))
+        val c = commonFields.values.flatMap(f => collectEnums(f.fieldType))
+        (v ++ c).toList
+      case _ => Nil
+    }
+  }
+
+  /**
+   * Generates a sealed-trait enum type with string (de)serialization wired via Jackson annotations.
+   */
+  private def generateEnum(packageName: String, enumName: String, values: List[String]): GeneratedFile = {
+    val builder = ScalaCodeBuilder()
+    val cases = values.map(v => (v, ScalaCodeBuilder.toPascalCase(v)))
+    
+    builder.line(s"package $packageName")
+    builder.emptyLine()
+    builder.line("import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}")
+    builder.line("import com.fasterxml.jackson.databind.{SerializerProvider, DeserializationContext}")
+    builder.line("import com.fasterxml.jackson.databind.annotation.{JsonSerialize, JsonDeserialize}")
+    builder.line("import com.fasterxml.jackson.databind.ser.std.StdSerializer")
+    builder.line("import com.fasterxml.jackson.databind.deser.std.StdDeserializer")
+    builder.emptyLine()
+    builder.line(s"@JsonSerialize(using = classOf[${enumName}Serializer])")
+    builder.line(s"@JsonDeserialize(using = classOf[${enumName}Deserializer])")
+    builder.line(s"sealed trait $enumName")
+    builder.emptyLine()
+    builder.line(s"object $enumName {")
+    builder.indent()
+    cases.foreach { case (_, obj) => builder.line(s"case object $obj extends $enumName") }
+    builder.emptyLine()
+    builder.line(s"val values: List[$enumName] = List(${cases.map(_._2).mkString(", ")})")
+    builder.emptyLine()
+    builder.line(s"def fromString(s: String): Option[$enumName] = s match {")
+    builder.indent()
+    cases.foreach { case (raw, obj) => builder.line("case \"" + raw + "\" => Some(" + obj + ")") }
+    builder.line("case _ => None")
+    builder.dedent()
+    builder.line("}")
+    builder.emptyLine()
+    builder.line(s"def asString(v: $enumName): String = v match {")
+    builder.indent()
+    cases.foreach { case (raw, obj) => builder.line("case " + obj + " => \"" + raw + "\"") }
+    builder.dedent()
+    builder.line("}")
+    builder.dedent()
+    builder.line("}")
+    builder.emptyLine()
+    builder.line(s"class ${enumName}Serializer extends StdSerializer[$enumName](classOf[$enumName]) {")
+    builder.indent()
+    builder.line(s"override def serialize(value: $enumName, gen: JsonGenerator, provider: SerializerProvider): Unit =")
+    builder.indent()
+    builder.line(s"gen.writeString($enumName.asString(value))")
+    builder.dedent()
+    builder.dedent()
+    builder.line("}")
+    builder.emptyLine()
+    builder.line(s"class ${enumName}Deserializer extends StdDeserializer[$enumName](classOf[$enumName]) {")
+    builder.indent()
+    builder.line(s"override def deserialize(p: JsonParser, ctxt: DeserializationContext): $enumName =")
+    builder.indent()
+    builder.line(s"""$enumName.fromString(p.getValueAsString).getOrElse(throw new IllegalArgumentException("Invalid $enumName: " + p.getValueAsString))""")
+    builder.dedent()
+    builder.dedent()
+    builder.line("}")
+    
+    GeneratedFile(packageName, enumName, builder.build())
   }
 
   /**

@@ -81,8 +81,13 @@ class TemplateParser {
   private def parseComplexType(json: JsonNode, path: String): Either[ParseError, TemplateType] = {
     extractString(json, "type", path).flatMap {
       case "string" =>
-        val constraints = parseStringConstraints(json, path)
-        Right(StringType(constraints))
+        if (json.has("enum") && extractOptionalString(json, "as").contains("enumType")) {
+          val name = extractOptionalString(json, "name").getOrElse("Enum")
+          val values = parseEnum(json).map(_.values).getOrElse(Nil)
+          Right(EnumType(name, values))
+        } else {
+          Right(StringType(parseStringConstraints(json, path)))
+        }
       
       case "number" =>
         val constraints = parseNumberConstraints(json, path)

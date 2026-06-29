@@ -3,7 +3,8 @@ package com.example.models.account
 case class Account(
   accountId: String,
   active: Boolean,
-  openedOn: java.time.LocalDate
+  openedOn: java.time.LocalDate,
+  tier: Tier
 )
 
 object Account {

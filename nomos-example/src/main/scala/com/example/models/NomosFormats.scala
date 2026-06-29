@@ -54,7 +54,7 @@ object NomosFormats {
           ),
           TemplateDefinition(
             name = "Account",
-            templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false), "openedOn" -> FieldDef(DateType(), optional = false)), ForbidExtra),
+            templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false), "openedOn" -> FieldDef(DateType(), optional = false), "tier" -> FieldDef(EnumType("Tier", List("free", "pro")), optional = false)), ForbidExtra),
             subPackage = Some("account"),
             description = Some("Account model in a sibling package"),
             validators = List()

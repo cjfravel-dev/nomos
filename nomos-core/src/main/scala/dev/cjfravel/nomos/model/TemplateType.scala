@@ -120,6 +120,11 @@ case class RecursiveRef(typeName: String) extends TemplateType
 case class ExternalType(qualifiedName: String) extends TemplateType
 
 /**
+ * Closed enum generated as a named sealed-trait type with string (de)serialization.
+ */
+case class EnumType(name: String, values: List[String]) extends TemplateType
+
+/**
  * Represents a field definition in an object type
  *
  * @param fieldType The type of the field

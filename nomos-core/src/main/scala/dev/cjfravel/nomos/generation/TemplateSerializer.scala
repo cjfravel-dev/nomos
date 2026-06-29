@@ -93,6 +93,9 @@ object TemplateSerializer {
       case ExternalType(qn) =>
         s"""ExternalType("${escapeString(qn)}")"""
       
+      case EnumType(enumName, values) =>
+        s"""EnumType("${escapeString(enumName)}", List(${values.map(v => s""""${escapeString(v)}"""").mkString(", ")}))"""
+      
       case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage) =>
         val variantsList = variants.map { case (name, objType) =>
           s""""${escapeString(name)}" -> ${serializeObjectTypeFields(objType)}"""

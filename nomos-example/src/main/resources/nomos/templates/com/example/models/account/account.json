@@ -8,7 +8,8 @@
       "template": {
         "accountId": "string",
         "active": "boolean",
-        "openedOn": "date"
+        "openedOn": "date",
+        "tier": { "type": "string", "enum": ["free", "pro"], "as": "enumType", "name": "Tier" }
       }
     }
   ]

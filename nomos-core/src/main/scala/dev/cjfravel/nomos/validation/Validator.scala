@@ -90,6 +90,9 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         }
       case ExternalType(_) =>
         List.empty
+      case EnumType(_, values) =>
+        if (json.isTextual && values.contains(json.asText())) List.empty
+        else List(ValidationError.constraintViolation(path, s"enum: ${values.mkString(", ")}", if (json.isTextual) json.asText() else json.getNodeType.toString))
     }
   }
   
