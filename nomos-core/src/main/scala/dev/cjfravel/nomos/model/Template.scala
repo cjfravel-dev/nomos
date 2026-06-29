@@ -60,7 +60,9 @@ case class MultiTemplate(
   definitions: List[TemplateDefinition],
   useOptionTypes: Boolean = true,
   listType: String = "List",
-  fromJsonStyle: String = "either"
+  fromJsonStyle: String = "either",
+  dateType: String = "java.time.LocalDate",
+  dateTimeType: String = "java.time.LocalDateTime"
 ) {
   /**
    * Fully-qualified name of a definition (basePackage + subPackage + name)
@@ -167,7 +169,9 @@ object MultiTemplate {
     val useOptionTypes = templates.headOption.forall(_.useOptionTypes)
     val listType = templates.headOption.map(_.listType).getOrElse("List")
     val fromJsonStyle = if (templates.exists(_.fromJsonStyle == "throwing")) "throwing" else "either"
-    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle)
+    val dateType = templates.headOption.map(_.dateType).getOrElse("java.time.LocalDate")
+    val dateTimeType = templates.headOption.map(_.dateTimeType).getOrElse("java.time.LocalDateTime")
+    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType)
   }
 
   private def commonPrefix(pkgs: List[String]): String = {

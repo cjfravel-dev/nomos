@@ -351,10 +351,10 @@ different library and a throwing `fromJson: T`. Make the serializer pluggable an
 > through the maven plugin to the generator, so generated `fromJson` still returns `Either`.
 > Plumb the template flag into `GeneratorConfig` (same class of plugin-vs-core wiring as P4-1).
 
-### P5-8. Date target type — **Low**
-`date`/`datetime` map to `java.time.LocalDate`/`LocalDateTime`. A legacy model using
-`java.util.Date` (or another date class) can't be matched. Make the generated date type
-configurable.
+### P5-8. Date target type — **Resolved**
+`date`/`datetime` map to `java.time.LocalDate`/`LocalDateTime` by default. Override per project
+with template-level `dateType` / `dateTimeType` (any fully-qualified class) to match a legacy
+model, e.g. `java.util.Date`.
 *Effort: S.*
 
 ### P5-7. Preserve source field order — **Low**

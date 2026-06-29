@@ -431,7 +431,9 @@ class TemplateParser {
       val useOptionTypes = extractOptionalBoolean(json, "useOptionTypes").getOrElse(true)
       val listType = extractOptionalString(json, "listType").getOrElse("List")
       val fromJsonStyle = extractOptionalString(json, "fromJsonStyle").getOrElse("either")
-      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType, fromJsonStyle)
+      val dateType = extractOptionalString(json, "dateType").getOrElse("java.time.LocalDate")
+      val dateTimeType = extractOptionalString(json, "dateTimeType").getOrElse("java.time.LocalDateTime")
+      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType)
       
       multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate

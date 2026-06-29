@@ -465,8 +465,8 @@ class CodeGenerator(config: GeneratorConfig) {
       case LongType(_) => "Long"
       case DecimalType(_) => "BigDecimal"
       case BooleanType() => "Boolean"
-      case DateType() => "java.time.LocalDate"
-      case DateTimeType() => "java.time.LocalDateTime"
+      case DateType() => config.dateType
+      case DateTimeType() => config.dateTimeType
       case ArrayType(elementType, _) =>
         s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
       case MapType(valueType) =>

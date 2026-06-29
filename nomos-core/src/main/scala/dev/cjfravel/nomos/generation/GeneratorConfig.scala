@@ -15,7 +15,9 @@ case class GeneratorConfig(
   outputDir: String,
   useOptionTypes: Boolean = true,
   listType: String = "List",
-  throwingFromJson: Boolean = false
+  throwingFromJson: Boolean = false,
+  dateType: String = "java.time.LocalDate",
+  dateTimeType: String = "java.time.LocalDateTime"
 ) {
   /**
    * Validates the configuration

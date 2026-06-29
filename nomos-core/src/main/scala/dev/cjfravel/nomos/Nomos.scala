@@ -78,7 +78,9 @@ object Nomos {
       outputDir,
       template.useOptionTypes,
       template.listType,
-      throwingFromJson = template.fromJsonStyle == "throwing"
+      throwingFromJson = template.fromJsonStyle == "throwing",
+      dateType = template.dateType,
+      dateTimeType = template.dateTimeType
     )
     val generator = new CodeGenerator(config)
     val writer = new FileWriter()
