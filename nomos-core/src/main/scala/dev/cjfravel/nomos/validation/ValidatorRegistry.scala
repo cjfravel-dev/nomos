@@ -3,8 +3,9 @@ package dev.cjfravel.nomos.validation
 import com.fasterxml.jackson.databind.JsonNode
 
 /**
- * Registry of named custom validators. Applications register cross-field or conditional
- * rules by name; templates reference them in their `validators` list. Errors carry the name.
+ * Registry of named custom validators. Applications register checks by name; each receives the
+ * whole JSON node and returns errors. Templates reference them in their `validators` list, and
+ * errors carry the validator name.
  */
 object ValidatorRegistry {
   private val validators = scala.collection.mutable.Map.empty[String, JsonNode => List[ValidationError]]

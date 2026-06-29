@@ -20,7 +20,7 @@
       <a href="index.html" data-section="home">Home</a>
       <a href="users/getting-started.html" data-section="users">User Guide</a>
       <a href="contributors/index.html" data-section="contributors">Contributors</a>
-      <a href="api/index.html" data-section="api">API</a>
+      <a href="api/dev/cjfravel/nomos/Nomos$.html" data-section="api">API</a>
       <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
     </nav>
   </div>
@@ -90,7 +90,7 @@
     <p>
       A hand-written model and its validator are two copies of the same truth,
       kept in sync by hand. Add a field, tighten a constraint, rename a variant —
-      now you edit the case class, the Jackson wiring, and the validation, and
+      now you edit the case class, its (de)serialization, and its validation, and
       hope they agree. They drift. Nomos removes the second copy: you write one
       template, and the case class, its (de)serialization, and a validator are
       all generated from it.
@@ -100,6 +100,43 @@
       (νόμος) is <em>the law</em> — the agreed-upon order a community lives by.
       Nomos makes your template the law: the single declaration your Scala types
       and your JSON both answer to.
+    </p>
+
+    <h2 id="vs-annotations">Compared to annotation libraries</h2>
+    <p>
+      Most JSON tooling annotates a hand-written model — serialization hints and
+      validation constraints declared as field annotations (Gson's
+      <code>@SerializedName</code>, Jackson's <code>@JsonProperty</code>, Bean Validation's
+      <code>@NotNull</code>/<code>@Size</code>, and the like). The class stays
+      the source of truth, and serialization and validation rules are scattered across
+      annotations on its fields. Nomos inverts that: the template is the source of truth, and the
+      class, its (de)serialization, and its validator are generated from it.
+    </p>
+    <div class="split">
+      <div class="split-card">
+        <h2>Annotating a model</h2>
+        <ul>
+          <li>You author and maintain the class by hand.</li>
+          <li>Rules are spread across field annotations; the full schema isn't readable in one place.</li>
+          <li>The schema is bound to one class in one language — JSON consumers elsewhere can't reuse it.</li>
+          <li>Custom validation beyond single fields means annotations plus a separate validator class, wired onto the model.</li>
+          <li>Reordering or renaming means touching the class, its serialization hints, and its constraints together.</li>
+        </ul>
+      </div>
+      <div class="split-card contributors">
+        <h2>Declaring with Nomos</h2>
+        <ul>
+          <li>One language-neutral template declares the shape; the class is generated.</li>
+          <li>Types, constraints, and structure live together in the declaration.</li>
+          <li>The same template can validate JSON, embed in the artifact, and serve as a shared contract.</li>
+          <li>Custom validators (any check over the payload, such as comparing or combining several fields) are named in the template and registered as functions; formats and adapters extend the same way.</li>
+          <li>Field order and naming come from one place and stay consistent across model, JSON, and validation.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted">
+      The trade-off is a build-time generation step instead of plain hand-written classes — in
+      return, the model and its validation are always derived from the same declaration.
     </p>
 
     <h2 id="quick-look">A quick look</h2>
@@ -138,7 +175,7 @@ val back = User.fromJson(json)   // Either[String, User]</code></pre>
     <div class="card-grid">
       <div class="card">
         <h3>Rich type system</h3>
-        <p><code>int</code>, <code>long</code>, <code>decimal</code>, <code>date</code>/<code>datetime</code>, maps, unions, enums, defaults, and nullable raw fields — not just strings and doubles.</p>
+        <p>Strings, numbers (<code>int</code>, <code>long</code>, <code>decimal</code>, <code>double</code>), <code>date</code>/<code>datetime</code>, booleans, arrays, maps, unions, enums, defaults, and nullable raw fields.</p>
       </div>
       <div class="card">
         <h3>Validation built in</h3>
@@ -150,7 +187,7 @@ val back = User.fromJson(json)   // Either[String, User]</code></pre>
       </div>
       <div class="card">
         <h3>Extensible</h3>
-        <p>Register named cross-field validators, custom string formats, and (de)serialization adapters via <code>Nomos.validators</code>, <code>Nomos.formats</code>, and <code>Nomos.adapters</code>.</p>
+        <p>Register named custom validators, custom string formats, and (de)serialization adapters via <code>Nomos.validators</code>, <code>Nomos.formats</code>, and <code>Nomos.adapters</code>.</p>
       </div>
       <div class="card">
         <h3>Build-time generation</h3>

@@ -19,7 +19,7 @@
       <a href="../index.html" data-section="home">Home</a>
       <a href="getting-started.html" data-section="users">User Guide</a>
       <a href="../contributors/index.html" data-section="contributors">Contributors</a>
-      <a href="../api/index.html" data-section="api">API</a>
+      <a href="../api/dev/cjfravel/nomos/Nomos$.html" data-section="api">API</a>
       <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
     </nav>
   </div>
@@ -133,7 +133,7 @@
   "retries":  { "$optional": "int", "nullable": true },        // java.lang.Integer = null (boxed)
   "verbose":  { "type": "boolean", "default": false }          // verbose: Boolean = false
 }</code></pre>
-    <div class="callout tip"><p><code>nullable: true</code> opts out of <code>Option</code> for legacy parity — a raw nullable type (value types are boxed so <code>null</code> compiles).</p></div>
+    <div class="callout tip"><p><code>nullable: true</code> generates a raw nullable type instead of <code>Option</code>; value types are boxed (e.g. <code>java.lang.Integer</code>) so <code>null</code> compiles.</p></div>
 
     <h2 id="refs">References</h2>
 <pre><code class="language-json">{

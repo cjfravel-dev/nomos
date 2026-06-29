@@ -19,7 +19,7 @@
       <a href="../index.html" data-section="home">Home</a>
       <a href="getting-started.html" data-section="users">User Guide</a>
       <a href="../contributors/index.html" data-section="contributors">Contributors</a>
-      <a href="../api/index.html" data-section="api">API</a>
+      <a href="../api/dev/cjfravel/nomos/Nomos$.html" data-section="api">API</a>
       <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
     </nav>
   </div>
@@ -84,10 +84,13 @@ Nomos.validate(template, jsonData, "com.example.User") match {
   case Left(errors)  => // List[ValidationError]
 }</code></pre>
 
-    <h2 id="validators">Custom validators (cross-field rules)</h2>
+    <h2 id="validators">Custom validators</h2>
     <p>
-      Schema describes shape; cross-field and conditional rules are application logic. Declare
-      named validators on a definition, and register their implementations once at startup.
+      Schema describes shape; anything beyond it is a custom validator — an arbitrary check that
+      receives the whole JSON node and returns errors. Declare named validators on a definition,
+      and register their implementations once at startup. Common uses include rules that span
+      several fields or depend on one another (e.g. <code>startDate &lt;= endDate</code>, or
+      "if A then B is required"), but a validator can run any logic you like.
     </p>
 <pre><code class="language-json">{
   "name": "Reservation",

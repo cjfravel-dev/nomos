@@ -383,8 +383,9 @@ register additional named formats. A format predicate returns true when the valu
         <a title="Registry of named custom validators." href="ValidatorRegistry$.html"><span class="name">ValidatorRegistry</span></a>
       </span>
       
-      <p class="shortcomment cmt">Registry of named custom validators.</p><div class="fullcomment"><div class="comment cmt"><p>Registry of named custom validators. Applications register cross-field or conditional
-rules by name; templates reference them in their <code>validators</code> list. Errors carry the name.
+      <p class="shortcomment cmt">Registry of named custom validators.</p><div class="fullcomment"><div class="comment cmt"><p>Registry of named custom validators. Applications register checks by name; each receives the
+whole JSON node and returns errors. Templates reference them in their <code>validators</code> list, and
+errors carry the validator name.
 </p></div></div>
     </li>
               </ol>
