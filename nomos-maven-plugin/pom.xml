@@ -14,7 +14,7 @@
     <packaging>maven-plugin</packaging>
 
     <name>Nomos Maven Plugin</name>
-    <description>Maven plugin for generating Scala code from Chisel templates</description>
+    <description>Maven plugin for generating Scala code from Nomos templates</description>
 
     <dependencies>
         <!-- Nomos Core -->

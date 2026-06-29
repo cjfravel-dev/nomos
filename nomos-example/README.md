@@ -1,6 +1,6 @@
-# Chisel Example Project
+# Nomos Example Project
 
-This is a working example demonstrating how to use Chisel for code generation and validation.
+This is a working example demonstrating how to use Nomos for code generation and validation.
 
 ## What This Example Demonstrates
 
@@ -45,7 +45,7 @@ mvn exec:java
 
 Expected output:
 ```
-=== Chisel Example Application ===
+=== Nomos Example Application ===
 
 Created user:
   ID: user-123
@@ -125,13 +125,13 @@ val result = User.fromJson(json) // Either[String, User]
 ### With Validation
 
 ```scala
-import dev.cjfravel.nomos.Chisel
+import dev.cjfravel.nomos.Nomos
 
 // Load template
-val template = Chisel.parseTemplate(templateJson).right.get
+val template = Nomos.parseTemplate(templateJson).right.get
 
 // Validate before parsing
-Chisel.validate(template, jsonData, "User") match {
+Nomos.validate(template, jsonData, "User") match {
   case Right(_) => 
     // Valid - safe to parse
     User.fromJson(jsonData)
@@ -145,7 +145,7 @@ Chisel.validate(template, jsonData, "User") match {
 
 ### Dependencies
 
-The example uses Chisel BOM for dependency management:
+The example uses Nomos BOM for dependency management:
 
 ```xml
 <dependencyManagement>

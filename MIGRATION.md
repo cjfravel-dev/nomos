@@ -81,7 +81,7 @@ mvn -pl nomos-example clean compile
 
 ### For Users
 
-Projects using Chisel just need:
+Projects using Nomos just need:
 
 ```xml
 <dependency>

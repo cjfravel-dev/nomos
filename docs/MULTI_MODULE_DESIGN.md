@@ -1,8 +1,8 @@
-# Chisel Multi-Module Design
+# Nomos Multi-Module Design
 
 ## Overview
 
-Chisel is organized as a multi-module Maven project using a **Bill of Materials (BOM)** pattern for dependency management. This architecture provides clean separation of concerns and consistent dependency versions across all modules.
+Nomos is organized as a multi-module Maven project using a **Bill of Materials (BOM)** pattern for dependency management. This architecture provides clean separation of concerns and consistent dependency versions across all modules.
 
 ## Module Structure
 
@@ -40,7 +40,7 @@ nomos/
 **Features**:
 - Declares Jackson 2.15.2 versions
 - Declares Scala library versions
-- Declares Chisel module versions
+- Declares Nomos module versions
 - Provides consistent versions across all projects
 
 **Benefits**:
@@ -317,10 +317,10 @@ val userResult = User.fromJson("""{"id":"123","username":"john",...}""")
 val json = User.toJson(user)
 
 // With validation
-import dev.cjfravel.nomos.Chisel
+import dev.cjfravel.nomos.Nomos
 
 val template = Nomos.parseTemplate(templateJson, "com.example").right.get
-Chisel.validate(template, jsonData, "User") match {
+Nomos.validate(template, jsonData, "User") match {
   case Right(_) => User.fromJson(jsonData)
   case Left(errors) => // Handle errors
 }
@@ -376,7 +376,7 @@ Each template specifies its configuration:
 
 ## Summary
 
-Chisel's multi-module design provides:
+Nomos's multi-module design provides:
 - ✅ Clean, maintainable architecture
 - ✅ Standard Maven dependency management via BOM
 - ✅ Simple, readable generated code

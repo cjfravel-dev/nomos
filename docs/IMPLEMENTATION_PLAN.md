@@ -1,4 +1,4 @@
-# Chisel Implementation Plan
+# Nomos Implementation Plan
 
 ## Technology Stack
 
@@ -233,7 +233,7 @@ nomos/
 │   │                   │   ├── GeneratorConfig.scala
 │   │                   │   ├── GeneratedFile.scala
 │   │                   │   └── ScalaCodeBuilder.scala
-│   │                   └── Chisel.scala (Main API)
+│   │                   └── Nomos.scala (Main API)
 │   └── test/
 │       └── scala/
 │           └── dev/
@@ -250,7 +250,7 @@ nomos/
 ### Main Entry Point
 
 ```scala
-object Chisel {
+object Nomos {
   // Parse template from string
   def parseTemplate(json: String): Either[ParseError, Template]
   
@@ -270,7 +270,7 @@ object Chisel {
   def processTemplate(
     templatePath: String,
     config: GeneratorConfig
-  ): Either[ChiselError, ProcessResult]
+  ): Either[NomosError, ProcessResult]
 }
 
 case class ProcessResult(
@@ -293,12 +293,12 @@ val config = GeneratorConfig(
 )
 
 // Parse template
-val templateResult = Chisel.parseTemplateFile("templates/user.json")
+val templateResult = Nomos.parseTemplateFile("templates/user.json")
 
 templateResult match {
   case Right(template) =>
     // Generate code
-    Chisel.generateCode(template, config) match {
+    Nomos.generateCode(template, config) match {
       case Right(files) =>
         println(s"Generated ${files.length} files")
         
@@ -307,7 +307,7 @@ templateResult match {
     }
     
     // Create validator
-    val validator = Chisel.createValidator(template)
+    val validator = Nomos.createValidator(template)
     
     // Validate JSON
     val json = """{"name": "Alice", "age": 30}"""
@@ -498,7 +498,7 @@ All errors use Either/Try for functional error handling:
 - `ParseError`: Template parsing issues
 - `ValidationError`: JSON validation issues
 - `GeneratorError`: Code generation issues
-- `ChiselError`: Top-level error type encompassing all
+- `NomosError`: Top-level error type encompassing all
 
 ## Next Steps
 

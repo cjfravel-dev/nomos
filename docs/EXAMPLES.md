@@ -1,6 +1,6 @@
-# Chisel Examples
+# Nomos Examples
 
-This document provides practical examples of using Chisel for various use cases.
+This document provides practical examples of using Nomos for various use cases.
 
 ## Example 1: Simple User Profile
 
@@ -422,10 +422,10 @@ case class UnaryOp(
 import dev.cjfravel.nomos._
 
 // Load template from file or string
-val template = ChiselTemplate.fromFile("templates/order.json")
+val template = NomosTemplate.fromFile("templates/order.json")
 
 // Create validator
-val validator = ChiselValidator.fromTemplate(template)
+val validator = NomosValidator.fromTemplate(template)
 
 // Validate JSON string
 val jsonString = """{"orderId": "ORD-001", ...}"""
@@ -438,5 +438,5 @@ validator.validate(jsonString) match {
 }
 
 // Generate case class code
-val generatedCode = ChiselGenerator.generateCaseClasses(template)
+val generatedCode = NomosGenerator.generateCaseClasses(template)
 println(generatedCode)

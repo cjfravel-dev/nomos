@@ -14,11 +14,11 @@
     <packaging>pom</packaging>
 
     <name>Nomos BOM</name>
-    <description>Bill of Materials for Chisel - manages dependency versions</description>
+    <description>Bill of Materials for Nomos - manages dependency versions</description>
 
     <dependencyManagement>
         <dependencies>
-            <!-- Chisel Modules -->
+            <!-- Nomos Modules -->
             <dependency>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-core</artifactId>

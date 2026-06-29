@@ -1,6 +1,6 @@
 # Simple User Example
 
-This example demonstrates basic code generation with Chisel.
+This example demonstrates basic code generation with Nomos.
 
 ## Template
 

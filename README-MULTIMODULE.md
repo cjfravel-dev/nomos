@@ -1,4 +1,4 @@
-# Chisel - Multi-Module Architecture
+# Nomos - Multi-Module Architecture
 
 A Scala library for defining JSON templates and generating type-safe case classes with automatic JSON serialization/deserialization.
 
@@ -14,7 +14,7 @@ nomos/
 │   └── src/main/scala/
 │       └── dev/cjfravel/nomos/runtime/
 │           ├── NomosFormats.scala      # Base trait for formats
-│           └── ChiselSerializer.scala    # Discriminator helper
+│           └── NomosSerializer.scala    # Discriminator helper
 ├── nomos-core/             # Core library (template parsing & code gen)
 │   ├── pom.xml
 │   └── (uses ../src for source code)
@@ -40,7 +40,7 @@ Runtime support library for generated code.
 
 **Features:**
 - `NomosFormats`: Base trait providing default json4s formats
-- `ChiselSerializer`: Helper for creating discriminated type serializers
+- `NomosSerializer`: Helper for creating discriminated type serializers
 - **Shaded dependencies**: json4s relocated to prevent version conflicts
 
 **Artifact:** `dev.cjfravel:nomos-runtime:0.1.0-SNAPSHOT`
@@ -71,7 +71,7 @@ Maven plugin for automatic code generation during build.
 
 ### nomos-example
 
-Complete example project demonstrating Chisel usage.
+Complete example project demonstrating Nomos usage.
 
 See [nomos-example/README.md](nomos-example/README.md) for details.
 
@@ -106,7 +106,7 @@ cd nomos-maven-plugin && mvn clean install
 cd nomos-example && mvn clean compile
 ```
 
-## Using Chisel in Your Project
+## Using Nomos in Your Project
 
 ### 1. Add Dependencies
 

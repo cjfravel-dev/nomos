@@ -385,7 +385,7 @@ Supported string formats:
 
 ## Cross-Package References
 
-When definitions have different `subPackage` values, Chisel automatically generates import statements:
+When definitions have different `subPackage` values, Nomos automatically generates import statements:
 
 ```json
 {

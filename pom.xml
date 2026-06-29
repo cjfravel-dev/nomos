@@ -10,8 +10,8 @@
     <packaging>pom</packaging>
 
     <name>Nomos Parent</name>
-    <description>Parent POM for Chisel multi-module project</description>
-    <url>https://github.com/cjfravel/chisel</url>
+    <description>Parent POM for Nomos multi-module project</description>
+    <url>https://github.com/cjfravel-dev/nomos</url>
 
     <modules>
         <module>nomos-bom</module>
@@ -75,7 +75,7 @@
                 <scope>provided</scope>
             </dependency>
 
-            <!-- Chisel Modules -->
+            <!-- Nomos Modules -->
             <dependency>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-core</artifactId>

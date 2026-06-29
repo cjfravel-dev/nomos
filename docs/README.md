@@ -1,8 +1,8 @@
-# Chisel Documentation
+# Nomos Documentation
 
 ## Overview
 
-This directory contains comprehensive documentation for the Chisel project.
+This directory contains comprehensive documentation for the Nomos project.
 
 ## Documentation Files
 
@@ -44,7 +44,7 @@ This directory contains comprehensive documentation for the Chisel project.
 ## Key Concepts
 
 ### Templates
-JSON files that define the structure of your data models. Chisel generates Scala case classes from these templates.
+JSON files that define the structure of your data models. Nomos generates Scala case classes from these templates.
 
 ### Code Generation
 The process of converting templates into Scala code, including case classes and serialization/deserialization methods.
