@@ -102,9 +102,11 @@ case class RecursiveRef(typeName: String) extends TemplateType
  * @param fieldType The type of the field
  * @param optional Whether the field is optional (becomes Option[T] in Scala)
  * @param default Optional default value rendered as a Scala literal (e.g. "false", "\"x\"")
+ * @param adapter Optional named (de)serialization adapter for the field
  */
 case class FieldDef(
   fieldType: TemplateType,
   optional: Boolean = false,
-  default: Option[String] = None
+  default: Option[String] = None,
+  adapter: Option[String] = None
 )

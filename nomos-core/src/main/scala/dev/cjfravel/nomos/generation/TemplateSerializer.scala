@@ -131,7 +131,8 @@ object TemplateSerializer {
    */
   def serializeFieldDef(fieldDef: FieldDef): String = {
     val default = fieldDef.default.map(d => s""", default = Some("${escapeString(d)}")""").getOrElse("")
-    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}$default)"
+    val adapter = fieldDef.adapter.map(a => s""", adapter = Some("${escapeString(a)}")""").getOrElse("")
+    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}$default$adapter)"
   }
   
   /**

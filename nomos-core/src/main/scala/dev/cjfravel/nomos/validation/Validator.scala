@@ -109,21 +109,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   }
   
   private def validateFormat(format: String, value: String, path: String): Option[ValidationError] = {
-    format match {
-      case "email" if !value.matches("""^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$""") =>
-        Some(ValidationError.constraintViolation(path, "format: email", value))
-      case "url" if !value.matches("""^https?://.*""") =>
-        Some(ValidationError.constraintViolation(path, "format: url", value))
-      case "uuid" if !value.matches("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$""") =>
-        Some(ValidationError.constraintViolation(path, "format: uuid", value))
-      case "iso8601" if !value.matches("""^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$""") =>
-        Some(ValidationError.constraintViolation(path, "format: iso8601", value))
-      case "alphaNoWhitespace" if !value.matches("""^[a-zA-Z]+$""") =>
-        Some(ValidationError.constraintViolation(path, "format: alphaNoWhitespace", value))
-      case "majorAndMinor" if !value.matches("""^[0-9]+\.[0-9]+$""") =>
-        Some(ValidationError.constraintViolation(path, "format: majorAndMinor", value))
-      case _ => None
-    }
+    if (FormatRegistry.validate(format, value)) None
+    else Some(ValidationError.constraintViolation(path, s"format: $format", value))
   }
   
   private def validateNumber(json: JsonNode, path: String, constraints: List[Constraint]): List[ValidationError] = {

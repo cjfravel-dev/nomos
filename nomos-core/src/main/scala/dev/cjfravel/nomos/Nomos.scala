@@ -3,7 +3,7 @@ package dev.cjfravel.nomos
 import dev.cjfravel.nomos.model.MultiTemplate
 import dev.cjfravel.nomos.parser.{TemplateParser, ParseError}
 import dev.cjfravel.nomos.generation.{CodeGenerator, FileWriter, GeneratorConfig, GeneratorError, WriteReport}
-import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError, ValidatorRegistry}
+import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError, ValidatorRegistry, FormatRegistry}
 import com.fasterxml.jackson.databind.JsonNode
 
 /**
@@ -29,6 +29,12 @@ object Nomos {
   
   /** Registry of named custom validators referenced by templates. */
   val validators: ValidatorRegistry.type = ValidatorRegistry
+  
+  /** Registry of named string formats. */
+  val formats: FormatRegistry.type = FormatRegistry
+  
+  /** Registry of named (de)serialization adapters. */
+  val adapters: dev.cjfravel.nomos.serialization.AdapterRegistry.type = dev.cjfravel.nomos.serialization.AdapterRegistry
   
   /**
    * Parse a template from JSON string.

@@ -206,7 +206,7 @@ class TemplateParser {
         fieldType <- parseType(innerType, path)
       } yield FieldDef(fieldType, optional = true)
     } else {
-      parseType(json, path).map(FieldDef(_, optional = false, default = renderDefault(json)))
+      parseType(json, path).map(FieldDef(_, optional = false, default = renderDefault(json), adapter = extractOptionalString(json, "adapter")))
     }
   }
 
@@ -372,7 +372,7 @@ class TemplateParser {
   private def resolveRefVariants(definitions: List[TemplateDefinition]): List[TemplateDefinition] = {
     val byName = definitions.map(d => d.name -> d).toMap
     def resolveVariant(v: ObjectType): ObjectType = v.fields.get("$ref") match {
-      case Some(FieldDef(ReferenceType(name), _, _)) =>
+      case Some(FieldDef(ReferenceType(name), _, _, _)) =>
         byName.get(name).map(_.templateType).collect { case o: ObjectType => o }.getOrElse(v)
       case _ => v
     }
