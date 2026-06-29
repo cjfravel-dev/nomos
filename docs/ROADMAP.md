@@ -283,6 +283,67 @@ Valid JSON (must both validate and deserialize):
 
 ---
 
+## P5 — Exact-parity gaps (replacing a hand-written model)
+
+Found making generated output byte/shape-identical to an existing hand-written model. These
+block a drop-in replacement; until then, generated code is close but not identical.
+
+### P5-1. Nullable raw types (no `Option`) — **High**
+Legacy models often use a nullable raw type for an optional field (absent → `null`), e.g.
+`Array[String]` or `Boolean` defaulting to false — not `Option[T]`. `useOptionTypes=false`
+currently makes optional fields *required*, so there is no mode that yields a nullable raw
+type. Add an "optional ⇒ nullable raw (no Option wrapper)" generation mode.
+```json
+{ "tags": { "$optional": ["string"], "nullable": true } }
+```
+Expected `tags: Array[String]` (null when absent); today `Option[Array[String]]`. *Effort: M.*
+
+### P5-2. Reference external (hand-written) types — **High**
+A field can only `$ref` a type defined in the templates. Keeping a field whose type is a rich
+hand-written class (not something you want generated) forces either regenerating that type or
+dropping the field. Allow referencing an external fully-qualified type that nomos does not
+generate.
+```json
+{ "rules": ["$extern:com.example.legacy.Rule"] }
+```
+*Effort: M.*
+
+### P5-3. Native date / temporal type — **Medium**
+No date type; a date field must be `string`. Add a `date`/`datetime` type mapping to the
+platform date class with a configurable (de)serialization format.
+```json
+{ "effective_date": "datetime" }
+```
+*Effort: M.*
+
+### P5-4. Closed enum as a generated enum type — **Medium**
+`enum` validates a `String` but does not emit a Scala `Enumeration`/sealed enum type, so a
+field typed as an enum in the legacy model becomes `String`. Add an option to generate a named
+enum type and use it as the field type.
+```json
+{ "kind": { "type": "string", "enum": ["a","b"], "as": "enumType", "name": "Kind" } }
+```
+*Effort: M.*
+
+### P5-5. Custom / helper methods on generated classes — **Medium**
+No way to attach derived helpers (e.g. a computed display name) to a generated class, so such
+methods are lost. Allow declaring derived members in the template (or a partial/companion mixin
+the generator preserves).
+*Effort: M.*
+
+### P5-6. Pluggable serializer + `fromJson` signature — **Medium**
+Generated ser/de is Jackson-only and `fromJson` returns `Either`. A legacy API may use a
+different library and a throwing `fromJson: T`. Make the serializer pluggable and the
+`fromJson` signature selectable (throwing vs `Either`).
+*Effort: M.*
+
+### P5-7. Preserve source field order — **Low**
+Generated case-class fields are reordered relative to the template, changing positional
+construction and serialized key order. Preserve declaration order.
+*Effort: S.*
+
+---
+
 ## Suggested sequencing
 
 1. P0-1..4 — unlocks the bulk of typed models.
@@ -291,6 +352,7 @@ Valid JSON (must both validate and deserialize):
 4. P1-3 + P1-4 — serialization parity.
 5. P3-1..4 — real-payload parity blockers (escaped keys + parameterized variants are highest impact).
 6. P4-1, P4-2, P4-4 — multi-template adoption (cross-template refs, open-map objects, prefix dispatch in codegen).
+7. P5-1..7 — exact-parity gaps (nullable-raw + external-type refs are highest impact).
 
 ---
 
