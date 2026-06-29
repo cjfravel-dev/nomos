@@ -44,7 +44,7 @@ public class GenerateMojo extends AbstractMojo {
      * Directory containing template files.
      * All paths are resolved relative to ${project.basedir}.
      */
-    @Parameter(property = "nomos.templateDirectory", defaultValue = "src/main/resources/templates")
+    @Parameter(property = "nomos.templateDirectory", defaultValue = "src/main/resources/nomos/templates")
     private String templateDirectory;
 
     /**
@@ -58,6 +58,12 @@ public class GenerateMojo extends AbstractMojo {
      */
     @Parameter(property = "nomos.excludes")
     private String excludes;
+
+    /**
+     * Output directory for generated sources, relative to ${project.basedir}.
+     */
+    @Parameter(property = "nomos.outputDirectory", defaultValue = "src/main/scala")
+    private String outputDirectory;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -97,53 +103,44 @@ public class GenerateMojo extends AbstractMojo {
             getLog().info("Processing: " + relativePath);
             
             try {
-                // Read and parse template
+                // Read template; derive base package from the template's location
                 String templateContent = new String(Files.readAllBytes(templateFile.toPath()));
-                scala.util.Either<?, ?> parseResult = Nomos.parseTemplate(templateContent);
-                
+                String basePackage = packageFromPath(templateDir.toPath(), templateFile.toPath());
+                getLog().info("  Base package: " + basePackage);
+
+                scala.util.Either<?, ?> parseResult = Nomos.parseTemplate(templateContent, basePackage);
+
                 if (parseResult.isLeft()) {
                     getLog().error("  Failed to parse template: " + parseResult.left().get());
                     failureCount++;
                     continue;
                 }
-                
+
                 MultiTemplate template = (MultiTemplate) parseResult.right().get();
-                getLog().info("  Base package: " + template.basePackage());
-                getLog().info("  Output dir: " + template.outputDir());
                 getLog().info("  Definitions: " + template.definitions().size());
-                
+
                 // Resolve output directory relative to project basedir
-                String resolvedOutputDir = new File(basedir, template.outputDir()).getAbsolutePath();
-                
-                // Create template with resolved output directory
-                MultiTemplate resolvedTemplate = new MultiTemplate(
-                    template.basePackage(),
-                    resolvedOutputDir,
-                    template.mainClass(),
-                    template.definitions(),
-                    template.useOptionTypes(),
-                    template.listType()
-                );
-                
+                String resolvedOutputDir = new File(basedir, outputDirectory).getAbsolutePath();
+
                 // Generate code using the Nomos API
-                scala.util.Either<?, ?> generateResult = Nomos.generateCode(resolvedTemplate);
-                
+                scala.util.Either<?, ?> generateResult = Nomos.generateCode(template, resolvedOutputDir);
+
                 if (generateResult.isLeft()) {
                     getLog().error("  Generation failed: " + generateResult.left().get());
                     failureCount++;
                     continue;
                 }
-                
+
                 // Get write report
                 Object writeReport = generateResult.right().get();
                 getLog().info("  Code generation completed successfully");
                 successCount++;
-                
+
                 // Add resolved output directory as source root
                 if (!generatedSourceRoots.contains(resolvedOutputDir)) {
                     generatedSourceRoots.add(resolvedOutputDir);
                 }
-                
+
             } catch (Exception e) {
                 getLog().error("  Error processing template: " + e.getMessage(), e);
                 failureCount++;
@@ -166,6 +163,26 @@ public class GenerateMojo extends AbstractMojo {
         if (failureCount > 0) {
             throw new MojoFailureException("Code generation failed for " + failureCount + " template(s)");
         }
+    }
+
+    /**
+     * Derives the base package from a template file's location relative to the template root.
+     * e.g. root/com/example/models/user.json -> "com.example.models".
+     */
+    private String packageFromPath(Path root, Path templateFile) {
+        Path relative = root.relativize(templateFile);
+        Path parent = relative.getParent();
+        if (parent == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Path part : parent) {
+            if (sb.length() > 0) {
+                sb.append('.');
+            }
+            sb.append(part.toString());
+        }
+        return sb.toString();
     }
 
     /**

@@ -1,0 +1,145 @@
+package dev.cjfravel.nomos.generation
+
+import dev.cjfravel.nomos.model._
+import scala.collection.immutable.ListMap
+
+/**
+ * Serializes MultiTemplate and related model objects into Scala source code
+ * that can be embedded in generated files to reconstruct the template at runtime.
+ */
+object TemplateSerializer {
+  
+  /**
+   * Generates Scala code to reconstruct a MultiTemplate
+   */
+  def serializeMultiTemplate(template: MultiTemplate): String = {
+    val definitions = template.definitions.map(serializeDefinition).mkString(",\n      ")
+    
+    s"""MultiTemplate(
+      basePackage = "${escapeString(template.basePackage)}",
+      definitions = List(
+      $definitions
+      ),
+      useOptionTypes = ${template.useOptionTypes},
+      listType = "${escapeString(template.listType)}"
+    )"""
+  }
+  
+  /**
+   * Generates Scala code to reconstruct a TemplateDefinition
+   */
+  def serializeDefinition(definition: TemplateDefinition): String = {
+    val subPackage = definition.subPackage.map(s => s"""Some("${escapeString(s)}")""").getOrElse("None")
+    val description = definition.description.map(s => s"""Some("${escapeString(s)}")""").getOrElse("None")
+    
+    s"""TemplateDefinition(
+        name = "${escapeString(definition.name)}",
+        templateType = ${serializeTemplateType(definition.templateType)},
+        subPackage = $subPackage,
+        description = $description
+      )"""
+  }
+  
+  /**
+   * Generates Scala code to reconstruct a TemplateType
+   */
+  def serializeTemplateType(templateType: TemplateType): String = {
+    templateType match {
+      case StringType(constraints) =>
+        val constraintsList = constraints.map(serializeConstraint).mkString(", ")
+        s"StringType(List($constraintsList))"
+      
+      case NumberType(constraints) =>
+        val constraintsList = constraints.map(serializeConstraint).mkString(", ")
+        s"NumberType(List($constraintsList))"
+      
+      case BooleanType() =>
+        "BooleanType()"
+      
+      case ArrayType(elementType) =>
+        s"ArrayType(${serializeTemplateType(elementType)})"
+      
+      case ObjectType(fields) =>
+        val fieldsList = fields.map { case (name, fieldDef) =>
+          s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
+        }.mkString(", ")
+        s"ObjectType(ListMap($fieldsList))"
+      
+      case ReferenceType(typeName) =>
+        s"""ReferenceType("${escapeString(typeName)}")"""
+      
+      case RecursiveRef(typeName) =>
+        s"""RecursiveRef("${escapeString(typeName)}")"""
+      
+      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames) =>
+        val variantsList = variants.map { case (name, objType) =>
+          s""""${escapeString(name)}" -> ${serializeObjectTypeFields(objType)}"""
+        }.mkString(", ")
+        val commonFieldsList = commonFields.map { case (name, fieldDef) =>
+          s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
+        }.mkString(", ")
+        val variantNamesMap = if (variantNames.isEmpty) {
+          "Map.empty[String, String]"
+        } else {
+          val entries = variantNames.map { case (k, v) =>
+            s""""${escapeString(k)}" -> "${escapeString(v)}""""
+          }.mkString(", ")
+          s"Map($entries)"
+        }
+        
+        s"""TypeDiscriminator(
+          fieldName = "${escapeString(fieldName)}",
+          variants = ListMap($variantsList),
+          commonFields = ListMap($commonFieldsList),
+          includeInOutput = $includeInOutput,
+          variantNames = $variantNamesMap
+        )"""
+    }
+  }
+  
+  /**
+   * Serializes just the ObjectType fields (for use in TypeDiscriminator variants)
+   */
+  private def serializeObjectTypeFields(objType: ObjectType): String = {
+    val fieldsList = objType.fields.map { case (name, fieldDef) =>
+      s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
+    }.mkString(", ")
+    s"ObjectType(ListMap($fieldsList))"
+  }
+  
+  /**
+   * Generates Scala code to reconstruct a FieldDef
+   */
+  def serializeFieldDef(fieldDef: FieldDef): String = {
+    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional})"
+  }
+  
+  /**
+   * Generates Scala code to reconstruct a Constraint
+   */
+  def serializeConstraint(constraint: Constraint): String = {
+    constraint match {
+      case MinLength(len) => s"MinLength($len)"
+      case MaxLength(len) => s"MaxLength($len)"
+      case Pattern(regex) => s"""Pattern("${escapeString(regex)}")"""
+      case Format(fmt) => s"""Format("${escapeString(fmt)}")"""
+      case Min(value) => s"Min($value)"
+      case Max(value) => s"Max($value)"
+      case MultipleOf(value) => s"MultipleOf($value)"
+      case MinItems(count) => s"MinItems($count)"
+      case MaxItems(count) => s"MaxItems($count)"
+      case UniqueItems(unique) => s"UniqueItems($unique)"
+    }
+  }
+  
+  /**
+   * Escapes special characters in strings for Scala source code
+   */
+  private def escapeString(s: String): String = {
+    s.replace("\\", "\\\\")
+     .replace("\"", "\\\"")
+     .replace("\n", "\\n")
+     .replace("\r", "\\r")
+     .replace("\t", "\\t")
+  }
+}

@@ -15,14 +15,14 @@ import com.fasterxml.jackson.databind.JsonNode
  *
  * @example
  * {{{
- * // Parse a template from JSON
- * val template = Nomos.parseTemplate(templateJson).right.get
+ * // Parse a template from JSON (base package derived from its file location)
+ * val template = Nomos.parseTemplate(templateJson, "com.example.models").right.get
  *
- * // Generate case classes (uses basePackage and outputDir from template)
+ * // Generate case classes
  * val result = Nomos.generateCode(template)
  *
- * // Validate JSON data against the main class
- * val validationResult = Nomos.validate(template, jsonData)
+ * // Validate JSON data against a definition's fully-qualified name
+ * val validationResult = Nomos.validate(template, jsonData, "com.example.models.User")
  * }}}
  */
 object Nomos {
@@ -33,27 +33,29 @@ object Nomos {
    * @param json The JSON string containing the template definition with definitions array
    * @return Either ParseError or MultiTemplate
    */
-  def parseTemplate(json: String): Either[ParseError, MultiTemplate] = {
-    TemplateParser.parseMultiTemplateString(json)
+  def parseTemplate(json: String, basePackage: String): Either[ParseError, MultiTemplate] = {
+    TemplateParser.parseMultiTemplateString(json, basePackage)
   }
   
   /**
    * Generate Scala case classes from a template.
-   * Uses the basePackage, outputDir, useOptionTypes, and listType specified in the template.
+   * Uses the basePackage, useOptionTypes, and listType from the template; outputDir defaults
+   * to the standard Maven source root.
    *
    * @param template The template to generate code from
+   * @param outputDir Output directory for generated files (default: src/main/scala)
    * @return Either GeneratorError or WriteReport containing successes and failures
    */
-  def generateCode(template: MultiTemplate): Either[GeneratorError, WriteReport] = {
+  def generateCode(template: MultiTemplate, outputDir: String = "src/main/scala"): Either[GeneratorError, WriteReport] = {
     val config = GeneratorConfig(
       template.basePackage,
-      template.outputDir,
+      outputDir,
       template.useOptionTypes,
       template.listType
     )
     val generator = new CodeGenerator(config)
     val writer = new FileWriter()
-    val outputDirFile = new java.io.File(template.outputDir)
+    val outputDirFile = new java.io.File(outputDir)
     
     generator.generateMulti(template).map { generatedFiles =>
       writer.writeFilesWithReport(generatedFiles, outputDirFile)
@@ -65,29 +67,29 @@ object Nomos {
    * 
    * @param template The template to validate against
    * @param json The JSON string to validate
-   * @param definitionName The name of the definition to validate against (defaults to mainClass)
+   * @param definitionName The fully-qualified or simple definition name to validate against
    * @return Either a list of validation errors or the parsed JSON value
    */
   def validate(
     template: MultiTemplate,
     json: String,
-    definitionName: String = null
+    definitionName: String
   ): Either[List[ValidationError], JsonNode] = {
     val validator = new MultiValidator(template)
-    val actualDefinitionName = if (definitionName == null) template.mainClass else definitionName
-    validator.validate(json, actualDefinitionName)
+    validator.validate(json, definitionName)
   }
   
   /**
    * Complete workflow: parse template, generate code, and provide a validator.
    *
    * @param templateJson The JSON template definition
+   * @param basePackage Base package for generated code (derived from template location)
    * @return Either error or NomosResult with template and write report
    */
-  def process(templateJson: String): Either[NomosError, NomosResult] = {
+  def process(templateJson: String, basePackage: String, outputDir: String = "src/main/scala"): Either[NomosError, NomosResult] = {
     (for {
-      template <- parseTemplate(templateJson).left.map(NomosError.ParseFailed)
-      report <- generateCode(template).left.map(NomosError.GenerationFailed)
+      template <- parseTemplate(templateJson, basePackage).left.map(NomosError.ParseFailed)
+      report <- generateCode(template, outputDir).left.map(NomosError.GenerationFailed)
     } yield NomosResult(template, report)).left.map(identity)
   }
   
@@ -95,10 +97,11 @@ object Nomos {
    * Parse template and create a validator for it.
    * 
    * @param templateJson The JSON template definition
+   * @param basePackage Base package for generated code (derived from template location)
    * @return Either ParseError or MultiValidator
    */
-  def createValidator(templateJson: String): Either[ParseError, MultiValidator] = {
-    parseTemplate(templateJson).map(new MultiValidator(_))
+  def createValidator(templateJson: String, basePackage: String): Either[ParseError, MultiValidator] = {
+    parseTemplate(templateJson, basePackage).map(new MultiValidator(_))
   }
 }
 

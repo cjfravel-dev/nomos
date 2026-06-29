@@ -1,16 +1,17 @@
 package com.example.models.user
 
 case class User(
-  email: String,
-  username: String,
-  age: Option[Double],
   id: String,
+  username: String,
+  email: String,
+  age: Option[Double],
   roles: List[String]
 )
 
 object User {
   import com.example.models.NomosFormats
   import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
 
   def fromJson(json: String): Either[String, User] = {
     try {
@@ -22,5 +23,16 @@ object User {
 
   def toJson(obj: User): String = {
     mapper.writeValueAsString(obj)
+  }
+
+  /**
+   * Validates JSON against the embedded template and returns a parsed instance.
+   * This allows validation without needing the original template file.
+   */
+  def validate(json: String): Either[List[ValidationError], User] = {
+    validator.validate(json, "com.example.models.user.User") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
   }
 }

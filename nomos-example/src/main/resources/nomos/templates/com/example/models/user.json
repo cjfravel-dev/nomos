@@ -1,10 +1,6 @@
 {
-  "basePackage": "com.example.models",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "useOptionTypes": true,
   "listType": "List",
-  "generateJson4s": true,
   "definitions": [
     {
       "name": "User",

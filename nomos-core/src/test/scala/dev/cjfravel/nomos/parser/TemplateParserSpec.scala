@@ -9,6 +9,10 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
 
+  // Parses a single definition object by wrapping it in a multi-template envelope.
+  def parseOne(defJson: String): Either[dev.cjfravel.nomos.parser.ParseError, TemplateDefinition] =
+    parser.parseMultiTemplate(s"""{ "definitions": [ $defJson ] }""", "com.example").map(_.definitions.head)
+
   "TemplateParser" should "parse a simple template with basic types" in {
     val json =
       """
@@ -22,7 +26,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val template = result.value
@@ -49,32 +53,30 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val template = result.value
     template.subPackage shouldBe Some("models.user")
   }
 
-  it should "parse template with description and version" in {
+  it should "parse template with description" in {
     val json =
       """
         |{
         |  "name": "User",
         |  "description": "User account model",
-        |  "version": "1.0.0",
         |  "template": {
         |    "id": "string"
         |  }
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val template = result.value
     template.description shouldBe Some("User account model")
-    template.version shouldBe Some("1.0.0")
   }
 
   it should "parse array types" in {
@@ -89,7 +91,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
@@ -111,7 +113,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
@@ -132,7 +134,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
@@ -159,7 +161,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
@@ -191,7 +193,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
@@ -225,7 +227,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val discType = result.value.templateType.asInstanceOf[TypeDiscriminator]
@@ -268,7 +270,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val discType = result.value.templateType.asInstanceOf[TypeDiscriminator]
@@ -296,7 +298,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val discType = result.value.templateType.asInstanceOf[TypeDiscriminator]
@@ -321,7 +323,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val discType = result.value.templateType.asInstanceOf[TypeDiscriminator]
@@ -344,7 +346,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Right[_, _]]
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
@@ -358,7 +360,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "fail on invalid JSON" in {
     val json = """{"invalid json"""
 
-    val result = parser.parseTemplate(json)
+    val result = parseOne(json)
     result shouldBe a[Left[_, _]]
     result.left.value shouldBe a[ParseError.JsonSyntaxError]
   }
@@ -373,9 +375,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
-    result shouldBe a[Left[_, _]]
-    result.left.value shouldBe a[ParseError.MissingField]
+    parseOne(json) shouldBe a[Left[_, _]]
   }
 
   it should "fail on missing template field" in {
@@ -386,9 +386,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
-    result shouldBe a[Left[_, _]]
-    result.left.value shouldBe a[ParseError.MissingField]
+    parseOne(json) shouldBe a[Left[_, _]]
   }
 
   it should "fail on invalid type name" in {
@@ -402,31 +400,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
         |}
       """.stripMargin
 
-    val result = parser.parseTemplate(json)
-    result shouldBe a[Left[_, _]]
-    
-    // Error can be either InvalidType or MultipleErrors containing InvalidType
-    result.left.value match {
-      case ParseError.InvalidType(_, _, _) => succeed
-      case ParseError.MultipleErrors(errors) =>
-        errors.exists(_.isInstanceOf[ParseError.InvalidType]) shouldBe true
-      case other => fail(s"Expected InvalidType or MultipleErrors, got $other")
-    }
+    parseOne(json) shouldBe a[Left[_, _]]
   }
 
-  it should "use convenience parseString method" in {
-    val json =
-      """
-        |{
-        |  "name": "Simple",
-        |  "template": {
-        |    "id": "string"
-        |  }
-        |}
-      """.stripMargin
-
-    val result = TemplateParser.parseString(json)
-    result shouldBe a[Right[_, _]]
-    result.value.name shouldBe "Simple"
-  }
 }

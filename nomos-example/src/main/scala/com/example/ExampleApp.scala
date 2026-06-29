@@ -60,11 +60,11 @@ object ExampleApp extends App {
   // Demonstrate validation
   println("\n=== Validation Examples ===\n")
   
-  // Load template for validation
-  val templateSource = Source.fromResource("templates/user.json")
+  // Load template for validation (base package is derived from its location)
+  val templateSource = Source.fromResource("nomos/templates/com/example/models/user.json")
   val templateJson = try templateSource.mkString finally templateSource.close()
   
-  val multiTemplate = Nomos.parseTemplate(templateJson) match {
+  val multiTemplate = Nomos.parseTemplate(templateJson, "com.example.models") match {
     case Right(template) => template
     case Left(error) =>
       println(s"Failed to parse template: ${error.message}")
@@ -76,7 +76,7 @@ object ExampleApp extends App {
   val validJson = """{"id":"user-456","username":"janedoe","email":"jane@example.com","roles":["user"]}"""
   println(s"   Input: $validJson")
   
-  Nomos.validate(multiTemplate, validJson, "User") match {
+  Nomos.validate(multiTemplate, validJson, "com.example.models.user.User") match {
     case Right(_) =>
       println("   ✓ Validation passed!")
       User.fromJson(validJson) match {
@@ -95,7 +95,7 @@ object ExampleApp extends App {
   val missingFieldJson = """{"id":"user-789","email":"bob@example.com","roles":[]}"""
   println(s"   Input: $missingFieldJson")
   
-  Nomos.validate(multiTemplate, missingFieldJson, "User") match {
+  Nomos.validate(multiTemplate, missingFieldJson, "com.example.models.user.User") match {
     case Right(_) => println("   ✓ Validation passed!")
     case Left(errors) =>
       println(s"   ✗ Validation failed (expected):")
@@ -109,7 +109,7 @@ object ExampleApp extends App {
   val wrongTypeJson = """{"id":"user-999","username":"alice","email":"alice@example.com","age":"thirty","roles":["admin"]}"""
   println(s"   Input: $wrongTypeJson")
   
-  Nomos.validate(multiTemplate, wrongTypeJson, "User") match {
+  Nomos.validate(multiTemplate, wrongTypeJson, "com.example.models.user.User") match {
     case Right(_) => println("   ✓ Validation passed!")
     case Left(errors) =>
       println(s"   ✗ Validation failed (expected):")
@@ -123,7 +123,7 @@ object ExampleApp extends App {
   val malformedJson = """{"id":"user-000","username":"charlie",email:"bad"}"""
   println(s"   Input: $malformedJson")
   
-  Nomos.validate(multiTemplate, malformedJson, "User") match {
+  Nomos.validate(multiTemplate, malformedJson, "com.example.models.user.User") match {
     case Right(_) => println("   ✓ Validation passed!")
     case Left(errors) =>
       println(s"   ✗ Validation failed (expected):")

@@ -33,312 +33,12 @@ class CodeGenerator(config: GeneratorConfig) {
     } else {
       val generatedFiles = fileResults.collect { case Right(file) => file }
       
-      // Always generate NomosFormats with Jackson serialization
-      val chiselFormatsFile = generateNomosFormats(multiTemplate.basePackage)
-      Right(chiselFormatsFile :: generatedFiles)
+      // Always generate NomosFormats with Jackson serialization and embedded template
+      val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate)
+      Right(nomosFormatsFile :: generatedFiles)
     }
   }
 
-  /**
-   * Generates code from a template
-   */
-  def generate(template: Template): Either[GeneratorError, List[GeneratedFile]] = {
-    // Validate configuration
-    config.validate() match {
-      case errors if errors.nonEmpty =>
-        return Left(GeneratorError.ConfigError(errors.mkString(", ")))
-      case _ =>
-    }
-
-    // Validate template name
-    template.validateName() match {
-      case Some(error) =>
-        return Left(GeneratorError.TemplateError(error))
-      case None =>
-    }
-
-    // Get the full package path
-    val packageName = template.fullPackage(config.basePackage)
-
-    // Generate code based on template type
-    // Track nested types to generate them all
-    val nestedTypes = scala.collection.mutable.Map.empty[String, ObjectType]
-    
-    template.templateType match {
-      case disc: TypeDiscriminator =>
-        generateDiscriminatorWithNested(template.name, disc, packageName, nestedTypes)
-      case obj: ObjectType =>
-        generateObjectWithNested(template.name, obj, packageName, None, nestedTypes)
-      case _ =>
-        Left(GeneratorError.TemplateError(
-          s"Root template must be an ObjectType or TypeDiscriminator, got ${template.templateType.getClass.getSimpleName}"
-        ))
-    }
-  }
-
-  /**
-   * Generates code for a type discriminator (sealed trait + case classes)
-   */
-  private def generateDiscriminator(
-    name: String,
-    discriminator: TypeDiscriminator,
-    packageName: String
-  ): Either[GeneratorError, List[GeneratedFile]] = {
-    
-    // Check for ambiguity if discriminator is not included
-    if (!discriminator.includeInOutput) {
-      detectAmbiguity(discriminator) match {
-        case Some(error) => return Left(GeneratorError.AmbiguityError(error))
-        case None =>
-      }
-    }
-
-    val builder = ScalaCodeBuilder()
-    
-    // Package declaration
-    builder.line(s"package $packageName")
-    builder.emptyLine()
-
-    // Generate sealed trait
-    builder.sealedTrait(name)
-    builder.emptyLine()
-
-    // Generate case classes for each variant
-    discriminator.variants.foreach { case (variantName, variantType) =>
-      val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
-      
-      // Combine common fields with variant-specific fields
-      val allFields = discriminator.commonFields ++ variantType.fields
-      
-      // Add discriminator field if requested
-      val fieldsWithDiscriminator = if (discriminator.includeInOutput) {
-        Map(discriminator.fieldName -> FieldDef(StringType(), optional = false)) ++ allFields
-      } else {
-        allFields
-      }
-      
-      // Convert to field list
-      val fieldList = fieldsWithDiscriminator.map { case (fieldName, fieldDef) =>
-        (ScalaCodeBuilder.escapeKeyword(fieldName), scalaType(fieldDef.fieldType, fieldDef.optional))
-      }.toList
-
-      builder.caseClass(caseClassName, fieldList, Some(name))
-      builder.emptyLine()
-    }
-
-    val content = builder.build()
-    val file = GeneratedFile(packageName, name, content)
-    
-    Right(List(file))
-  }
-
-  /**
-   * Generates code for an object type with nested type tracking
-   */
-  private def generateObjectWithNested(
-    name: String,
-    objectType: ObjectType,
-    packageName: String,
-    parent: Option[String],
-    nestedTypes: scala.collection.mutable.Map[String, ObjectType]
-  ): Either[GeneratorError, List[GeneratedFile]] = {
-    
-    // Collect nested object types
-    collectNestedTypes(objectType, name, nestedTypes)
-    
-    val builder = ScalaCodeBuilder()
-    
-    // Package declaration
-    builder.line(s"package $packageName")
-    builder.emptyLine()
-
-    // Generate case class
-    val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
-      val typeName = scalaTypeWithNested(fieldDef.fieldType, fieldName, fieldDef.optional, name)
-      (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
-    }.toList
-
-    builder.caseClass(name, fieldList, parent)
-
-    // Generate nested case classes
-    nestedTypes.foreach { case (nestedName, nestedObj) =>
-      builder.emptyLine()
-      val nestedFieldList = nestedObj.fields.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeWithNested(fieldDef.fieldType, fieldName, fieldDef.optional, nestedName)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
-      }.toList
-      builder.caseClass(nestedName, nestedFieldList, None)
-    }
-
-    val content = builder.build()
-    val file = GeneratedFile(packageName, name, content)
-    
-    Right(List(file))
-  }
-
-  /**
-   * Generates code for a discriminator with nested type tracking
-   */
-  private def generateDiscriminatorWithNested(
-    name: String,
-    discriminator: TypeDiscriminator,
-    packageName: String,
-    nestedTypes: scala.collection.mutable.Map[String, ObjectType]
-  ): Either[GeneratorError, List[GeneratedFile]] = {
-    
-    // Check for ambiguity if discriminator is not included
-    if (!discriminator.includeInOutput) {
-      detectAmbiguity(discriminator) match {
-        case Some(error) => return Left(GeneratorError.AmbiguityError(error))
-        case None =>
-      }
-    }
-
-    // Collect nested types from all variants
-    discriminator.variants.values.foreach { variantType =>
-      collectNestedTypes(variantType, name, nestedTypes)
-    }
-
-    val builder = ScalaCodeBuilder()
-    
-    // Package declaration
-    builder.line(s"package $packageName")
-    builder.emptyLine()
-
-    // Generate sealed trait
-    builder.sealedTrait(name)
-    builder.emptyLine()
-
-    // Generate case classes for each variant
-    discriminator.variants.foreach { case (variantName, variantType) =>
-      val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
-      
-      // Combine common fields with variant-specific fields
-      val allFields = discriminator.commonFields ++ variantType.fields
-      
-      // Add discriminator field if requested
-      val fieldsWithDiscriminator = if (discriminator.includeInOutput) {
-        Map(discriminator.fieldName -> FieldDef(StringType(), optional = false)) ++ allFields
-      } else {
-        allFields
-      }
-      
-      // Convert to field list
-      val fieldList = fieldsWithDiscriminator.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeWithNested(fieldDef.fieldType, fieldName, fieldDef.optional, caseClassName)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
-      }.toList
-
-      builder.caseClass(caseClassName, fieldList, Some(name))
-      builder.emptyLine()
-    }
-
-    // Generate nested case classes
-    nestedTypes.foreach { case (nestedName, nestedObj) =>
-      val nestedFieldList = nestedObj.fields.map { case (fieldName, fieldDef) =>
-        val typeName = scalaTypeWithNested(fieldDef.fieldType, fieldName, fieldDef.optional, nestedName)
-        (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
-      }.toList
-      builder.caseClass(nestedName, nestedFieldList, None)
-      builder.emptyLine()
-    }
-
-    val content = builder.build()
-    val file = GeneratedFile(packageName, name, content)
-    
-    Right(List(file))
-  }
-
-  /**
-   * Collects nested ObjectTypes and assigns them names
-   */
-  private def collectNestedTypes(
-    objectType: ObjectType,
-    parentName: String,
-    nestedTypes: scala.collection.mutable.Map[String, ObjectType]
-  ): Unit = {
-    objectType.fields.foreach { case (fieldName, fieldDef) =>
-      fieldDef.fieldType match {
-        case nested @ ObjectType(_) =>
-          val nestedName = ScalaCodeBuilder.toPascalCase(fieldName)
-          if (!nestedTypes.contains(nestedName)) {
-            nestedTypes(nestedName) = nested
-            // Recursively collect nested types
-            collectNestedTypes(nested, nestedName, nestedTypes)
-          }
-        case ArrayType(nested @ ObjectType(_)) =>
-          val nestedName = ScalaCodeBuilder.toPascalCase(fieldName).stripSuffix("s")
-          if (!nestedTypes.contains(nestedName)) {
-            nestedTypes(nestedName) = nested
-            collectNestedTypes(nested, nestedName, nestedTypes)
-          }
-        case _ => // Other types don't need nested generation
-      }
-    }
-  }
-
-  /**
-   * Converts a TemplateType to its Scala type with nested type names
-   */
-  private def scalaTypeWithNested(templateType: TemplateType, fieldName: String, optional: Boolean, parentName: String): String = {
-    val baseType = templateType match {
-      case StringType(_) => "String"
-      case NumberType(_) => "Double"
-      case BooleanType() => "Boolean"
-      case ArrayType(obj @ ObjectType(_)) =>
-        val elementTypeName = ScalaCodeBuilder.toPascalCase(fieldName).stripSuffix("s")
-        s"${config.listType}[$elementTypeName]"
-      case ArrayType(elementType) =>
-        s"${config.listType}[${scalaTypeWithNested(elementType, fieldName, optional = false, parentName)}]"
-      case obj @ ObjectType(_) =>
-        ScalaCodeBuilder.toPascalCase(fieldName)
-      case RecursiveRef(typeName) => typeName
-      case ReferenceType(typeName) => typeName
-      case TypeDiscriminator(_, _, _, _, _) =>
-        ScalaCodeBuilder.toPascalCase(fieldName)
-    }
-
-    if (optional && config.useOptionTypes) {
-      s"Option[$baseType]"
-    } else {
-      baseType
-    }
-  }
-
-  /**
-   * Legacy method for backward compatibility
-   */
-  private def generateObject(
-    name: String,
-    objectType: ObjectType,
-    packageName: String,
-    parent: Option[String]
-  ): Either[GeneratorError, List[GeneratedFile]] = {
-    val nestedTypes = scala.collection.mutable.Map.empty[String, ObjectType]
-    generateObjectWithNested(name, objectType, packageName, parent, nestedTypes)
-  }
-
-  /**
-   * Converts a TemplateType to its Scala type representation
-   */
-  private def scalaType(templateType: TemplateType, optional: Boolean): String = {
-    val baseType = templateType match {
-      case StringType(_) => "String"
-      case NumberType(_) => "Double"
-      case BooleanType() => "Boolean"
-      case ArrayType(elementType) => s"${config.listType}[${scalaType(elementType, optional = false)}]"
-      case ObjectType(_) => "???" // This would need nested type generation
-      case RecursiveRef(typeName) => typeName
-      case ReferenceType(typeName) => typeName
-      case TypeDiscriminator(_, _, _, _, _) => "???" // This would need nested type generation
-    }
-
-    if (optional && config.useOptionTypes) {
-      s"Option[$baseType]"
-    } else {
-      baseType
-    }
-  }
 
   /**
    * Generates code for a single definition within a multi-template
@@ -413,7 +113,7 @@ class CodeGenerator(config: GeneratorConfig) {
     
     builder.caseClass(name, fieldList, None)
     
-    // Always generate companion object with Jackson serialization
+    // Always generate companion object with Jackson serialization and validation
     builder.emptyLine()
     builder.companionObject(name) {
       // Only add import if not in basePackage
@@ -421,6 +121,7 @@ class CodeGenerator(config: GeneratorConfig) {
         builder.line(s"import $basePackage.NomosFormats")
       }
       builder.line("import NomosFormats._")
+      builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.emptyLine()
       
       // Generate simple fromJson using Jackson Scala module
@@ -442,6 +143,22 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("def toJson(obj: " + name + "): String = {")
       builder.indent()
       builder.line("mapper.writeValueAsString(obj)")
+      builder.dedent()
+      builder.line("}")
+      
+      builder.emptyLine()
+      builder.line("/**")
+      builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
+      builder.line(" * This allows validation without needing the original template file.")
+      builder.line(" */")
+      builder.line("def validate(json: String): Either[List[ValidationError], " + name + "] = {")
+      builder.indent()
+      builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
+      builder.indent()
+      builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      builder.line("case Left(errors) => Left(errors)")
+      builder.dedent()
+      builder.line("}")
       builder.dedent()
       builder.line("}")
     }
@@ -471,13 +188,12 @@ class CodeGenerator(config: GeneratorConfig) {
     if (discriminator.variantNames.nonEmpty) {
       generateDiscriminatorWithVariantNames(name, discriminator, builder, definitionsMap, basePackage, currentPackage)
     } else {
-      // Original behavior: one case class per variant
       generateDiscriminatorOriginal(name, discriminator, builder, definitionsMap, basePackage, currentPackage)
     }
   }
 
   /**
-   * Generates discriminator with original behavior (one case class per variant)
+   * Generates a sealed trait with one case class per variant.
    */
   private def generateDiscriminatorOriginal(
     name: String,
@@ -520,13 +236,14 @@ class CodeGenerator(config: GeneratorConfig) {
       (variantName, ScalaCodeBuilder.toPascalCase(variantName))
     }
     
-    // Generate companion object with simple Jackson Scala module deserialization
+    // Generate companion object with simple Jackson Scala module deserialization and validation
     builder.companionObject(name) {
       // Only add import if not in basePackage
       if (currentPackage != basePackage) {
         builder.line(s"import $basePackage.NomosFormats")
       }
       builder.line("import NomosFormats._")
+      builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.line("import com.fasterxml.jackson.databind.JsonNode")
       builder.emptyLine()
       builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
@@ -555,6 +272,21 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("def toJson(obj: " + name + "): String = {")
       builder.indent()
       builder.line("mapper.writeValueAsString(obj)")
+      builder.dedent()
+      builder.line("}")
+      builder.emptyLine()
+      builder.line("/**")
+      builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
+      builder.line(" * This allows validation without needing the original template file.")
+      builder.line(" */")
+      builder.line("def validate(json: String): Either[List[ValidationError], " + name + "] = {")
+      builder.indent()
+      builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
+      builder.indent()
+      builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      builder.line("case Left(errors) => Left(errors)")
+      builder.dedent()
+      builder.line("}")
       builder.dedent()
       builder.line("}")
     }
@@ -626,15 +358,31 @@ class CodeGenerator(config: GeneratorConfig) {
       (variantKey, className)
     }
     
-    // Generate companion object with Jackson deserialization
+    // Generate companion object with Jackson deserialization and validation
     builder.companionObject(name) {
       // Only add import if not in basePackage
       if (currentPackage != basePackage) {
         builder.line(s"import $basePackage.NomosFormats")
       }
       builder.line("import NomosFormats._")
+      builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.emptyLine()
       builder.customSerializer(name, discriminator.fieldName, variantMap)
+      builder.emptyLine()
+      builder.line("/**")
+      builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
+      builder.line(" * This allows validation without needing the original template file.")
+      builder.line(" */")
+      builder.line("def validate(json: String): Either[List[ValidationError], " + name + "] = {")
+      builder.indent()
+      builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
+      builder.indent()
+      builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      builder.line("case Left(errors) => Left(errors)")
+      builder.dedent()
+      builder.line("}")
+      builder.dedent()
+      builder.line("}")
     }
     builder.emptyLine()
   }
@@ -751,20 +499,25 @@ class CodeGenerator(config: GeneratorConfig) {
   }
   
   /**
-   * Generates NomosFormats object with standard Jackson and Scala module.
-   * With BOM approach, we can use Jackson directly without shading.
+   * Generates the NomosFormats object: a shared Jackson ObjectMapper, the embedded
+   * MultiTemplate, and a MultiValidator built from it for runtime validation.
    */
-  private def generateNomosFormats(basePackage: String): GeneratedFile = {
+  private def generateNomosFormats(basePackage: String, multiTemplate: MultiTemplate): GeneratedFile = {
     val builder = ScalaCodeBuilder()
     
     builder.line(s"package $basePackage")
     builder.emptyLine()
     builder.line("import com.fasterxml.jackson.databind.ObjectMapper")
     builder.line("import com.fasterxml.jackson.module.scala.DefaultScalaModule")
+    builder.line("import dev.cjfravel.nomos.model._")
+    builder.line("import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError}")
+    builder.line("import com.fasterxml.jackson.databind.JsonNode")
+    builder.line("import scala.collection.immutable.ListMap")
     builder.emptyLine()
     builder.line("/**")
     builder.line(" * Provides Jackson ObjectMapper with Scala module support.")
     builder.line(" * The Scala module enables automatic serialization/deserialization of case classes.")
+    builder.line(" * Also contains the embedded template for runtime validation.")
     builder.line(" * Import NomosFormats._ to use the mapper in your code.")
     builder.line(" */")
     builder.line("object NomosFormats {")
@@ -777,6 +530,17 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line("m")
     builder.dedent()
     builder.line("}")
+    builder.emptyLine()
+    builder.line("// Embedded template for runtime validation")
+    builder.line("lazy val embeddedTemplate: MultiTemplate = {")
+    builder.indent()
+    val serializedTemplate = TemplateSerializer.serializeMultiTemplate(multiTemplate)
+    serializedTemplate.split("\n").foreach(line => builder.line(line))
+    builder.dedent()
+    builder.line("}")
+    builder.emptyLine()
+    builder.line("// Validator instance using the embedded template")
+    builder.line("lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate)")
     builder.dedent()
     builder.line("}")
     

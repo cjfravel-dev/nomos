@@ -88,7 +88,7 @@ nomos/
 - **Default Phase**: `generate-sources`
 - **Purpose**: Generate Scala case classes from JSON templates
 - **Parameters**:
-  - `templateDirectory`: Directory containing templates (default: `src/main/resources/templates`)
+  - `templateDirectory`: Directory containing templates (default: `src/main/resources/nomos/templates`)
   - `includes`: File patterns to include (default: `**/*.json`)
   - `excludes`: File patterns to exclude (optional)
 
@@ -117,7 +117,7 @@ This provides:
                 <goal>generate</goal>
             </goals>
             <configuration>
-                <templateDirectory>src/main/resources/templates</templateDirectory>
+                <templateDirectory>src/main/resources/nomos/templates</templateDirectory>
             </configuration>
         </execution>
     </executions>
@@ -275,12 +275,10 @@ Add BOM and dependencies to `pom.xml`:
 
 ### 3. Create Template
 
-`src/main/resources/templates/user.json`:
+`src/main/resources/nomos/templates/user.json`:
 ```json
 {
   "basePackage": "com.example.models",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "useOptionTypes": true,
   "listType": "List",
   "definitions": [
@@ -321,7 +319,7 @@ val json = User.toJson(user)
 // With validation
 import dev.cjfravel.nomos.Chisel
 
-val template = Chisel.parseTemplate(templateJson).right.get
+val template = Nomos.parseTemplate(templateJson, "com.example").right.get
 Chisel.validate(template, jsonData, "User") match {
   case Right(_) => User.fromJson(jsonData)
   case Left(errors) => // Handle errors
@@ -337,11 +335,11 @@ my-project/
 ├── pom.xml              # Parent POM
 ├── core/
 │   ├── pom.xml
-│   └── src/main/resources/templates/
+│   └── src/main/resources/nomos/templates/
 │       └── core-models.json
 └── api/
     ├── pom.xml
-    └── src/main/resources/templates/
+    └── src/main/resources/nomos/templates/
         └── api-models.json
 ```
 

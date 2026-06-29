@@ -1,16 +1,13 @@
-# Chisel Template Format
+# Nomos Template Format
 
-This document defines the JSON template format used by Chisel to generate case classes and validators.
+This document defines the JSON template format used by Nomos to generate case classes and validators.
 
 ## Template Structure
 
-All Nomos templates use a multi-definition format that allows you to define multiple related types in a single file:
+All Nomos templates use a multi-definition format that allows you to define multiple related types in a single file. The base package is derived from the template file's location under `src/main/resources/nomos/templates`, so a template at `nomos/templates/com/example/models/user.json` generates into base package `com.example.models`:
 
 ```json
 {
-  "basePackage": "com.example",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "definitions": [
     {
       "name": "User",
@@ -34,10 +31,11 @@ All Nomos templates use a multi-definition format that allows you to define mult
 
 ### Top-Level Fields
 
-- **`basePackage`** (required): The base package for all generated code
-- **`outputDir`** (required): The directory where generated files will be written
-- **`mainClass`** (required): The name of the primary type definition (used for validation)
 - **`definitions`** (required): Array of type definitions
+- **`useOptionTypes`** (optional): Use `Option[T]` for optional fields (default: true)
+- **`listType`** (optional): Collection type for arrays, "List" or "Array" (default: "List")
+
+The base package is derived from the template path; there is no `basePackage`, `outputDir`, or `mainClass` field.
 
 ### Definition Fields
 
@@ -101,9 +99,6 @@ Use `$ref:TypeName` to reference other type definitions:
 
 ```json
 {
-  "basePackage": "com.example",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "definitions": [
     {
       "name": "User",
@@ -152,9 +147,6 @@ Use `$ref:TypeName` for self-referential structures:
 
 ```json
 {
-  "basePackage": "com.example",
-  "outputDir": "src/main/scala",
-  "mainClass": "TreeNode",
   "definitions": [
     {
       "name": "TreeNode",
@@ -226,9 +218,6 @@ Use the `$type` field to define a discriminator that determines which properties
 
 ```json
 {
-  "basePackage": "com.example",
-  "outputDir": "src/main/scala",
-  "mainClass": "Shape",
   "definitions": [
     {
       "name": "Shape",
@@ -342,9 +331,6 @@ Supported string formats:
 
 ```json
 {
-  "basePackage": "com.example",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "definitions": [
     {
       "name": "User",
@@ -403,9 +389,6 @@ When definitions have different `subPackage` values, Chisel automatically genera
 
 ```json
 {
-  "basePackage": "com.example",
-  "outputDir": "src/main/scala",
-  "mainClass": "DataContract",
   "definitions": [
     {
       "name": "DataContract",
@@ -456,4 +439,4 @@ case class Owner(
 - Type names must start with an uppercase letter
 - References must use the exact name of another definition in the same template
 - Circular references are supported (e.g., TreeNode can reference itself)
-- The `mainClass` must match one of the definition names
+- Validation targets a definition by its fully-qualified name (e.g., `com.example.models.User`)

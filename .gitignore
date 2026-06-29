@@ -90,3 +90,7 @@ metals.sbt
 
 # Scratch files
 playground/
+# Metals
+metals-doctor.txt
+.metals/
+.bloop/

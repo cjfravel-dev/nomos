@@ -56,12 +56,9 @@ A Scala library for generating case classes and JSON validators from declarative
 
 ### 3. Create Template
 
-`src/main/resources/templates/user.json`:
+`src/main/resources/nomos/templates/com/example/models/user.json` (the base package `com.example.models` is derived from the path):
 ```json
 {
-  "basePackage": "com.example.models",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "definitions": [
     {
       "name": "User",
@@ -109,7 +106,7 @@ import dev.cjfravel.nomos.Chisel
 val user = User.fromJson("""{"id":"123","username":"john",...}""")
 
 // Validate before parsing
-val template = Chisel.parseTemplate(templateJson).right.get
+val template = Nomos.parseTemplate(templateJson, "com.example").right.get
 Chisel.validate(template, jsonData, "User") match {
   case Right(_) => User.fromJson(jsonData)
   case Left(errors) => // Handle validation errors

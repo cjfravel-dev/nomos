@@ -1,57 +1,6 @@
 package dev.cjfravel.nomos.model
 
 /**
- * Represents a complete Nomos template definition
- *
- * @param name The name of the type to generate (must be a valid Scala identifier)
- * @param subPackage Optional sub-package relative to the base package
- * @param templateType The root type definition
- * @param description Optional description of the template
- * @param version Optional version string
- */
-case class Template(
-  name: String,
-  subPackage: Option[String],
-  templateType: TemplateType,
-  description: Option[String] = None,
-  version: Option[String] = None
-) {
-  /**
-   * Validates that the template name is a valid Scala identifier
-   */
-  def validateName(): Option[String] = {
-    if (name.isEmpty) {
-      Some("Template name cannot be empty")
-    } else if (!name.head.isUpper) {
-      Some(s"Template name must start with an uppercase letter: $name")
-    } else if (!name.forall(c => c.isLetterOrDigit || c == '_')) {
-      Some(s"Template name must contain only letters, digits, and underscores: $name")
-    } else {
-      None
-    }
-  }
-
-  /**
-   * Gets the full package path by combining base package with sub-package
-   */
-  def fullPackage(basePackage: String): String = {
-    subPackage match {
-      case Some(sub) if sub.nonEmpty => s"$basePackage.$sub"
-      case _ => basePackage
-    }
-  }
-}
-
-object Template {
-  /**
-   * Creates a simple template with just a name and type
-   */
-  def simple(name: String, templateType: TemplateType): Template = {
-    Template(name, None, templateType, None, None)
-  }
-}
-
-/**
  * Represents a single type definition within a multi-definition template
  *
  * @param name The name of the type to generate (must be a valid Scala identifier)
@@ -92,34 +41,30 @@ case class TemplateDefinition(
 }
 
 /**
- * Represents a complete template file with multiple type definitions
+ * Represents a complete template file with multiple type definitions.
  *
- * @param basePackage Base package for all generated code
- * @param outputDir Output directory for generated files
- * @param mainClass Name of the primary/entry type
+ * @param basePackage Base package for all generated code (derived from template path)
  * @param definitions List of type definitions
  * @param useOptionTypes Whether to use Option[T] for optional fields (default: true)
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  */
 case class MultiTemplate(
   basePackage: String,
-  outputDir: String,
-  mainClass: String,
   definitions: List[TemplateDefinition],
   useOptionTypes: Boolean = true,
   listType: String = "List"
 ) {
   /**
-   * Get the main definition (entry point)
+   * Fully-qualified name of a definition (basePackage + subPackage + name)
    */
-  def mainDefinition: Option[TemplateDefinition] =
-    definitions.find(_.name == mainClass)
+  def fqn(definition: TemplateDefinition): String =
+    s"${definition.fullPackage(basePackage)}.${definition.name}"
   
   /**
-   * Get definition by name
+   * Get definition by fully-qualified name or simple name
    */
   def getDefinition(name: String): Option[TemplateDefinition] =
-    definitions.find(_.name == name)
+    definitions.find(d => d.name == name || fqn(d) == name)
   
   /**
    * Get all definitions as a map for quick lookup
@@ -132,11 +77,6 @@ case class MultiTemplate(
    */
   def validate(): List[String] = {
     var errors = List.empty[String]
-    
-    // Validate that mainClass references an existing definition
-    if (mainDefinition.isEmpty) {
-      errors = s"mainClass '$mainClass' not found in definitions" :: errors
-    }
     
     // Validate that all definition names are valid
     definitions.foreach { definition =>
@@ -157,11 +97,6 @@ case class MultiTemplate(
     // Validate base package is not empty
     if (basePackage.isEmpty) {
       errors = "basePackage cannot be empty" :: errors
-    }
-    
-    // Validate outputDir is not empty
-    if (outputDir.isEmpty) {
-      errors = "outputDir cannot be empty" :: errors
     }
     
     // Validate that all references point to existing definitions
@@ -200,9 +135,8 @@ object MultiTemplate {
    */
   def single(
     basePackage: String,
-    outputDir: String,
     definition: TemplateDefinition
   ): MultiTemplate = {
-    MultiTemplate(basePackage, outputDir, definition.name, List(definition))
+    MultiTemplate(basePackage, List(definition))
   }
 }

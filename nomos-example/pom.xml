@@ -64,7 +64,7 @@
         <testSourceDirectory>src/test/scala</testSourceDirectory>
 
         <plugins>
-            <!-- Chisel Maven Plugin - generates code from templates -->
+            <!-- Nomos Maven Plugin - generates code from templates -->
             <plugin>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-maven-plugin</artifactId>
@@ -75,9 +75,6 @@
                         <goals>
                             <goal>generate</goal>
                         </goals>
-                        <configuration>
-                            <templateDirectory>src/main/resources/templates</templateDirectory>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

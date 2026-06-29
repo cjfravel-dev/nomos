@@ -13,35 +13,6 @@ class TemplateParser {
   private val mapper = new ObjectMapper()
 
   /**
-   * Parses a JSON string into a Template
-   */
-  def parseTemplate(jsonString: String): Either[ParseError, Template] = {
-    try {
-      val json = mapper.readTree(jsonString)
-      parseTemplateJson(json)
-    } catch {
-      case e: Exception =>
-        Left(ParseError.JsonSyntaxError(e.getMessage))
-    }
-  }
-
-  /**
-   * Parses a JSON template structure
-   */
-  private def parseTemplateJson(json: JsonNode): Either[ParseError, Template] = {
-    val path = "root"
-    
-    for {
-      name <- extractString(json, "name", path)
-      subPackage = extractOptionalString(json, "subPackage")
-      description = extractOptionalString(json, "description")
-      version = extractOptionalString(json, "version")
-      templateJson <- extractField(json, "template", path)
-      templateType <- parseType(templateJson, s"$path.template")
-    } yield Template(name, subPackage, templateType, description, version)
-  }
-
-  /**
    * Parses a type definition
    */
   private def parseType(json: JsonNode, path: String): Either[ParseError, TemplateType] = {
@@ -307,10 +278,10 @@ class TemplateParser {
   /**
    * Parses a JSON string into a MultiTemplate
    */
-  def parseMultiTemplate(jsonString: String): Either[ParseError, MultiTemplate] = {
+  def parseMultiTemplate(jsonString: String, basePackage: String): Either[ParseError, MultiTemplate] = {
     try {
       val json = mapper.readTree(jsonString)
-      parseMultiTemplateJson(json)
+      parseMultiTemplateJson(json, basePackage)
     } catch {
       case e: Exception =>
         Left(ParseError.JsonSyntaxError(e.getMessage))
@@ -318,21 +289,18 @@ class TemplateParser {
   }
 
   /**
-   * Parses a multi-template JSON structure
+   * Parses a multi-template JSON structure. basePackage is supplied by the caller.
    */
-  private def parseMultiTemplateJson(json: JsonNode): Either[ParseError, MultiTemplate] = {
+  private def parseMultiTemplateJson(json: JsonNode, basePackage: String): Either[ParseError, MultiTemplate] = {
     val path = "root"
     
     for {
-      basePackage <- extractString(json, "basePackage", path)
-      outputDir <- extractString(json, "outputDir", path)
-      mainClass <- extractString(json, "mainClass", path)
       definitionsJson <- extractField(json, "definitions", path)
       definitions <- parseDefinitions(definitionsJson, s"$path.definitions")
     } yield {
       val useOptionTypes = extractOptionalBoolean(json, "useOptionTypes").getOrElse(true)
       val listType = extractOptionalString(json, "listType").getOrElse("List")
-      val multiTemplate = MultiTemplate(basePackage, outputDir, mainClass, definitions, useOptionTypes, listType)
+      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType)
       
       // Validate the multi-template
       multiTemplate.validate() match {
@@ -382,16 +350,9 @@ object TemplateParser {
   def apply(): TemplateParser = new TemplateParser()
   
   /**
-   * Convenience method to parse from string
-   */
-  def parseString(jsonString: String): Either[ParseError, Template] = {
-    new TemplateParser().parseTemplate(jsonString)
-  }
-  
-  /**
    * Convenience method to parse multi-template from string
    */
-  def parseMultiTemplateString(jsonString: String): Either[ParseError, MultiTemplate] = {
-    new TemplateParser().parseMultiTemplate(jsonString)
+  def parseMultiTemplateString(jsonString: String, basePackage: String): Either[ParseError, MultiTemplate] = {
+    new TemplateParser().parseMultiTemplate(jsonString, basePackage)
   }
 }

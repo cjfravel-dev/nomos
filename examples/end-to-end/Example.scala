@@ -17,9 +17,6 @@ object EndToEndExample {
     // Step 1: Define a JSON template with multiple definitions
     val templateJson = """
     {
-      "basePackage": "com.example",
-      "outputDir": "examples/end-to-end/generated",
-      "mainClass": "User",
       "definitions": [
         {
           "name": "User",
@@ -82,7 +79,7 @@ object EndToEndExample {
     // Step 2: Parse the template
     println("Step 2: Parse Template")
     println("----------------------")
-    val templateResult = Nomos.parseTemplate(templateJson)
+    val templateResult = Nomos.parseTemplate(templateJson, "com.example")
     
     templateResult match {
       case Left(error) =>
@@ -91,8 +88,6 @@ object EndToEndExample {
       case Right(template) =>
         println(s"✓ Successfully parsed template")
         println(s"  Base Package: ${template.basePackage}")
-        println(s"  Output Dir: ${template.outputDir}")
-        println(s"  Main Class: ${template.mainClass}")
         println(s"  Definitions:")
         template.definitions.foreach { defn =>
           val pkg = template.basePackage + defn.subPackage.map("." + _).getOrElse("")
@@ -149,7 +144,7 @@ object EndToEndExample {
     """
     
     println("Testing valid JSON:")
-    val validResult = Nomos.validate(template, validJson)
+    val validResult = Nomos.validate(template, validJson, "com.example.models.User")
     validResult match {
       case Left(errors) =>
         println(s"  ✗ Validation failed with ${errors.length} error(s):")
@@ -175,7 +170,7 @@ object EndToEndExample {
     """
     
     println("Testing invalid JSON (missing required 'name' field):")
-    val invalidResult1 = Nomos.validate(template, invalidJson1)
+    val invalidResult1 = Nomos.validate(template, invalidJson1, "com.example.models.User")
     invalidResult1 match {
       case Left(errors) =>
         println(s"  ✗ Validation failed with ${errors.length} error(s):")
@@ -203,7 +198,7 @@ object EndToEndExample {
     """
     
     println("Testing invalid JSON (multiple constraint violations):")
-    val invalidResult2 = Nomos.validate(template, invalidJson2)
+    val invalidResult2 = Nomos.validate(template, invalidJson2, "com.example.models.User")
     invalidResult2 match {
       case Left(errors) =>
         println(s"  ✗ Validation failed with ${errors.length} error(s):")
@@ -216,21 +211,20 @@ object EndToEndExample {
     // Step 5: Using the process() convenience method
     println("Step 5: Using Nomos.process() convenience method")
     println("--------------------------------------------------")
-    val processResult = Nomos.process(templateJson)
+    val processResult = Nomos.process(templateJson, "com.example")
     
     processResult match {
       case Left(error) =>
         println(s"ERROR: Process failed: ${error.message}")
       case Right(result) =>
         println(s"✓ Process completed successfully")
-        println(s"  Main Class: ${result.template.mainClass}")
         println(s"  Definitions: ${result.template.definitions.length}")
         println(s"  Files written: ${result.writeReport.successCount}")
         println(s"  Can validate: ${result.validator != null}")
         
         // Use the result's validator
         println("\n  Testing validator from result:")
-        val testResult = result.validator.validate(validJson)
+        val testResult = result.validator.validate(validJson, "com.example.models.User")
         testResult match {
           case Left(errors) =>
             println(s"    ✗ Validation failed")
