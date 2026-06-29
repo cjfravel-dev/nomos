@@ -107,8 +107,12 @@ class CodeGenerator(config: GeneratorConfig) {
     currentPackage: String
   ): Unit = {
     val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
-      val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-      val withDefault = fieldDef.default.map(d => s"$typeName = $d").getOrElse(typeName)
+      val withDefault = if (fieldDef.nullable) {
+        s"${scalaTypeForDefinition(fieldDef.fieldType, optional = false, definitionsMap)} = null"
+      } else {
+        val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
+        fieldDef.default.map(d => s"$typeName = $d").getOrElse(typeName)
+      }
       (ScalaCodeBuilder.escapeKeyword(fieldName), withDefault)
     }.toList
     
@@ -428,6 +432,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case UnionType(_) => "Any"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
+      case ExternalType(qn) => qn
       case ObjectType(fields, AllowExtra) if fields.isEmpty => "Map[String, Any]"
       case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
         s"Map[String, ${scalaTypeForDefinition(vt, optional = false, definitionsMap)}]"

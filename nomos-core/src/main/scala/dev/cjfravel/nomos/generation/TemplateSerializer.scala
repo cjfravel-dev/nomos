@@ -87,6 +87,9 @@ object TemplateSerializer {
       case RecursiveRef(typeName) =>
         s"""RecursiveRef("${escapeString(typeName)}")"""
       
+      case ExternalType(qn) =>
+        s"""ExternalType("${escapeString(qn)}")"""
+      
       case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage) =>
         val variantsList = variants.map { case (name, objType) =>
           s""""${escapeString(name)}" -> ${serializeObjectTypeFields(objType)}"""
@@ -137,7 +140,8 @@ object TemplateSerializer {
   def serializeFieldDef(fieldDef: FieldDef): String = {
     val default = fieldDef.default.map(d => s""", default = Some("${escapeString(d)}")""").getOrElse("")
     val adapter = fieldDef.adapter.map(a => s""", adapter = Some("${escapeString(a)}")""").getOrElse("")
-    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}$default$adapter)"
+    val nullable = if (fieldDef.nullable) ", nullable = true" else ""
+    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}$default$adapter$nullable)"
   }
   
   /**

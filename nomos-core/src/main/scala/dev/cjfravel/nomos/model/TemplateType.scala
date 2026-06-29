@@ -104,16 +104,24 @@ case class ReferenceType(typeName: String) extends TemplateType
 case class RecursiveRef(typeName: String) extends TemplateType
 
 /**
+ * Reference to an external, hand-written type that nomos does not generate or validate.
+ * Used for $extern:fully.qualified.Name syntax.
+ */
+case class ExternalType(qualifiedName: String) extends TemplateType
+
+/**
  * Represents a field definition in an object type
  *
  * @param fieldType The type of the field
  * @param optional Whether the field is optional (becomes Option[T] in Scala)
  * @param default Optional default value rendered as a Scala literal (e.g. "false", "\"x\"")
  * @param adapter Optional named (de)serialization adapter for the field
+ * @param nullable When true, an optional field generates a raw nullable type (no Option wrapper)
  */
 case class FieldDef(
   fieldType: TemplateType,
   optional: Boolean = false,
   default: Option[String] = None,
-  adapter: Option[String] = None
+  adapter: Option[String] = None,
+  nullable: Boolean = false
 )

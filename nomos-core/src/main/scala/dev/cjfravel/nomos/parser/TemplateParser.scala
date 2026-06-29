@@ -32,6 +32,9 @@ class TemplateParser {
           val typeName = ref.substring(5)
           Right(ReferenceType(typeName))
         
+        case ext if ext.startsWith("$extern:") =>
+          Right(ExternalType(ext.substring(8)))
+        
         case _ => Left(ParseError.InvalidType(text, path))
       }
     } else if (json.isArray) {
@@ -214,7 +217,7 @@ class TemplateParser {
       for {
         innerType <- extractField(json, "$optional", path)
         fieldType <- parseType(innerType, path)
-      } yield FieldDef(fieldType, optional = true)
+      } yield FieldDef(fieldType, optional = true, nullable = extractOptionalBoolean(json, "nullable").getOrElse(false))
     } else {
       parseType(json, path).map(FieldDef(_, optional = false, default = renderDefault(json), adapter = extractOptionalString(json, "adapter")))
     }
@@ -384,7 +387,7 @@ class TemplateParser {
   private def resolveRefVariants(definitions: List[TemplateDefinition]): List[TemplateDefinition] = {
     val byName = definitions.map(d => d.name -> d).toMap
     def resolveVariant(v: ObjectType): ObjectType = v.fields.get("$ref") match {
-      case Some(FieldDef(ReferenceType(name), _, _, _)) =>
+      case Some(FieldDef(ReferenceType(name), _, _, _, _)) =>
         byName.get(name).map(_.templateType).collect { case o: ObjectType => o }.getOrElse(v)
       case _ => v
     }

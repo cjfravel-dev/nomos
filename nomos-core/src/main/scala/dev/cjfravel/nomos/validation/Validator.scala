@@ -86,6 +86,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
           case None =>
             List.empty
         }
+      case ExternalType(_) =>
+        List.empty
     }
   }
   
