@@ -251,9 +251,18 @@ Valid JSON:
 
 ### P4-3. Variant sub-package placement — **Medium**
 A discriminator emits the sealed trait and all variant case classes into one package; large
-families can't place variants in a dedicated sub-package separate from the trait. Allow a
-per-discriminator variant sub-package.
-*Effort: M.*
+families can't place variants in a dedicated sub-package separate from the trait. `variantSubPackage`
+is currently a no-op: variants still land in the trait's package (a sealed trait requires its
+variants in the same file). To honor it, either (a) generate a non-sealed base trait so variants
+can move to a sub-package, or (b) drop the option for sealed unions. Common fields are correctly
+hoisted to the trait as abstract vals, so a shared base already exists.
+
+Template:
+```json
+{ "$type": { "discriminator": "kind", "variantSubPackage": "kinds",
+  "variants": { "circle": { "radius": "number" }, "square": { "side": "number" } } } }
+```
+Expected: `Circle`/`Square` under `...kinds`; actual: same package as the trait. *Effort: M.*
 
 ---
 
