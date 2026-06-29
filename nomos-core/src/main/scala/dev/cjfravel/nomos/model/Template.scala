@@ -62,7 +62,8 @@ case class MultiTemplate(
   listType: String = "List",
   fromJsonStyle: String = "either",
   dateType: String = "java.time.LocalDate",
-  dateTimeType: String = "java.time.LocalDateTime"
+  dateTimeType: String = "java.time.LocalDateTime",
+  mapType: String = "Map"
 ) {
   /**
    * Fully-qualified name of a definition (basePackage + subPackage + name)
@@ -174,7 +175,8 @@ object MultiTemplate {
     val fromJsonStyle = firstNonDefault(templates.map(_.fromJsonStyle), "either")
     val dateType = firstNonDefault(templates.map(_.dateType), "java.time.LocalDate")
     val dateTimeType = firstNonDefault(templates.map(_.dateTimeType), "java.time.LocalDateTime")
-    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType)
+    val mapType = firstNonDefault(templates.map(_.mapType), "Map")
+    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType)
   }
 
   private def commonPrefix(pkgs: List[String]): String = {

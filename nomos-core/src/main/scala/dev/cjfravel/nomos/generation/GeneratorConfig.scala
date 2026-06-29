@@ -17,7 +17,8 @@ case class GeneratorConfig(
   listType: String = "List",
   throwingFromJson: Boolean = false,
   dateType: String = "java.time.LocalDate",
-  dateTimeType: String = "java.time.LocalDateTime"
+  dateTimeType: String = "java.time.LocalDateTime",
+  mapType: String = "Map"
 ) {
   /**
    * Validates the configuration

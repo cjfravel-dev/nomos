@@ -56,6 +56,14 @@ object NomosFormats {
             methods = List()
           ),
           TemplateDefinition(
+            name = "Limits",
+            templateType = ObjectType(ListMap("name" -> FieldDef(StringType(List()), optional = false), "maxFiles" -> FieldDef(IntType(List()), optional = true, nullable = true)), ForbidExtra),
+            subPackage = Some("limits"),
+            description = None,
+            validators = List(),
+            methods = List()
+          ),
+          TemplateDefinition(
             name = "Account",
             templateType = ObjectType(ListMap("accountId" -> FieldDef(StringType(List()), optional = false), "active" -> FieldDef(BooleanType(), optional = false), "openedOn" -> FieldDef(DateType(), optional = false), "tier" -> FieldDef(EnumType("Tier", List("free", "pro")), optional = false)), ForbidExtra),
             subPackage = Some("account"),

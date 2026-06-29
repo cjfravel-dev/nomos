@@ -25,6 +25,7 @@ class TemplateParser {
         case "int" => Right(IntType())
         case "long" => Right(LongType())
         case "decimal" => Right(DecimalType())
+        case "double" => Right(NumberType())
         case "boolean" => Right(BooleanType())
         case "date" => Right(DateType())
         case "datetime" => Right(DateTimeType())
@@ -101,6 +102,9 @@ class TemplateParser {
       
       case "decimal" =>
         Right(DecimalType(parseNumberConstraints(json, path)))
+      
+      case "double" =>
+        Right(NumberType(parseNumberConstraints(json, path)))
       
       case "boolean" =>
         Right(BooleanType())
@@ -433,7 +437,8 @@ class TemplateParser {
       val fromJsonStyle = extractOptionalString(json, "fromJsonStyle").getOrElse("either")
       val dateType = extractOptionalString(json, "dateType").getOrElse("java.time.LocalDate")
       val dateTimeType = extractOptionalString(json, "dateTimeType").getOrElse("java.time.LocalDateTime")
-      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType)
+      val mapType = extractOptionalString(json, "mapType").getOrElse("Map")
+      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType)
       
       multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate

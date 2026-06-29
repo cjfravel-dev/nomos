@@ -179,36 +179,53 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     traitName: String,
     discriminatorField: String,
     variants: Map[String, String], // discriminator value -> class name
-    prefixMatch: Boolean = false
+    prefixMatch: Boolean = false,
+    throwing: Boolean = false
   ): ScalaCodeBuilder = {
     line("import com.fasterxml.jackson.databind.JsonNode")
     emptyLine()
-    line(s"def fromJson(json: String): Either[String, $traitName] = {")
-    indent()
-    line("try {")
-    indent()
-    line("val jsonNode = mapper.readTree(json)")
-    line(s"""val discriminatorValue = jsonNode.get("$discriminatorField").asText()""")
-    line("discriminatorValue match {")
-    indent()
-    variants.foreach { case (discriminatorValue, className) =>
+    def caseLine(discriminatorValue: String, className: String, wrap: String => String): Unit = {
       if (prefixMatch) {
-        line(s"""case d if d.startsWith("$discriminatorValue") => Right(mapper.treeToValue(jsonNode, classOf[$className]))""")
+        line(s"""case d if d.startsWith("$discriminatorValue") => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
       } else {
-        line(s"""case "$discriminatorValue" => Right(mapper.treeToValue(jsonNode, classOf[$className]))""")
+        line(s"""case "$discriminatorValue" => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
       }
     }
-    line(s"""case other => Left(s"Unknown $discriminatorField value: $$other")""")
-    outdent()
-    line("}")
-    outdent()
-    line("} catch {")
-    indent()
-    line(s"""case e: Exception => Left(s"Failed to parse JSON: $${e.getMessage}")""")
-    outdent()
-    line("}")
-    outdent()
-    line("}")
+    if (throwing) {
+      line(s"def fromJson(json: String): $traitName = {")
+      indent()
+      line("val jsonNode = mapper.readTree(json)")
+      line(s"""val discriminatorValue = jsonNode.get("$discriminatorField").asText()""")
+      line("discriminatorValue match {")
+      indent()
+      variants.foreach { case (dv, cn) => caseLine(dv, cn, identity) }
+      line(s"""case other => throw new IllegalArgumentException(s"Unknown $discriminatorField value: $$other")""")
+      outdent()
+      line("}")
+      outdent()
+      line("}")
+    } else {
+      line(s"def fromJson(json: String): Either[String, $traitName] = {")
+      indent()
+      line("try {")
+      indent()
+      line("val jsonNode = mapper.readTree(json)")
+      line(s"""val discriminatorValue = jsonNode.get("$discriminatorField").asText()""")
+      line("discriminatorValue match {")
+      indent()
+      variants.foreach { case (dv, cn) => caseLine(dv, cn, e => s"Right($e)") }
+      line(s"""case other => Left(s"Unknown $discriminatorField value: $$other")""")
+      outdent()
+      line("}")
+      outdent()
+      line("} catch {")
+      indent()
+      line(s"""case e: Exception => Left(s"Failed to parse JSON: $${e.getMessage}")""")
+      outdent()
+      line("}")
+      outdent()
+      line("}")
+    }
     emptyLine()
     line(s"def toJson(obj: $traitName): String = {")
     indent()

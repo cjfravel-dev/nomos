@@ -57,12 +57,23 @@ class CodeGenerator(config: GeneratorConfig) {
     withNullDefault: Boolean
   ): String = {
     if (fieldDef.nullable) {
-      val raw = scalaTypeForDefinition(fieldDef.fieldType, optional = false, definitionsMap)
+      val raw = boxIfPrimitive(scalaTypeForDefinition(fieldDef.fieldType, optional = false, definitionsMap))
       if (withNullDefault) s"$raw = null" else raw
     } else {
       val t = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
       if (withNullDefault) fieldDef.default.map(d => s"$t = $d").getOrElse(t) else t
     }
+  }
+
+  /**
+   * Boxes Scala value types so a nullable field can default to null (value types cannot be null).
+   */
+  private def boxIfPrimitive(scalaType: String): String = scalaType match {
+    case "Int"     => "java.lang.Integer"
+    case "Long"    => "java.lang.Long"
+    case "Double"  => "java.lang.Double"
+    case "Boolean" => "java.lang.Boolean"
+    case other     => other
   }
 
   /**
@@ -308,32 +319,53 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("import com.fasterxml.jackson.databind.JsonNode")
       variantPkg.foreach(p => builder.line(s"import $p._"))
       builder.emptyLine()
-      builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
-      builder.indent()
-      builder.line("try {")
-      builder.indent()
-      builder.line("val jsonNode = mapper.readTree(json)")
-      builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
-      builder.line("discriminatorValue match {")
-      builder.indent()
-      variantMap.foreach { case (variantKey, className) =>
-        if (discriminator.variantMatch == "prefix") {
-          builder.line("case d if d.startsWith(\"" + variantKey + "\") => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
-        } else {
-          builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+      if (config.throwingFromJson) {
+        builder.line("def fromJson(json: String): " + name + " = {")
+        builder.indent()
+        builder.line("val jsonNode = mapper.readTree(json)")
+        builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
+        builder.line("discriminatorValue match {")
+        builder.indent()
+        variantMap.foreach { case (variantKey, className) =>
+          if (discriminator.variantMatch == "prefix") {
+            builder.line("case d if d.startsWith(\"" + variantKey + "\") => mapper.treeToValue(jsonNode, classOf[" + className + "])")
+          } else {
+            builder.line("case \"" + variantKey + "\" => mapper.treeToValue(jsonNode, classOf[" + className + "])")
+          }
         }
+        builder.line("case other => throw new IllegalArgumentException(s\"Unknown " + discriminator.fieldName + " value: $other\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("}")
+      } else {
+        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
+        builder.indent()
+        builder.line("try {")
+        builder.indent()
+        builder.line("val jsonNode = mapper.readTree(json)")
+        builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
+        builder.line("discriminatorValue match {")
+        builder.indent()
+        variantMap.foreach { case (variantKey, className) =>
+          if (discriminator.variantMatch == "prefix") {
+            builder.line("case d if d.startsWith(\"" + variantKey + "\") => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+          } else {
+            builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+          }
+        }
+        builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("} catch {")
+        builder.indent()
+        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
+        builder.dedent()
+        builder.line("}")
+        builder.dedent()
+        builder.line("}")
       }
-      builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
-      builder.dedent()
-      builder.line("}")
-      builder.dedent()
-      builder.line("} catch {")
-      builder.indent()
-      builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
-      builder.dedent()
-      builder.line("}")
-      builder.dedent()
-      builder.line("}")
       builder.emptyLine()
       builder.line("def toJson(obj: " + name + "): String = {")
       builder.indent()
@@ -349,7 +381,11 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
       builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
       builder.indent()
-      builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      if (config.throwingFromJson) {
+        builder.line("case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError(\"root\", e.getMessage, \"valid JSON\", json))) }")
+      } else {
+        builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      }
       builder.line("case Left(errors) => Left(errors)")
       builder.dedent()
       builder.line("}")
@@ -430,7 +466,7 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("import NomosFormats._")
       builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.emptyLine()
-      builder.customSerializer(name, discriminator.fieldName, variantMap, discriminator.variantMatch == "prefix")
+      builder.customSerializer(name, discriminator.fieldName, variantMap, discriminator.variantMatch == "prefix", config.throwingFromJson)
       builder.emptyLine()
       builder.line("/**")
       builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
@@ -440,7 +476,11 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
       builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
       builder.indent()
-      builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      if (config.throwingFromJson) {
+        builder.line("case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError(\"root\", e.getMessage, \"valid JSON\", json))) }")
+      } else {
+        builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      }
       builder.line("case Left(errors) => Left(errors)")
       builder.dedent()
       builder.line("}")
@@ -470,7 +510,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType, _) =>
         s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
       case MapType(valueType) =>
-        s"Map[String, ${scalaTypeForDefinition(valueType, optional = false, definitionsMap)}]"
+        s"${config.mapType}[String, ${scalaTypeForDefinition(valueType, optional = false, definitionsMap)}]"
       case UnionType(_) => "Any"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName

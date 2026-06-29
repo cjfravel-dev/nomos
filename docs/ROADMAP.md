@@ -380,7 +380,7 @@ file-discovery order.
 Found porting two large modules end-to-end (a 9-variant config union and a 92-variant step
 union) to generated code, one template per sub-package.
 
-### P7-1. Boxed / nullable numerics — **High (compile-breaking)**
+### P7-1. Boxed / nullable numerics — **Resolved**
 A nullable numeric optional field generates a Scala primitive with a null default
 (`f: Long = null`, `f: Int = null`), which does not compile — `scala.Int`/`Long` are value
 types and cannot be null. Legacy models use boxed `java.lang.Integer`/`Long` for nullable
@@ -389,25 +389,26 @@ selected when a numeric field is `nullable`.
 ```json
 { "max_files": { "$optional": "int", "nullable": true } }
 ```
-Expected `max_files: java.lang.Integer = null` (or `Option[Int]`); today `Int = null` (won't compile).
-*Effort: M.*
+A nullable numeric now generates the boxed Java type with a null default — `java.lang.Integer`,
+`java.lang.Long`, `java.lang.Double`, `java.lang.Boolean` — which compiles. Reference types
+(BigDecimal, List, String) stay raw. *Effort: M.*
 
-### P7-2. Throwing `fromJson` for unions — **Medium**
+### P7-2. Throwing `fromJson` for unions — **Resolved**
 `fromJsonStyle: "throwing"` is honored for plain definitions but ignored for discriminated
 unions (and `variantNames` unions), whose generated `fromJson` still returns `Either`. Apply
-the selected style to union deserialization too.
-*Effort: S.*
+the selected style now applies to discriminated and `variantNames` unions: a throwing
+project generates a throwing union `fromJson` (and `validate` adapts). *Effort: S.*
 
-### P7-3. Configurable map type — **Low**
+### P7-3. Configurable map type — **Resolved**
 Open maps (`$map`) always emit a Scala `Map[String, T]`. A legacy model using
 `java.util.Map[String, T]` can't be matched. Make the generated map type configurable
-(like `dateType`/`listType`).
-*Effort: S.*
+(like `dateType`/`listType`): template-level `mapType` overrides the generated map type,
+e.g. `java.util.Map`. *Effort: S.*
 
-### P7-4. Explicit `double` keyword — **Low**
+### P7-4. Explicit `double` keyword — **Resolved**
 `number` maps to `Double` and `decimal` to `BigDecimal`, but there is no explicit `double`
 type, so a `Double` field is non-obvious (authors reach for `decimal` and get `BigDecimal`).
-Add a `double` keyword as an alias for the `Double` mapping.
+`double` is now an explicit keyword aliasing the `Double` mapping (alongside `number`).
 *Effort: S.*
 
 ---
