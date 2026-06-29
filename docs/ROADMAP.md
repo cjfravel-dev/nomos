@@ -413,6 +413,48 @@ type, so a `Double` field is non-obvious (authors reach for `decimal` and get `B
 
 ---
 
+## P8 — Validation &amp; serialization wiring (full end-to-end migration)
+
+Found taking real modules all the way: deleting the hand-rolled validation DSL and routing
+all validation/(de)serialization through generated `validate()`/`fromJson`/`toJson`. The model
+layer ports cleanly; these are the friction points at the validation + serde boundary.
+
+### P8-1. `datetime` rejects ISO-8601 instants with `Z` — **High**
+The generated `datetime` validator rejects values like `2024-01-02T09:57:26Z` (trailing `Z`
+UTC instant), which are extremely common in real payloads. Accept the `Z` (and offset) forms
+of ISO-8601. Today this forces suppressing datetime errors as a workaround.
+```json
+{ "effective_date": "datetime" }   // must accept "2024-01-02T09:57:26Z"
+```
+*Effort: S.*
+
+### P8-2. Jackson can't deserialize external Gson-polymorphic types / nested unions — **High**
+Generated `fromJson` uses Jackson. When a generated type references (a) an `$extern` type that
+deserializes via another library's polymorphism (e.g. a runtime type-adapter factory), or (b) a
+nested discriminated union field, Jackson can't construct it without a hand-written deserializer.
+Generate Jackson deserializers for nested unions, and provide a documented hook to plug an
+external type's deserializer.
+*Effort: M.*
+
+### P8-3. `validate()` does not recurse into `$extern` types — **Medium**
+Fields typed as `$extern` are treated opaquely by the generated validator (presence/array shape
+only), so their internals aren't schema-checked. Allow an external type to supply a validator
+nomos can call, or document that externs are unvalidated.
+*Effort: M.*
+
+### P8-4. `toJson` parity with legacy serializers — **Medium**
+Generated Jackson `toJson` differs from a legacy serializer in null-field emission, date string
+shape, and key ordering, so output isn't byte-compatible. Offer emission options (omit/keep
+nulls, date format, key order) for drop-in replacement.
+*Effort: M.*
+
+### P8-5. Companion (de)serialization hook — **Low**
+No first-class way to inject custom companion serialization (e.g. a post-process step, legacy
+quote handling). Add a generator hook for custom companion `fromJson`/`toJson` wrapping.
+*Effort: S.*
+
+---
+
 ## Suggested sequencing
 
 1. P0-1..4 — unlocks the bulk of typed models.
