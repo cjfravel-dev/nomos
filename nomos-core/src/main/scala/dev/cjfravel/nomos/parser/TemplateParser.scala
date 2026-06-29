@@ -37,7 +37,7 @@ class TemplateParser {
     } else if (json.isArray) {
       // Array type
       if (json.size() == 1) {
-        parseType(json.get(0), s"$path[]").map(ArrayType)
+        parseType(json.get(0), s"$path[]").map(t => ArrayType(t))
       } else {
         Left(ParseError.InvalidType("array", path, "Array must have exactly one element type"))
       }
@@ -94,8 +94,9 @@ class TemplateParser {
       case "array" =>
         extractField(json, "items", path).flatMap { itemsJson =>
           parseType(itemsJson, s"$path.items").map { elementType =>
-            parseEnum(json).map(e => withConstraint(elementType, e)).getOrElse(elementType)
-          }.map(ArrayType)
+            val withEnum = parseEnum(json).map(e => withConstraint(elementType, e)).getOrElse(elementType)
+            ArrayType(withEnum, parseArrayConstraints(json))
+          }
         }
       
       case other =>
@@ -132,6 +133,17 @@ class TemplateParser {
     extractOptionalString(json, "format").foreach(fmt => constraints = Format(fmt) :: constraints)
     parseEnum(json).foreach(e => constraints = e :: constraints)
     
+    constraints
+  }
+
+  /**
+   * Parses array item-count and uniqueness constraints.
+   */
+  private def parseArrayConstraints(json: JsonNode): List[Constraint] = {
+    var constraints = List.empty[Constraint]
+    extractOptionalInt(json, "minItems").foreach(n => constraints = MinItems(n) :: constraints)
+    extractOptionalInt(json, "maxItems").foreach(n => constraints = MaxItems(n) :: constraints)
+    extractOptionalBoolean(json, "uniqueItems").foreach(u => constraints = UniqueItems(u) :: constraints)
     constraints
   }
 

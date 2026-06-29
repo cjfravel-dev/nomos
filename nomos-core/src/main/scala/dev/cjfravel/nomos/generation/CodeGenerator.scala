@@ -403,7 +403,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case LongType(_) => "Long"
       case DecimalType(_) => "BigDecimal"
       case BooleanType() => "Boolean"
-      case ArrayType(elementType) =>
+      case ArrayType(elementType, _) =>
         s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
       case MapType(valueType) =>
         s"Map[String, ${scalaTypeForDefinition(valueType, optional = false, definitionsMap)}]"
@@ -428,7 +428,7 @@ class CodeGenerator(config: GeneratorConfig) {
   private def collectReferences(templateType: TemplateType): Set[String] = {
     templateType match {
       case ReferenceType(typeName) => Set(typeName)
-      case ArrayType(elementType) => collectReferences(elementType)
+      case ArrayType(elementType, _) => collectReferences(elementType)
       case ObjectType(fields) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
       case TypeDiscriminator(_, variants, commonFields, _, _) =>

@@ -38,9 +38,9 @@ case class DecimalType(constraints: List[Constraint] = List.empty) extends Templ
 case class BooleanType() extends TemplateType
 
 /**
- * Array type containing elements of a specific type
+ * Array type containing elements of a specific type, with optional item constraints.
  */
-case class ArrayType(elementType: TemplateType) extends TemplateType
+case class ArrayType(elementType: TemplateType, constraints: List[Constraint] = List.empty) extends TemplateType
 
 /**
  * Map type with string keys and values of a specific type. Keys are unrestricted.

@@ -119,7 +119,7 @@ case class MultiTemplate(
   private def findUnresolvedReferences(templateType: TemplateType, definedTypes: Set[String]): Set[String] = {
     def findInType(tt: TemplateType): Set[String] = tt match {
       case ReferenceType(typeName) if !definedTypes.contains(typeName) => Set(typeName)
-      case ArrayType(elementType) => findInType(elementType)
+      case ArrayType(elementType, _) => findInType(elementType)
       case ObjectType(fields) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
       case TypeDiscriminator(_, variants, commonFields, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => findInType(f.fieldType)))

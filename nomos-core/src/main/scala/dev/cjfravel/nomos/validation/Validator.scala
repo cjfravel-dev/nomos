@@ -63,7 +63,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case LongType(constraints) => validateWholeNumber(json, path, "long", constraints)
       case DecimalType(constraints) => validateNumber(json, path, constraints)
       case BooleanType() => validateBoolean(json, path)
-      case ArrayType(elementType) => validateArray(elementType, json, path, definitions)
+      case ArrayType(elementType, constraints) => validateArray(elementType, json, path, definitions, constraints)
       case MapType(valueType) => validateMap(valueType, json, path, definitions)
       case ObjectType(fields) => validateObject(fields, json, path, definitions)
       case TypeDiscriminator(fieldName, variants, commonFields, _, _) =>
@@ -168,12 +168,24 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     elementType: TemplateType,
     json: JsonNode,
     path: String,
-    definitions: Map[String, TemplateDefinition]
+    definitions: Map[String, TemplateDefinition],
+    constraints: List[Constraint] = List.empty
   ): List[ValidationError] = {
     if (json.isArray) {
-      json.elements().asScala.toList.zipWithIndex.flatMap { case (element, idx) =>
+      val elements = json.elements().asScala.toList
+      val itemErrors = elements.zipWithIndex.flatMap { case (element, idx) =>
         validateTypeWithRefs(elementType, element, s"$path[$idx]", definitions)
       }
+      val countErrors = constraints.flatMap {
+        case MinItems(n) if elements.size < n =>
+          Some(ValidationError.constraintViolation(path, s"minItems: $n", elements.size.toString))
+        case MaxItems(n) if elements.size > n =>
+          Some(ValidationError.constraintViolation(path, s"maxItems: $n", elements.size.toString))
+        case UniqueItems(true) if elements.distinct.size != elements.size =>
+          Some(ValidationError.constraintViolation(path, "uniqueItems", "duplicates"))
+        case _ => None
+      }
+      itemErrors ++ countErrors
     } else {
       List(ValidationError.typeMismatch(path, "array", json.getNodeType.toString))
     }
