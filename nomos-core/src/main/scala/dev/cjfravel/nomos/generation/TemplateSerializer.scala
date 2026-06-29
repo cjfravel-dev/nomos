@@ -53,11 +53,23 @@ object TemplateSerializer {
         val constraintsList = constraints.map(serializeConstraint).mkString(", ")
         s"NumberType(List($constraintsList))"
       
+      case IntType(constraints) =>
+        s"IntType(List(${constraints.map(serializeConstraint).mkString(", ")}))"
+      
+      case LongType(constraints) =>
+        s"LongType(List(${constraints.map(serializeConstraint).mkString(", ")}))"
+      
+      case DecimalType(constraints) =>
+        s"DecimalType(List(${constraints.map(serializeConstraint).mkString(", ")}))"
+      
       case BooleanType() =>
         "BooleanType()"
       
       case ArrayType(elementType) =>
         s"ArrayType(${serializeTemplateType(elementType)})"
+      
+      case MapType(valueType) =>
+        s"MapType(${serializeTemplateType(valueType)})"
       
       case ObjectType(fields) =>
         val fieldsList = fields.map { case (name, fieldDef) =>
@@ -111,7 +123,8 @@ object TemplateSerializer {
    * Generates Scala code to reconstruct a FieldDef
    */
   def serializeFieldDef(fieldDef: FieldDef): String = {
-    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional})"
+    val default = fieldDef.default.map(d => s""", default = Some("${escapeString(d)}")""").getOrElse("")
+    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}$default)"
   }
   
   /**
@@ -123,6 +136,7 @@ object TemplateSerializer {
       case MaxLength(len) => s"MaxLength($len)"
       case Pattern(regex) => s"""Pattern("${escapeString(regex)}")"""
       case Format(fmt) => s"""Format("${escapeString(fmt)}")"""
+      case Enum(values) => s"""Enum(List(${values.map(v => s""""${escapeString(v)}"""").mkString(", ")}))"""
       case Min(value) => s"Min($value)"
       case Max(value) => s"Max($value)"
       case MultipleOf(value) => s"MultipleOf($value)"

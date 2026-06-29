@@ -22,6 +22,9 @@ class TemplateParser {
         // Simple string type names
         case "string" => Right(StringType())
         case "number" => Right(NumberType())
+        case "int" => Right(IntType())
+        case "long" => Right(LongType())
+        case "decimal" => Right(DecimalType())
         case "boolean" => Right(BooleanType())
         
         // Reference to another definition (for multi-template mode)
@@ -44,6 +47,11 @@ class TemplateParser {
         parseComplexType(json, path)
       } else if (json.has("$type")) {
         parseDiscriminator(json, path)
+      } else if (json.has("$map")) {
+        for {
+          valueJson <- extractField(json, "$map", path)
+          valueType <- parseType(valueJson, s"$path{}")
+        } yield MapType(valueType)
       } else if (json.has("$optional")) {
         for {
           innerType <- extractField(json, "$optional", path)
@@ -71,12 +79,45 @@ class TemplateParser {
         val constraints = parseNumberConstraints(json, path)
         Right(NumberType(constraints))
       
+      case "int" =>
+        Right(IntType(parseNumberConstraints(json, path)))
+      
+      case "long" =>
+        Right(LongType(parseNumberConstraints(json, path)))
+      
+      case "decimal" =>
+        Right(DecimalType(parseNumberConstraints(json, path)))
+      
       case "boolean" =>
         Right(BooleanType())
+      
+      case "array" =>
+        extractField(json, "items", path).flatMap { itemsJson =>
+          parseType(itemsJson, s"$path.items").map { elementType =>
+            parseEnum(json).map(e => withConstraint(elementType, e)).getOrElse(elementType)
+          }.map(ArrayType)
+        }
       
       case other =>
         Left(ParseError.InvalidType(other, path))
     }
+  }
+
+  /**
+   * Returns an Enum constraint if the node carries a string "enum" array.
+   */
+  private def parseEnum(json: JsonNode): Option[Enum] = {
+    if (json.has("enum") && json.get("enum").isArray) {
+      Some(Enum(json.get("enum").elements().asScala.collect { case n if n.isTextual => n.asText() }.toList))
+    } else None
+  }
+
+  /**
+   * Appends a constraint to a scalar type's constraint list.
+   */
+  private def withConstraint(t: TemplateType, c: Constraint): TemplateType = t match {
+    case StringType(cs) => StringType(cs :+ c)
+    case other => other
   }
 
   /**
@@ -89,6 +130,7 @@ class TemplateParser {
     extractOptionalInt(json, "maxLength").foreach(len => constraints = MaxLength(len) :: constraints)
     extractOptionalString(json, "pattern").foreach(pat => constraints = Pattern(pat) :: constraints)
     extractOptionalString(json, "format").foreach(fmt => constraints = Format(fmt) :: constraints)
+    parseEnum(json).foreach(e => constraints = e :: constraints)
     
     constraints
   }
@@ -141,8 +183,18 @@ class TemplateParser {
         fieldType <- parseType(innerType, path)
       } yield FieldDef(fieldType, optional = true)
     } else {
-      parseType(json, path).map(FieldDef(_, optional = false))
+      parseType(json, path).map(FieldDef(_, optional = false, default = renderDefault(json)))
     }
+  }
+
+  /**
+   * Renders a "default" literal from a complex type node as Scala source (strings quoted).
+   */
+  private def renderDefault(json: JsonNode): Option[String] = {
+    if (json.isObject && json.has("default")) {
+      val d = json.get("default")
+      if (d.isTextual) Some("\"" + d.asText() + "\"") else Some(d.toString)
+    } else None
   }
 
   /**

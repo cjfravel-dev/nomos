@@ -108,7 +108,8 @@ class CodeGenerator(config: GeneratorConfig) {
   ): Unit = {
     val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
       val typeName = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
-      (ScalaCodeBuilder.escapeKeyword(fieldName), typeName)
+      val withDefault = fieldDef.default.map(d => s"$typeName = $d").getOrElse(typeName)
+      (ScalaCodeBuilder.escapeKeyword(fieldName), withDefault)
     }.toList
     
     builder.caseClass(name, fieldList, None)
@@ -398,9 +399,14 @@ class CodeGenerator(config: GeneratorConfig) {
     val baseType = templateType match {
       case StringType(_) => "String"
       case NumberType(_) => "Double"
+      case IntType(_) => "Int"
+      case LongType(_) => "Long"
+      case DecimalType(_) => "BigDecimal"
       case BooleanType() => "Boolean"
       case ArrayType(elementType) =>
         s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
+      case MapType(valueType) =>
+        s"Map[String, ${scalaTypeForDefinition(valueType, optional = false, definitionsMap)}]"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
       case ObjectType(_) =>

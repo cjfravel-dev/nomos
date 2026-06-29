@@ -55,8 +55,12 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     templateType match {
       case StringType(constraints) => validateString(json, path, constraints)
       case NumberType(constraints) => validateNumber(json, path, constraints)
+      case IntType(constraints) => validateWholeNumber(json, path, "int", constraints)
+      case LongType(constraints) => validateWholeNumber(json, path, "long", constraints)
+      case DecimalType(constraints) => validateNumber(json, path, constraints)
       case BooleanType() => validateBoolean(json, path)
       case ArrayType(elementType) => validateArray(elementType, json, path, definitions)
+      case MapType(valueType) => validateMap(valueType, json, path, definitions)
       case ObjectType(fields) => validateObject(fields, json, path, definitions)
       case TypeDiscriminator(fieldName, variants, commonFields, _, _) =>
         validateDiscriminator(fieldName, variants, commonFields, json, path, definitions)
@@ -91,6 +95,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         case Pattern(regex) if !value.matches(regex) =>
           Some(ValidationError.constraintViolation(path, s"pattern: $regex", value))
         case Format(fmt) => validateFormat(fmt, value, path)
+        case Enum(values) if !values.contains(value) =>
+          Some(ValidationError.constraintViolation(path, s"enum: ${values.mkString(", ")}", value))
         case _ => None
       }
     } else {
@@ -121,6 +127,16 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       validateNumberConstraints(json.asDouble(), path, constraints)
     } else {
       List(ValidationError.typeMismatch(path, "number", json.getNodeType.toString))
+    }
+  }
+  
+  private def validateWholeNumber(json: JsonNode, path: String, expected: String, constraints: List[Constraint]): List[ValidationError] = {
+    if (!json.isNumber) {
+      List(ValidationError.typeMismatch(path, expected, json.getNodeType.toString))
+    } else if (json.asDouble() % 1 != 0) {
+      List(ValidationError.typeMismatch(path, expected, "fractional number"))
+    } else {
+      validateNumberConstraints(json.asDouble(), path, constraints)
     }
   }
   
@@ -156,6 +172,21 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       }
     } else {
       List(ValidationError.typeMismatch(path, "array", json.getNodeType.toString))
+    }
+  }
+  
+  private def validateMap(
+    valueType: TemplateType,
+    json: JsonNode,
+    path: String,
+    definitions: Map[String, TemplateDefinition]
+  ): List[ValidationError] = {
+    if (json.isObject) {
+      json.fields().asScala.toList.flatMap { entry =>
+        validateTypeWithRefs(valueType, entry.getValue, s"$path.${entry.getKey}", definitions)
+      }
+    } else {
+      List(ValidationError.typeMismatch(path, "object", json.getNodeType.toString))
     }
   }
   

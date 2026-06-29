@@ -10,6 +10,7 @@ case class MinLength(length: Int) extends Constraint
 case class MaxLength(length: Int) extends Constraint
 case class Pattern(regex: String) extends Constraint
 case class Format(formatType: String) extends Constraint // e.g., "email", "url", "date"
+case class Enum(values: List[String]) extends Constraint
 
 // Number constraints
 case class Min(value: Double) extends Constraint

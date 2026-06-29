@@ -18,6 +18,21 @@ case class StringType(constraints: List[Constraint] = List.empty) extends Templa
 case class NumberType(constraints: List[Constraint] = List.empty) extends TemplateType
 
 /**
+ * Integer type (maps to Int in Scala) with optional constraints. Requires whole numbers.
+ */
+case class IntType(constraints: List[Constraint] = List.empty) extends TemplateType
+
+/**
+ * Long type (maps to Long in Scala) with optional constraints. Requires whole numbers.
+ */
+case class LongType(constraints: List[Constraint] = List.empty) extends TemplateType
+
+/**
+ * Decimal type (maps to BigDecimal in Scala) with optional constraints.
+ */
+case class DecimalType(constraints: List[Constraint] = List.empty) extends TemplateType
+
+/**
  * Boolean type
  */
 case class BooleanType() extends TemplateType
@@ -26,6 +41,11 @@ case class BooleanType() extends TemplateType
  * Array type containing elements of a specific type
  */
 case class ArrayType(elementType: TemplateType) extends TemplateType
+
+/**
+ * Map type with string keys and values of a specific type. Keys are unrestricted.
+ */
+case class MapType(valueType: TemplateType) extends TemplateType
 
 /**
  * Object type with named fields
@@ -71,8 +91,10 @@ case class RecursiveRef(typeName: String) extends TemplateType
  *
  * @param fieldType The type of the field
  * @param optional Whether the field is optional (becomes Option[T] in Scala)
+ * @param default Optional default value rendered as a Scala literal (e.g. "false", "\"x\"")
  */
 case class FieldDef(
   fieldType: TemplateType,
-  optional: Boolean = false
+  optional: Boolean = false,
+  default: Option[String] = None
 )
