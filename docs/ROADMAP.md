@@ -300,6 +300,10 @@ type. Add an "optional ⇒ nullable raw (no Option wrapper)" generation mode.
 ```
 Expected `tags: Array[String]` (null when absent); today `Option[Array[String]]`. *Effort: M.*
 
+> Follow-up (found on retest): `nullable` is honored for plain object fields but **ignored
+> inside discriminator `commonFields` and variant fields** — those still emit `Option`.
+> Propagate `nullable` into discriminator-generated fields.
+
 ### P5-2. Reference external (hand-written) types — **High**
 A field can only `$ref` a type defined in the templates. Keeping a field whose type is a rich
 hand-written class (not something you want generated) forces either regenerating that type or
@@ -333,11 +337,25 @@ methods are lost. Allow declaring derived members in the template (or a partial/
 the generator preserves).
 *Effort: M.*
 
+> Follow-up (found on retest): declared `methods` emit into the **companion object only**, so an
+> instance method that references fields (e.g. `def displayName = name + version`) does not
+> compile. Support instance-level methods (emit into the case class body).
+
 ### P5-6. Pluggable serializer + `fromJson` signature — **Medium**
 Generated ser/de is Jackson-only and `fromJson` returns `Either`. A legacy API may use a
 different library and a throwing `fromJson: T`. Make the serializer pluggable and the
 `fromJson` signature selectable (throwing vs `Either`).
 *Effort: M.*
+
+> Follow-up (found on retest): the template-level `"fromJsonStyle": "throwing"` is not wired
+> through the maven plugin to the generator, so generated `fromJson` still returns `Either`.
+> Plumb the template flag into `GeneratorConfig` (same class of plugin-vs-core wiring as P4-1).
+
+### P5-8. Date target type — **Low**
+`date`/`datetime` map to `java.time.LocalDate`/`LocalDateTime`. A legacy model using
+`java.util.Date` (or another date class) can't be matched. Make the generated date type
+configurable.
+*Effort: S.*
 
 ### P5-7. Preserve source field order — **Low**
 Generated case-class fields are reordered relative to the template, changing positional
