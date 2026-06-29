@@ -375,7 +375,7 @@ file-discovery order.
 
 ---
 
-## P7 — Full-module port gaps (DataQuality + PackageConfig)
+## P7 — Full-module port gaps
 
 Found porting two large modules end-to-end (a 9-variant config union and a 92-variant step
 union) to generated code, one template per sub-package.
