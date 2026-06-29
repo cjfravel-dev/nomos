@@ -4,6 +4,7 @@
 
 P0-1..5, P1-1..4, and P2 are implemented. Adapters (P1-4) ship as a registry plus
 template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
+P3 captures parity gaps found validating real-world payloads end-to-end (still open).
 
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing
@@ -218,3 +219,61 @@ Valid JSON:
 2. P0-5 validator registry — prerequisite for cross-field rules.
 3. P1-1 + P1-2 — large variant families + tolerant objects.
 4. P1-3 + P1-4 — serialization parity.
+5. P3-1..4 — real-payload parity blockers (escaped keys + parameterized variants are highest impact).
+
+---
+
+## P3 — Real-payload parity gaps
+
+Found while validating real-world payloads end-to-end. P3-1 and P3-2 are the highest-impact
+blockers for object-heavy schemas.
+
+### P3-1. Escaped keys (reserved-keyword field names) — **High**
+A field literally named `type` (or `default`, `enum`, `items`, etc.) collides with template
+keywords, so `{ "name": "string", "type": "string" }` is read as a type spec, not an object
+with a `type` field. Add backtick escaping: a quoted key strips its backticks to become a
+literal field name. Today backticks are kept verbatim — implement the unescape.
+
+Template:
+```json
+{ "name": "string", "`type`": "string" }
+```
+Valid JSON:
+```json
+{ "name": "Guid", "type": "String" }
+```
+*Effort: S.*
+
+### P3-2. Parameterized discriminator values — **High**
+Discriminator matching is exact, so a value like `Decimal(28,8)` cannot select a `Decimal`
+variant. Support prefix/pattern variant keys so families with parameterized tags resolve.
+
+Template:
+```json
+{ "$type": { "discriminator": "type", "variantMatch": "prefix",
+  "variants": { "Decimal": { "scale": "int" }, "String": {} } } }
+```
+Valid JSON:
+```json
+{ "type": "Decimal(28,8)" }
+```
+*Effort: M.*
+
+### P3-3. Union value types (maps & fields) — **Medium**
+A value may legitimately be one of several types (e.g. `string` OR array-of-string). Allow a
+union so a single field/map accepts alternatives without a discriminator.
+
+Template:
+```json
+{ "settings": { "$map": ["string", ["string"]] } }
+```
+Valid JSON:
+```json
+{ "settings": { "a": "x,y", "b": ["x","y"] } }
+```
+*Effort: M.*
+
+### P3-4. Serialization round-trip parity test — **Medium**
+Confirm generated `toJson`/`fromJson` reproduce the original payload byte-for-byte (key
+order, discriminator placement) so generated code can replace hand-written serializers.
+*Effort: S.*
