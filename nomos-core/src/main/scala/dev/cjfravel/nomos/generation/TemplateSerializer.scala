@@ -72,6 +72,9 @@ object TemplateSerializer {
       case MapType(valueType) =>
         s"MapType(${serializeTemplateType(valueType)})"
       
+      case UnionType(types) =>
+        s"UnionType(List(${types.map(serializeTemplateType).mkString(", ")}))"
+      
       case ObjectType(fields, additional) =>
         val fieldsList = fields.map { case (name, fieldDef) =>
           s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
@@ -84,7 +87,7 @@ object TemplateSerializer {
       case RecursiveRef(typeName) =>
         s"""RecursiveRef("${escapeString(typeName)}")"""
       
-      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch) =>
         val variantsList = variants.map { case (name, objType) =>
           s""""${escapeString(name)}" -> ${serializeObjectTypeFields(objType)}"""
         }.mkString(", ")
@@ -105,7 +108,8 @@ object TemplateSerializer {
           variants = ListMap($variantsList),
           commonFields = ListMap($commonFieldsList),
           includeInOutput = $includeInOutput,
-          variantNames = $variantNamesMap
+          variantNames = $variantNamesMap,
+          variantMatch = "${escapeString(variantMatch)}"
         )"""
     }
   }

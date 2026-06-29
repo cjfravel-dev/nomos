@@ -48,6 +48,11 @@ case class ArrayType(elementType: TemplateType, constraints: List[Constraint] = 
 case class MapType(valueType: TemplateType) extends TemplateType
 
 /**
+ * Union of alternative types; a value is valid if it matches any member.
+ */
+case class UnionType(types: List[TemplateType]) extends TemplateType
+
+/**
  * Policy for keys not declared in an object type.
  */
 sealed trait AdditionalProperties
@@ -81,7 +86,8 @@ case class TypeDiscriminator(
   variants: ListMap[String, ObjectType],
   commonFields: ListMap[String, FieldDef] = ListMap.empty,
   includeInOutput: Boolean = true,
-  variantNames: Map[String, String] = Map.empty
+  variantNames: Map[String, String] = Map.empty,
+  variantMatch: String = "exact"
 ) extends TemplateType
 
 /**

@@ -35,11 +35,15 @@ class TemplateParser {
         case _ => Left(ParseError.InvalidType(text, path))
       }
     } else if (json.isArray) {
-      // Array type
       if (json.size() == 1) {
         parseType(json.get(0), s"$path[]").map(t => ArrayType(t))
+      } else if (json.size() > 1) {
+        val parsed = json.elements().asScala.toList.zipWithIndex.map { case (n, i) => parseType(n, s"$path|$i") }
+        val errs = parsed.collect { case Left(e) => e }
+        if (errs.nonEmpty) Left(ParseError.MultipleErrors(errs))
+        else Right(UnionType(parsed.collect { case Right(t) => t }))
       } else {
-        Left(ParseError.InvalidType("array", path, "Array must have exactly one element type"))
+        Left(ParseError.InvalidType("array", path, "Array must have at least one element type"))
       }
     } else if (json.isObject) {
       // Check for different object patterns
@@ -167,7 +171,7 @@ class TemplateParser {
     if (json.isObject) {
       val fields = json.fields().asScala.toList.filterNot(_.getKey == "$additionalProperties")
       val fieldResults = fields.map { entry =>
-        val fieldName = entry.getKey
+        val fieldName = unescapeKey(entry.getKey)
         val fieldValue = entry.getValue
         parseFieldDef(fieldValue, s"$path.$fieldName").map(fieldName -> _)
       }
@@ -183,6 +187,12 @@ class TemplateParser {
       Left(ParseError.InvalidType("object", path, "Expected JSON object"))
     }
   }
+
+  /**
+   * Strips surrounding backticks so a quoted key like `type` becomes the literal field name "type".
+   */
+  private def unescapeKey(key: String): String =
+    if (key.length >= 2 && key.startsWith("`") && key.endsWith("`")) key.substring(1, key.length - 1) else key
 
   /**
    * Parses the $additionalProperties policy: true allows extras, false forbids, a type validates extras.
@@ -232,7 +242,8 @@ class TemplateParser {
       commonFields <- parseCommonFields(typeObj, s"$path.$$type")
       includeInOutput = extractOptionalBoolean(typeObj, "includeDiscriminator").getOrElse(true)
       variantNames = parseVariantNames(typeObj, s"$path.$$type")
-    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames)
+      variantMatch = extractOptionalString(typeObj, "variantMatch").getOrElse("exact")
+    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch)
   }
 
   /**

@@ -2,9 +2,9 @@
 
 ## Status
 
-P0-1..5, P1-1..4, and P2 are implemented. Adapters (P1-4) ship as a registry plus
+P0-1..5, P1-1..4, P2, and P3-1..4 are implemented. Adapters (P1-4) ship as a registry plus
 template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
-P3 captures parity gaps found validating real-world payloads end-to-end (still open).
+P3 parity gaps (escaped keys, prefix-matched variants, union value types, round-trip) are closed.
 
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing

@@ -65,9 +65,12 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case BooleanType() => validateBoolean(json, path)
       case ArrayType(elementType, constraints) => validateArray(elementType, json, path, definitions, constraints)
       case MapType(valueType) => validateMap(valueType, json, path, definitions)
+      case UnionType(types) =>
+        if (types.exists(t => validateTypeWithRefs(t, json, path, definitions).isEmpty)) List.empty
+        else List(ValidationError.typeMismatch(path, "one of union types", json.getNodeType.toString))
       case ObjectType(fields, additional) => validateObject(fields, json, path, definitions, additional)
-      case TypeDiscriminator(fieldName, variants, commonFields, _, _) =>
-        validateDiscriminator(fieldName, variants, commonFields, json, path, definitions)
+      case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch) =>
+        validateDiscriminator(fieldName, variants, commonFields, json, path, definitions, variantMatch)
       case ReferenceType(typeName) =>
         // Resolve reference and validate
         definitions.get(typeName) match {
@@ -249,7 +252,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     commonFields: Map[String, FieldDef],
     json: JsonNode,
     path: String,
-    definitions: Map[String, TemplateDefinition]
+    definitions: Map[String, TemplateDefinition],
+    variantMatch: String = "exact"
   ): List[ValidationError] = {
     if (json.isObject) {
       val jsonFieldMap = json.fields().asScala.toList.map(entry => entry.getKey -> entry.getValue).toMap
@@ -258,7 +262,11 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       jsonFieldMap.get(fieldName) match {
         case Some(discriminatorNode) if discriminatorNode.isTextual =>
           val discriminatorValue = discriminatorNode.asText()
-          variants.get(discriminatorValue) match {
+          val matched = variants.get(discriminatorValue).orElse {
+            if (variantMatch == "prefix") variants.find { case (k, _) => discriminatorValue.startsWith(k) }.map(_._2)
+            else None
+          }
+          matched match {
             case Some(variantType) =>
               // Validate common fields
               val commonErrors = commonFields.flatMap { case (cfName, cfDef) =>
