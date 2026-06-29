@@ -249,21 +249,37 @@ Valid JSON:
 ```
 *Effort: S.*
 
-### P4-3. Collapse identical variants to one shared class — **Medium**
-A discriminator generates a distinct case class per variant value even when several values
-share an identical shape, exploding into many redundant classes. Allow multiple discriminator
-values to map to a single shared variant class (e.g. via `variantNames` pointing several keys
-at the same name, or a default variant), so structurally identical variants reuse one class —
-distinguished only by the discriminator value at runtime.
+### P4-3. Collapse identical variants to one shared class — **Resolved**
+A discriminator generates a distinct case class per variant value, which would explode
+structurally identical variants into many redundant classes. This is handled by `variantNames`:
+pointing several discriminator values at the same name generates a single shared class, reused
+by all those values and distinguished only by the discriminator value at runtime.
 
-Template (3 values, same shape → one class):
+Template (4 values, same shape → one `Number` class):
 ```json
 { "$type": { "discriminator": "type",
-  "variantNames": { "int": "Number", "long": "Number", "double": "Number" },
-  "variants": { "int": {}, "long": {}, "double": {} } } }
+  "variantNames": { "int": "Number", "long": "Number", "double": "Number", "short": "Number" },
+  "variants": { "int": {}, "long": {}, "double": {}, "short": {} } } }
 ```
-Expected: one `Number` class; actual: `Int`/`Long`/`Double` classes. Sub-package placement of
-variants is fine; the issue is the class count. *Effort: M.*
+Generates one `Number` class for all four values.
+
+### P4-4. Prefix dispatch in generated deserialization — **High**
+With `variantMatch: prefix`, validation routes a parameterized value (e.g. `Decimal(28,8)`) to
+its variant, but generated `fromJson` dispatches on exact discriminator equality
+(`case "Decimal" =>`), so the parameterized value falls through to an unknown-type error and
+fails to deserialize. Codegen must emit prefix dispatch (`startsWith`) for prefix-matched
+discriminators so validation and deserialization agree.
+
+Template:
+```json
+{ "$type": { "discriminator": "type", "variantMatch": "prefix",
+  "variants": { "Decimal": { "scale": "int" }, "String": {} } } }
+```
+Valid JSON (must both validate and deserialize):
+```json
+{ "type": "Decimal(28,8)", "scale": 8 }
+```
+*Effort: S.*
 
 ---
 
@@ -274,7 +290,7 @@ variants is fine; the issue is the class count. *Effort: M.*
 3. P1-1 + P1-2 — large variant families + tolerant objects.
 4. P1-3 + P1-4 — serialization parity.
 5. P3-1..4 — real-payload parity blockers (escaped keys + parameterized variants are highest impact).
-6. P4-1..3 — multi-template adoption blockers (cross-template refs + open-map + variant-collapse).
+6. P4-1, P4-2, P4-4 — multi-template adoption (cross-template refs, open-map objects, prefix dispatch in codegen).
 
 ---
 
