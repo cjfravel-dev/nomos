@@ -97,7 +97,7 @@ public class GenerateMojo extends AbstractMojo {
         java.util.List<MultiTemplate> templates = new ArrayList<>();
 
         for (File templateFile : templateFiles) {
-            String relativePath = templateDir.toPath().relativize(templateFile.toPath()).toString();
+            String relativePath = templateDir.toPath().relativize(templateFile.toPath()).toString().replace(File.separatorChar, '/');
             getLog().info("");
             getLog().info("Processing: " + relativePath);
 
@@ -106,7 +106,7 @@ public class GenerateMojo extends AbstractMojo {
                 String basePackage = packageFromPath(templateDir.toPath(), templateFile.toPath());
                 getLog().info("  Base package: " + basePackage);
 
-                scala.util.Either<?, ?> parseResult = Nomos.parseTemplateDeferred(templateContent, basePackage);
+                scala.util.Either<?, ?> parseResult = Nomos.parseTemplateDeferred(templateContent, basePackage, relativePath);
                 if (parseResult.isLeft()) {
                     getLog().error("  Failed to parse template: " + parseResult.left().get());
                     parseFailures++;

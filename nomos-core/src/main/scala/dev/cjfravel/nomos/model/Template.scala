@@ -9,6 +9,7 @@ package dev.cjfravel.nomos.model
  * @param description Optional description of this definition
  * @param validators Names of registered custom validators to run after schema validation
  * @param methods Raw Scala member declarations emitted into the generated case class body
+ * @param sourcePath Generation-time pointer to the template file this definition came from
  */
 case class TemplateDefinition(
   name: String,
@@ -16,7 +17,8 @@ case class TemplateDefinition(
   subPackage: Option[String] = None,
   description: Option[String] = None,
   validators: List[String] = List.empty,
-  methods: List[String] = List.empty
+  methods: List[String] = List.empty,
+  sourcePath: Option[String] = None
 ) {
   /**
    * Validates that the definition name is a valid Scala identifier

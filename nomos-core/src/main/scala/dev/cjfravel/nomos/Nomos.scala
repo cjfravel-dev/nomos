@@ -54,6 +54,16 @@ object Nomos {
   }
   
   /**
+   * Parse a deferred template and tag every definition with the template's source file path,
+   * which the generator emits as a Source pointer in the generated header.
+   */
+  def parseTemplateDeferred(json: String, basePackage: String, sourcePath: String): Either[ParseError, MultiTemplate] = {
+    parseTemplateDeferred(json, basePackage).map { t =>
+      t.copy(definitions = t.definitions.map(_.copy(sourcePath = Some(sourcePath))))
+    }
+  }
+  
+  /**
    * Generate Scala case classes from a template.
    * Uses the basePackage, useOptionTypes, and listType from the template; outputDir defaults
    * to the standard Maven source root.
