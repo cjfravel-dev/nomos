@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nomos — Scala models &amp; validators from one template</title>
+  <meta name="description" content="Nomos generates Scala case classes and runtime JSON validators from a single declarative template, so your model and its validation never drift apart.">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
+</head>
+<body data-section="home">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <img class="brand-icon" src="assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="index.html" data-section="home">Home</a>
+      <a href="users/getting-started.html" data-section="users">User Guide</a>
+      <a href="contributors/index.html" data-section="contributors">Contributors</a>
+      <a href="api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <img class="hero-mark" src="assets/logo-mark.svg" alt="Nomos logo">
+    <p class="kicker">JSON templating engine for Scala</p>
+    <h1>One template is <em>the law</em> your data follows.</h1>
+    <p class="tagline">
+      Nomos generates Scala case classes <em>and</em> a runtime JSON validator
+      from a single declarative template — so your model and its validation are
+      always derived from the same source of truth, and can never drift apart.
+    </p>
+    <div class="badges">
+      <img src="https://img.shields.io/badge/Scala-2.12-DC322F?logo=scala&amp;logoColor=white" alt="Scala 2.12">
+      <img src="https://img.shields.io/badge/build-Maven-C71A36?logo=apachemaven&amp;logoColor=white" alt="Maven">
+      <img src="https://img.shields.io/badge/JSON-Jackson-blue" alt="Jackson">
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="users/getting-started.html">Get Started</a>
+      <a class="btn btn-ghost" href="users/template-format.html">Template Reference</a>
+    </div>
+  </div>
+</section>
+
+<div class="page no-sidebar">
+  <main class="content">
+
+    <h2 id="why">Why Nomos?</h2>
+
+    <div class="feature-strip">
+      <div class="feat">
+        <svg viewBox="0 0 48 48" fill="none" stroke="#6c84c8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 8c-5 0-3 12-9 16 6 4 4 16 9 16"/>
+          <path d="M30 8c5 0 3 12 9 16-6 4-4 16-9 16"/>
+        </svg>
+        <b>Templates</b><span>Declare the structure</span>
+      </div>
+      <div class="feat">
+        <svg viewBox="0 0 48 48" fill="#5fb89a" aria-hidden="true">
+          <circle cx="10" cy="14" r="2.4"/><circle cx="19" cy="14" r="2.4"/><circle cx="28" cy="14" r="2.4"/>
+          <circle cx="10" cy="24" r="2.4"/><circle cx="19" cy="24" r="2.4"/>
+          <circle cx="10" cy="34" r="2.4"/>
+          <path d="M24 30 h12 m-5-5 5 5-5 5" fill="none" stroke="#5fb89a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <b>Generate</b><span>Types &amp; serializers</span>
+      </div>
+      <div class="feat">
+        <svg viewBox="0 0 48 48" fill="none" stroke="#5fb89a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M24 7l13 5v9c0 9-6 15-13 18-7-3-13-9-13-18v-9z"/>
+          <path d="M18 24l5 5 8-9"/>
+        </svg>
+        <b>Validate</b><span>Data matches schema</span>
+      </div>
+      <div class="feat">
+        <svg viewBox="0 0 48 48" fill="#d8432a" aria-hidden="true">
+          <path d="M14 12c7 1 13 1.6 20 .6V18c-7 1-13 .4-20-.6z"/>
+          <path d="M14 21c7 1 13 1.6 20 .6V27c-7 1-13 .4-20-.6z"/>
+          <path d="M14 30c7 1 13 1.6 20 .6V36c-7 1-13 .4-20-.6z"/>
+        </svg>
+        <b>Scala</b><span>Type-safe by design</span>
+      </div>
+    </div>
+
+    <p>
+      A hand-written model and its validator are two copies of the same truth,
+      kept in sync by hand. Add a field, tighten a constraint, rename a variant —
+      now you edit the case class, the Jackson wiring, and the validation, and
+      hope they agree. They drift. Nomos removes the second copy: you write one
+      template, and the case class, its (de)serialization, and a validator are
+      all generated from it.
+    </p>
+    <p>
+      In Greek, <a href="https://en.wikipedia.org/wiki/Nomos_(sociology)">nomos</a>
+      (νόμος) is <em>the law</em> — the agreed-upon order a community lives by.
+      Nomos makes your template the law: the single declaration your Scala types
+      and your JSON both answer to.
+    </p>
+
+    <h2 id="quick-look">A quick look</h2>
+    <p>Drop a template under your resources, matching the package you want:</p>
+<pre><code class="language-json">// src/main/resources/nomos/templates/com/example/models/user.json
+{
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "user",
+      "template": {
+        "id": "string",
+        "username": { "type": "string", "minLength": 1 },
+        "email": { "type": "string", "format": "email" },
+        "age": { "$optional": "int" },
+        "roles": ["string"]
+      }
+    }
+  ]
+}</code></pre>
+
+    <p>Run <code>mvn generate-sources</code>, and Nomos writes a case class plus a companion with parse, serialize, and <em>validate</em>:</p>
+<pre><code class="language-scala">import com.example.models.user.User
+
+// Validate against the embedded template, then parse — no template file needed at runtime
+User.validate("""{"id":"1","username":"jo","email":"jo@x.com","roles":["admin"]}""") match {
+  case Right(user)  => println(user.email)
+  case Left(errors) => errors.foreach(e => println(e.fullMessage))
+}
+
+// Or round-trip directly
+val json = User.toJson(user)
+val back = User.fromJson(json)   // Either[String, User]</code></pre>
+
+    <h2 id="highlights">What you get</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Rich type system</h3>
+        <p><code>int</code>, <code>long</code>, <code>decimal</code>, <code>date</code>/<code>datetime</code>, maps, unions, enums, defaults, and nullable raw fields — not just strings and doubles.</p>
+      </div>
+      <div class="card">
+        <h3>Validation built in</h3>
+        <p>The template is embedded in the generated code, so every model validates JSON at runtime with no separate schema to ship or keep in sync.</p>
+      </div>
+      <div class="card">
+        <h3>Polymorphic families</h3>
+        <p>Type discriminators become sealed traits with variants — including <code>$ref</code> bodies, prefix-matched tags, and shared variant collapse.</p>
+      </div>
+      <div class="card">
+        <h3>Extensible</h3>
+        <p>Register named cross-field validators, custom string formats, and (de)serialization adapters via <code>Nomos.validators</code>, <code>Nomos.formats</code>, and <code>Nomos.adapters</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Build-time generation</h3>
+        <p>A Maven plugin scans your templates and generates sources during <code>generate-sources</code>. Output to <code>src/main/scala</code> or a gitignored folder.</p>
+      </div>
+      <div class="card">
+        <h3>Multi-file projects</h3>
+        <p>Split a large model one template per package; <code>$ref</code> resolves across files into a shared definition space.</p>
+      </div>
+    </div>
+
+    <h2 id="next">Where to next</h2>
+    <ul>
+      <li><a href="users/getting-started.html">Getting Started</a> — install, write a template, generate, and use it.</li>
+      <li><a href="users/template-format.html">Template Format</a> — the full template DSL: types, constraints, discriminators.</li>
+      <li><a href="users/validation.html">Validation</a> — embedded validation, custom validators, formats, adapters.</li>
+      <li><a href="users/code-generation.html">Code Generation</a> — what Nomos emits and how to configure it.</li>
+      <li><a href="users/maven-plugin.html">Maven Plugin</a> — wiring generation into your build.</li>
+    </ul>
+
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links">
+      <a href="users/getting-started.html">Docs</a>
+      <a href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </span>
+  </div>
+</footer>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contributing — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/logo-mark.svg">
+</head>
+<body data-section="contributors" data-page="index">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="../users/getting-started.html" data-section="users">User Guide</a>
+      <a href="index.html" data-section="contributors">Contributors</a>
+      <a href="../api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>Contributors</h5>
+    <ul>
+      <li><a href="index.html" data-page="index">Contributing</a></li>
+      <li><a href="architecture.html" data-page="architecture">Architecture</a></li>
+    </ul>
+    <h5>On this page</h5>
+    <ul>
+      <li><a href="#setup">Prerequisites</a></li>
+      <li><a href="#build">Build &amp; test</a></li>
+      <li><a href="#coverage">Coverage</a></li>
+      <li><a href="#tdd">Test-driven workflow</a></li>
+      <li><a href="#style">Code style</a></li>
+      <li><a href="#pr">Pull requests</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">Contributors</span>
+      <h1>Contributing to Nomos</h1>
+      <p class="lede">How to set up a dev environment, build and test the modules, and land a change.</p>
+    </div>
+
+    <h2 id="setup">Prerequisites</h2>
+    <ul>
+      <li><b>JDK 11</b> — set <code>JAVA_HOME</code> to a Java 11 install.</li>
+      <li><b>Maven 3.9+</b></li>
+      <li><b>Scala 2.12.18</b> — managed by the build; no separate install needed.</li>
+    </ul>
+
+    <h2 id="build">Build &amp; test</h2>
+<pre><code class="language-bash"># build and install all modules
+mvn -DskipTests install
+
+# run the core test suite
+mvn -pl nomos-core test
+
+# rebuild the example end-to-end (regenerates from templates, then compiles + tests)
+cd nomos-example &amp;&amp; mvn test</code></pre>
+    <div class="callout note"><p>The <code>nomos-example</code> module is the end-to-end proof: the plugin regenerates real models from templates, then a test suite round-trips JSON through the generated code.</p></div>
+
+    <h2 id="coverage">Coverage</h2>
+    <p>Statement coverage for <code>nomos-core</code> runs via scoverage:</p>
+<pre><code class="language-bash">mvn -pl nomos-core scoverage:report
+# HTML report: nomos-core/target/site/scoverage/index.html</code></pre>
+
+    <h2 id="tdd">Test-driven workflow</h2>
+    <p>
+      Changes are developed test-first: add a failing spec under
+      <code>nomos-core/src/test/scala/dev/cjfravel/nomos/</code>, implement until it passes,
+      then prove anything user-visible end-to-end in <code>nomos-example</code>. A feature that
+      changes generated code should have both a content test (what's emitted) and an example
+      test (that it compiles and runs).
+    </p>
+
+    <h2 id="style">Code style</h2>
+    <ul>
+      <li>Wrap <code>if</code>/<code>else</code> branch bodies in braces.</li>
+      <li>Comments describe present behavior — not history, removed code, or session notes.</li>
+      <li>Prefer order-preserving <code>ListMap</code> where field/variant order matters.</li>
+    </ul>
+
+    <h2 id="pr">Pull requests</h2>
+    <ul>
+      <li>Keep changes focused; update the relevant docs page when behavior changes.</li>
+      <li>Ensure <code>mvn -pl nomos-core test</code> and the example build are green.</li>
+      <li>Describe the user-visible effect and link any roadmap item it addresses.</li>
+    </ul>
+
+    <p class="muted" style="margin-top:28px">See <a href="architecture.html">Architecture</a> for how the modules and the generation pipeline fit together.</p>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links"><a href="../index.html">Home</a><a href="https://github.com/cjfravel-dev/nomos">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

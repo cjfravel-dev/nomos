@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Generation — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/logo-mark.svg">
+</head>
+<body data-section="users" data-page="code-generation">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="getting-started.html" data-section="users">User Guide</a>
+      <a href="../contributors/index.html" data-section="contributors">Contributors</a>
+      <a href="../api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>User Guide</h5>
+    <ul>
+      <li><a href="getting-started.html" data-page="getting-started">Getting Started</a></li>
+      <li><a href="template-format.html" data-page="template-format">Template Format</a></li>
+      <li><a href="validation.html" data-page="validation">Validation</a></li>
+      <li><a href="code-generation.html" data-page="code-generation">Code Generation</a></li>
+      <li><a href="maven-plugin.html" data-page="maven-plugin">Maven Plugin</a></li>
+    </ul>
+    <h5>On this page</h5>
+    <ul>
+      <li><a href="#files">What gets generated</a></li>
+      <li><a href="#companion">The companion object</a></li>
+      <li><a href="#formats">NomosFormats</a></li>
+      <li><a href="#enums">Enum files</a></li>
+      <li><a href="#options">Generation options</a></li>
+      <li><a href="#fromjson">fromJson style</a></li>
+      <li><a href="#methods">Helper methods</a></li>
+      <li><a href="#headers">File headers</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">User Guide</span>
+      <h1>Code Generation</h1>
+      <p class="lede">For each definition Nomos emits a case class and a companion with parse/serialize/validate, plus a shared <code>NomosFormats</code> carrying the embedded template.</p>
+    </div>
+
+    <h2 id="files">What gets generated</h2>
+    <p>From a template at <code>nomos/templates/com/example/models/user.json</code>:</p>
+    <table>
+      <tr><th>File</th><th>Contents</th></tr>
+      <tr><td><code>com/example/models/user/User.scala</code></td><td>The <code>User</code> case class + companion</td></tr>
+      <tr><td><code>com/example/models/NomosFormats.scala</code></td><td>Shared mapper, embedded template, validator</td></tr>
+      <tr><td><code>…/&lt;Enum&gt;.scala</code></td><td>One file per generated enum type</td></tr>
+    </table>
+
+    <h2 id="companion">The case class &amp; companion</h2>
+<pre><code class="language-scala">case class User(id: String, username: String, email: String, age: Option[Int], roles: List[String])
+
+object User {
+  import com.example.models.NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+
+  def fromJson(json: String): Either[String, User] = { ... }
+  def toJson(obj: User): String = mapper.writeValueAsString(obj)
+  def validate(json: String): Either[List[ValidationError], User] = { ... }
+}</code></pre>
+    <p>Discriminated unions instead generate a <code>sealed trait</code>, a case class per variant, and a companion whose <code>fromJson</code> dispatches on the discriminator value (using <code>startsWith</code> when <code>variantMatch: prefix</code>).</p>
+
+    <h2 id="formats">NomosFormats</h2>
+    <p>A single <code>NomosFormats</code> per base package provides the Jackson <code>ObjectMapper</code> (Scala + Java-time modules registered), the reconstructed <code>MultiTemplate</code>, and a <code>MultiValidator</code> built from it.</p>
+<pre><code class="language-scala">object NomosFormats {
+  val mapper: ObjectMapper = ...                 // Scala + JavaTime modules
+  lazy val embeddedTemplate: MultiTemplate = ... // reconstructed from your template
+  lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate)
+}</code></pre>
+
+    <h2 id="enums">Enum files</h2>
+    <p>An <code>enumType</code> enum generates a self-contained sealed trait with case objects and Jackson string (de)serialization wired via annotations — no extra setup.</p>
+<pre><code class="language-scala">sealed trait Priority
+object Priority {
+  case object Low extends Priority
+  case object High extends Priority
+  def fromString(s: String): Option[Priority] = ...
+  def asString(v: Priority): String = ...
+}</code></pre>
+
+    <h2 id="options">Generation options</h2>
+    <p>Set these at the top level of a template (project-wide in multi-file builds):</p>
+    <table>
+      <tr><th>Option</th><th>Default</th><th>Effect</th></tr>
+      <tr><td><code>useOptionTypes</code></td><td><code>true</code></td><td>Optional fields → <code>Option[T]</code> (else raw)</td></tr>
+      <tr><td><code>listType</code></td><td><code>"List"</code></td><td><code>List</code> or <code>Array</code></td></tr>
+      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>e.g. <code>java.util.Map</code></td></tr>
+      <tr><td><code>dateType</code></td><td><code>java.time.LocalDate</code></td><td>e.g. <code>java.util.Date</code></td></tr>
+      <tr><td><code>dateTimeType</code></td><td><code>java.time.LocalDateTime</code></td><td>Target for <code>datetime</code></td></tr>
+      <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td><code>either</code> or <code>throwing</code></td></tr>
+    </table>
+    <p>Per-field, <code>nullable: true</code> yields a raw nullable type (value types boxed as <code>java.lang.Integer</code>/<code>Long</code>/<code>Double</code>/<code>Boolean</code>), and <code>default</code> emits a case-class default argument.</p>
+
+    <h2 id="fromjson">fromJson style</h2>
+<pre><code class="language-json">{ "fromJsonStyle": "throwing", "definitions": [ ... ] }</code></pre>
+    <div class="split">
+      <div class="split-card">
+        <h2>either (default)</h2>
+        <pre><code class="language-scala">def fromJson(json: String): Either[String, T]</code></pre>
+      </div>
+      <div class="split-card">
+        <h2>throwing</h2>
+        <pre><code class="language-scala">def fromJson(json: String): T  // throws on failure</code></pre>
+      </div>
+    </div>
+    <p>The style applies to plain definitions and to discriminated/<code>variantNames</code> unions alike; <code>validate</code> adapts to whichever style is generated.</p>
+
+    <h2 id="methods">Helper methods</h2>
+    <p>Attach derived members to a generated class with <code>methods</code> — emitted verbatim as instance members.</p>
+<pre><code class="language-json">{
+  "name": "User",
+  "methods": ["def display: String = username + \" <\" + email + \">\""],
+  "template": { "username": "string", "email": "string" }
+}</code></pre>
+
+    <h2 id="headers">File headers</h2>
+    <p>Every generated file starts with a provenance header. Files tied to a template also point back to it.</p>
+<pre><code class="language-scala">// Code generated by Nomos. DO NOT EDIT.
+// Source: com/example/models/user.json
+package com.example.models.user</code></pre>
+
+    <p class="muted" style="margin-top:28px">Next: <a href="maven-plugin.html">Maven Plugin</a> — wiring generation into your build.</p>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links"><a href="../index.html">Home</a><a href="https://github.com/cjfravel-dev/nomos">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

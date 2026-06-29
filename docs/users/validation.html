@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/logo-mark.svg">
+</head>
+<body data-section="users" data-page="validation">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="getting-started.html" data-section="users">User Guide</a>
+      <a href="../contributors/index.html" data-section="contributors">Contributors</a>
+      <a href="../api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>User Guide</h5>
+    <ul>
+      <li><a href="getting-started.html" data-page="getting-started">Getting Started</a></li>
+      <li><a href="template-format.html" data-page="template-format">Template Format</a></li>
+      <li><a href="validation.html" data-page="validation">Validation</a></li>
+      <li><a href="code-generation.html" data-page="code-generation">Code Generation</a></li>
+      <li><a href="maven-plugin.html" data-page="maven-plugin">Maven Plugin</a></li>
+    </ul>
+    <h5>On this page</h5>
+    <ul>
+      <li><a href="#embedded">Embedded validation</a></li>
+      <li><a href="#errors">Validation errors</a></li>
+      <li><a href="#api">Validating with the API</a></li>
+      <li><a href="#validators">Custom validators</a></li>
+      <li><a href="#formats">Custom formats</a></li>
+      <li><a href="#adapters">Adapters</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">User Guide</span>
+      <h1>Validation</h1>
+      <p class="lede">Nomos embeds the template into the generated code, so every model can validate JSON at runtime — and you can extend validation with named, registered hooks.</p>
+    </div>
+
+    <h2 id="embedded">Embedded validation</h2>
+    <p>
+      The generated <code>NomosFormats</code> object holds the reconstructed template and a
+      validator built from it. Each model's <code>validate</code> checks JSON against that
+      embedded schema, then parses — no template file is needed at runtime.
+    </p>
+<pre><code class="language-scala">import com.example.models.user.User
+
+User.validate("""{"id":"1","username":"jo","email":"jo@x.com","roles":["admin"]}""") match {
+  case Right(user)  => // a validated User
+  case Left(errors) => errors.foreach(e => println(e.fullMessage))
+}</code></pre>
+    <div class="callout note"><p>Validation targets a definition by its fully-qualified name internally (e.g. <code>com.example.models.user.User</code>), so models in different sub-packages never collide.</p></div>
+
+    <h2 id="errors">Validation errors</h2>
+    <p>Failures return a <code>List[ValidationError]</code>; each carries the JSON path, message, expected, and actual.</p>
+<pre><code class="language-scala">case class ValidationError(path: String, message: String, expected: String, actual: String) {
+  def fullMessage: String  // "path: message (expected: …, got: …)"
+}</code></pre>
+    <p>Schema checks include: required vs. optional fields, type mismatches, string/number/array constraints, enum membership, whole-number checks for <code>int</code>/<code>long</code>, temporal parsing for <code>date</code>/<code>datetime</code>, discriminator resolution, and unexpected extra keys (unless <code>$additionalProperties</code> allows them).</p>
+
+    <h2 id="api">Validating with the API</h2>
+    <p>You can also validate without generated code by parsing a template directly.</p>
+<pre><code class="language-scala">import dev.cjfravel.nomos.Nomos
+
+val template = Nomos.parseTemplate(templateJson, "com.example").right.get
+Nomos.validate(template, jsonData, "com.example.User") match {
+  case Right(_)      => // valid
+  case Left(errors)  => // List[ValidationError]
+}</code></pre>
+
+    <h2 id="validators">Custom validators (cross-field rules)</h2>
+    <p>
+      Schema describes shape; cross-field and conditional rules are application logic. Declare
+      named validators on a definition, and register their implementations once at startup.
+    </p>
+<pre><code class="language-json">{
+  "name": "Reservation",
+  "validators": ["dates.startBeforeEnd"],
+  "template": { "startDate": "string", "endDate": "string" }
+}</code></pre>
+<pre><code class="language-scala">import dev.cjfravel.nomos.Nomos
+import dev.cjfravel.nomos.validation.ValidationError
+
+Nomos.validators.register("dates.startBeforeEnd") { json =>
+  if (json.get("startDate").asText() <= json.get("endDate").asText()) Nil
+  else List(ValidationError("endDate", "must be >= startDate", "ordered", "unordered"))
+}</code></pre>
+    <p>Registered validators run <em>after</em> schema validation passes, and their errors are tagged with the validator name.</p>
+
+    <h2 id="formats">Custom string formats</h2>
+    <p>The <code>format</code> constraint is backed by a registry. Built-ins are seeded; add your own domain formats.</p>
+<pre><code class="language-scala">Nomos.formats.register("hexColor")(_.matches("^#[0-9a-fA-F]{6}$"))</code></pre>
+<pre><code class="language-json">{ "color": { "type": "string", "format": "hexColor" } }</code></pre>
+
+    <h2 id="adapters">(De)serialization adapters</h2>
+    <p>Per-field adapters convert between an on-the-wire form and your model's form — useful for legacy encodings.</p>
+<pre><code class="language-json">{ "createdAt": { "type": "string", "adapter": "epochMillis" } }</code></pre>
+<pre><code class="language-scala">Nomos.adapters.register("epochMillis")(
+  decode = wire => wire,   // String => String
+  encode = model => model
+)</code></pre>
+
+    <p class="muted" style="margin-top:28px">Next: <a href="code-generation.html">Code Generation</a> — exactly what Nomos emits and how to configure it.</p>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links"><a href="../index.html">Home</a><a href="https://github.com/cjfravel-dev/nomos">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

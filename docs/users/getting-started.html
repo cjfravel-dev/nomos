@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/logo-mark.svg">
+</head>
+<body data-section="users" data-page="getting-started">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="getting-started.html" data-section="users">User Guide</a>
+      <a href="../contributors/index.html" data-section="contributors">Contributors</a>
+      <a href="../api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>User Guide</h5>
+    <ul>
+      <li><a href="getting-started.html" data-page="getting-started">Getting Started</a></li>
+      <li><a href="template-format.html" data-page="template-format">Template Format</a></li>
+      <li><a href="validation.html" data-page="validation">Validation</a></li>
+      <li><a href="code-generation.html" data-page="code-generation">Code Generation</a></li>
+      <li><a href="maven-plugin.html" data-page="maven-plugin">Maven Plugin</a></li>
+    </ul>
+    <h5>On this page</h5>
+    <ul>
+      <li><a href="#install">Installation</a></li>
+      <li><a href="#plugin">Add the plugin</a></li>
+      <li><a href="#template">Write a template</a></li>
+      <li><a href="#generate">Generate</a></li>
+      <li><a href="#use">Use the generated code</a></li>
+      <li><a href="#next">What to read next</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">User Guide</span>
+      <h1>Getting Started</h1>
+      <p class="lede">Install Nomos, write a template, generate Scala code at build time, and validate JSON against it — all from one source of truth.</p>
+    </div>
+
+    <h2 id="install">Installation</h2>
+    <p>Nomos is a multi-module Maven project. Import the BOM to align versions, then depend on <code>nomos-core</code>.</p>
+<pre><code class="language-xml">&lt;dependencyManagement&gt;
+  &lt;dependencies&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;dev.cjfravel&lt;/groupId&gt;
+      &lt;artifactId&gt;nomos-bom&lt;/artifactId&gt;
+      &lt;version&gt;0.1.0-SNAPSHOT&lt;/version&gt;
+      &lt;type&gt;pom&lt;/type&gt;
+      &lt;scope&gt;import&lt;/scope&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+&lt;/dependencyManagement&gt;
+
+&lt;dependencies&gt;
+  &lt;dependency&gt;
+    &lt;groupId&gt;dev.cjfravel&lt;/groupId&gt;
+    &lt;artifactId&gt;nomos-core&lt;/artifactId&gt;
+  &lt;/dependency&gt;
+&lt;/dependencies&gt;</code></pre>
+
+    <h2 id="plugin">Add the Maven plugin</h2>
+    <p>The plugin scans your templates and generates sources during the <code>generate-sources</code> phase.</p>
+<pre><code class="language-xml">&lt;plugin&gt;
+  &lt;groupId&gt;dev.cjfravel&lt;/groupId&gt;
+  &lt;artifactId&gt;nomos-maven-plugin&lt;/artifactId&gt;
+  &lt;version&gt;0.1.0-SNAPSHOT&lt;/version&gt;
+  &lt;executions&gt;
+    &lt;execution&gt;
+      &lt;phase&gt;generate-sources&lt;/phase&gt;
+      &lt;goals&gt;&lt;goal&gt;generate&lt;/goal&gt;&lt;/goals&gt;
+    &lt;/execution&gt;
+  &lt;/executions&gt;
+&lt;/plugin&gt;</code></pre>
+
+    <h2 id="template">Write a template</h2>
+    <p>
+      Templates live under <code>src/main/resources/nomos/templates/</code>, and the base
+      package is <strong>derived from the file's path</strong>. A template at
+      <code>nomos/templates/com/example/models/user.json</code> generates into base package
+      <code>com.example.models</code>.
+    </p>
+<pre><code class="language-json">{
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "user",
+      "template": {
+        "id": "string",
+        "username": { "type": "string", "minLength": 1 },
+        "email": { "type": "string", "format": "email" },
+        "age": { "$optional": "int" },
+        "roles": ["string"]
+      }
+    }
+  ]
+}</code></pre>
+
+    <div class="callout note">
+      <p>There is no <code>basePackage</code>, <code>outputDir</code>, or <code>mainClass</code> in the template — the package comes from the path, and validation targets a definition by its fully-qualified name.</p>
+    </div>
+
+    <h2 id="generate">Generate</h2>
+<pre><code class="language-bash">mvn generate-sources</code></pre>
+    <p>Nomos writes, into <code>src/main/scala</code> by default:</p>
+    <ul>
+      <li><code>com/example/models/user/User.scala</code> — the case class plus a companion with <code>fromJson</code>, <code>toJson</code>, and <code>validate</code>.</li>
+      <li><code>com/example/models/NomosFormats.scala</code> — a shared Jackson <code>ObjectMapper</code>, the <strong>embedded template</strong>, and a validator built from it.</li>
+    </ul>
+<pre><code class="language-scala">// Code generated by Nomos. DO NOT EDIT.
+// Source: com/example/models/user.json
+package com.example.models.user
+
+case class User(
+  id: String,
+  username: String,
+  email: String,
+  age: Option[Int],
+  roles: List[String]
+)
+
+object User {
+  def fromJson(json: String): Either[String, User] = { ... }
+  def toJson(obj: User): String = { ... }
+  def validate(json: String): Either[List[ValidationError], User] = { ... }
+}</code></pre>
+
+    <h2 id="use">Use the generated code</h2>
+<pre><code class="language-scala">import com.example.models.user.User
+
+// Validate against the embedded template, then parse
+User.validate("""{"id":"1","username":"jo","email":"jo@x.com","roles":["admin"]}""") match {
+  case Right(user)  => println(s"ok: ${user.email}")
+  case Left(errors) => errors.foreach(e => println(e.fullMessage))
+}
+
+// Round-trip
+val json = User.toJson(User("1", "jo", "jo@x.com", Some(30), List("admin")))
+val back = User.fromJson(json)   // Either[String, User]</code></pre>
+
+    <div class="callout tip">
+      <p>Validation needs no template file at runtime — the template is embedded in <code>NomosFormats</code>, so a single generated jar carries both the model and its schema.</p>
+    </div>
+
+    <h2 id="next">What to read next</h2>
+    <ul>
+      <li><a href="template-format.html">Template Format</a> — every type, constraint, and discriminator option.</li>
+      <li><a href="validation.html">Validation</a> — embedded validation plus custom validators, formats, and adapters.</li>
+      <li><a href="code-generation.html">Code Generation</a> — what gets emitted and how to tune it.</li>
+      <li><a href="maven-plugin.html">Maven Plugin</a> — multi-file projects and output options.</li>
+    </ul>
+
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links">
+      <a href="../index.html">Home</a>
+      <a href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

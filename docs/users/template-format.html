@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template Format — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/logo-mark.svg">
+</head>
+<body data-section="users" data-page="template-format">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="getting-started.html" data-section="users">User Guide</a>
+      <a href="../contributors/index.html" data-section="contributors">Contributors</a>
+      <a href="../api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>User Guide</h5>
+    <ul>
+      <li><a href="getting-started.html" data-page="getting-started">Getting Started</a></li>
+      <li><a href="template-format.html" data-page="template-format">Template Format</a></li>
+      <li><a href="validation.html" data-page="validation">Validation</a></li>
+      <li><a href="code-generation.html" data-page="code-generation">Code Generation</a></li>
+      <li><a href="maven-plugin.html" data-page="maven-plugin">Maven Plugin</a></li>
+    </ul>
+    <h5>On this page</h5>
+    <ul>
+      <li><a href="#structure">File structure</a></li>
+      <li><a href="#scalars">Scalar types</a></li>
+      <li><a href="#constraints">Constraints</a></li>
+      <li><a href="#enums">Enums</a></li>
+      <li><a href="#containers">Arrays &amp; maps</a></li>
+      <li><a href="#optional">Optional, nullable, defaults</a></li>
+      <li><a href="#refs">References</a></li>
+      <li><a href="#discriminators">Discriminators</a></li>
+      <li><a href="#keys">Reserved keys</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">User Guide</span>
+      <h1>Template Format</h1>
+      <p class="lede">A template is a JSON file describing one or more named type definitions. Its location sets the base package; its contents drive the generated case classes and validators.</p>
+    </div>
+
+    <h2 id="structure">File structure</h2>
+    <p>A template has a top-level <code>definitions</code> array, plus optional project-wide settings. The base package comes from the file's path under <code>src/main/resources/nomos/templates/</code>.</p>
+<pre><code class="language-json">{
+  "useOptionTypes": true,
+  "listType": "List",
+  "definitions": [
+    {
+      "name": "User",
+      "subPackage": "user",
+      "description": "A user record",
+      "template": { "id": "string" }
+    }
+  ]
+}</code></pre>
+    <table>
+      <tr><th>Top-level field</th><th>Default</th><th>Meaning</th></tr>
+      <tr><td><code>definitions</code></td><td>—</td><td>Array of type definitions (required)</td></tr>
+      <tr><td><code>useOptionTypes</code></td><td><code>true</code></td><td>Optional fields become <code>Option[T]</code></td></tr>
+      <tr><td><code>listType</code></td><td><code>"List"</code></td><td>Collection type for arrays (<code>List</code> or <code>Array</code>)</td></tr>
+      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Type for <code>$map</code> (e.g. <code>java.util.Map</code>)</td></tr>
+      <tr><td><code>dateType</code> / <code>dateTimeType</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td><td>Generated temporal types</td></tr>
+      <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td><code>either</code> or <code>throwing</code> (see Code Generation)</td></tr>
+    </table>
+    <div class="callout note"><p>In a multi-file project, a setting declared in <em>any</em> template applies project-wide — you don't have to repeat it in every file.</p></div>
+
+    <h2 id="scalars">Scalar types</h2>
+    <table>
+      <tr><th>Template</th><th>Scala</th></tr>
+      <tr><td><code>"string"</code></td><td><code>String</code></td></tr>
+      <tr><td><code>"number"</code> / <code>"double"</code></td><td><code>Double</code></td></tr>
+      <tr><td><code>"int"</code></td><td><code>Int</code> (whole numbers only)</td></tr>
+      <tr><td><code>"long"</code></td><td><code>Long</code> (whole numbers only)</td></tr>
+      <tr><td><code>"decimal"</code></td><td><code>BigDecimal</code></td></tr>
+      <tr><td><code>"boolean"</code></td><td><code>Boolean</code></td></tr>
+      <tr><td><code>"date"</code> / <code>"datetime"</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td></tr>
+    </table>
+
+    <h2 id="constraints">Constraints</h2>
+    <p>Use the long form <code>{ "type": ..., ...constraints }</code> to attach validation constraints.</p>
+<pre><code class="language-json">{
+  "username": { "type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[a-z0-9_]+$" },
+  "email":    { "type": "string", "format": "email" },
+  "age":      { "type": "int", "min": 0, "max": 150 },
+  "ratio":    { "type": "number", "multipleOf": 0.5 }
+}</code></pre>
+    <table>
+      <tr><th>Applies to</th><th>Constraints</th></tr>
+      <tr><td>string</td><td><code>minLength</code>, <code>maxLength</code>, <code>pattern</code>, <code>format</code>, <code>enum</code></td></tr>
+      <tr><td>number / int / long / decimal</td><td><code>min</code>, <code>max</code>, <code>multipleOf</code></td></tr>
+      <tr><td>array</td><td><code>minItems</code>, <code>maxItems</code>, <code>uniqueItems</code></td></tr>
+    </table>
+    <p>Built-in <code>format</code> values: <code>email</code>, <code>url</code>, <code>uuid</code>, <code>iso8601</code>, <code>alphaNoWhitespace</code>, <code>majorAndMinor</code>. You can register more — see <a href="validation.html#formats">Validation</a>.</p>
+
+    <h2 id="enums">Enums</h2>
+    <p>A closed value set either validates a <code>String</code>, or generates a dedicated enum type.</p>
+<pre><code class="language-json">// validates a String
+{ "priority": { "type": "string", "enum": ["low", "medium", "high"] } }
+
+// generates a sealed-trait enum type named Priority, and types the field as it
+{ "priority": { "type": "string", "enum": ["low", "high"], "as": "enumType", "name": "Priority" } }</code></pre>
+
+    <h2 id="containers">Arrays &amp; maps</h2>
+<pre><code class="language-json">{
+  "tags":   ["string"],
+  "scores": { "type": "array", "items": "number", "minItems": 1, "uniqueItems": true },
+  "labels": { "type": "array", "items": "string", "enum": ["red", "green", "blue"] },
+  "settings": { "$map": "string" }
+}</code></pre>
+    <p><code>$map</code> generates a <code>Map[String, T]</code> with unrestricted keys and validated values.</p>
+
+    <h2 id="optional">Optional, nullable &amp; defaults</h2>
+<pre><code class="language-json">{
+  "nickname": { "$optional": "string" },                       // Option[String]
+  "tags":     { "$optional": ["string"], "nullable": true },   // List[String] = null (no Option)
+  "retries":  { "$optional": "int", "nullable": true },        // java.lang.Integer = null (boxed)
+  "verbose":  { "type": "boolean", "default": false }          // verbose: Boolean = false
+}</code></pre>
+    <div class="callout tip"><p><code>nullable: true</code> opts out of <code>Option</code> for legacy parity — a raw nullable type (value types are boxed so <code>null</code> compiles).</p></div>
+
+    <h2 id="refs">References</h2>
+<pre><code class="language-json">{
+  "address": "$ref:Address",                 // another definition (any template in the project)
+  "rule":    "$extern:com.example.legacy.Rule" // a hand-written type Nomos won't generate or validate
+}</code></pre>
+    <p>Self-references (recursive types) work too: a <code>TreeNode</code> may contain <code>["$ref:TreeNode"]</code>.</p>
+
+    <h2 id="discriminators">Type discriminators</h2>
+    <p>A discriminator becomes a <code>sealed trait</code> with a case-class variant per value.</p>
+<pre><code class="language-json">{
+  "$type": {
+    "discriminator": "kind",
+    "variantMatch": "prefix",
+    "variantSubPackage": "shapes",
+    "commonFields": { "label": "string" },
+    "variants": {
+      "Decimal": { "scale": "int" },
+      "circle":  "$ref:Circle",
+      "square":  {}
+    }
+  }
+}</code></pre>
+    <table>
+      <tr><th>Option</th><th>Effect</th></tr>
+      <tr><td><code>variants</code></td><td>Map of discriminator value → variant body (inline object or <code>$ref</code>)</td></tr>
+      <tr><td><code>commonFields</code></td><td>Fields shared by every variant</td></tr>
+      <tr><td><code>variantNames</code></td><td>Map several values to one class to collapse identical variants</td></tr>
+      <tr><td><code>variantMatch</code></td><td><code>exact</code> (default) or <code>prefix</code> — match parameterized tags like <code>Decimal(28,8)</code></td></tr>
+      <tr><td><code>variantSubPackage</code></td><td>Place variant case classes in a sub-package</td></tr>
+      <tr><td><code>includeDiscriminator</code></td><td>Whether the discriminator field appears on the case classes (default true)</td></tr>
+    </table>
+
+    <h2 id="keys">Reserved keys &amp; escaping</h2>
+    <p>A field literally named like a template keyword (<code>type</code>, <code>enum</code>, …) must be backtick-quoted so it's read as a field, not a directive. Nomos strips the backticks and re-escapes Scala keywords in the output.</p>
+<pre><code class="language-json">{ "name": "string", "`type`": "string" }   // generates  `type`: String</code></pre>
+
+    <p class="muted" style="margin-top:28px">Next: <a href="validation.html">Validation</a> — how the embedded template validates JSON, and how to extend it.</p>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links"><a href="../index.html">Home</a><a href="https://github.com/cjfravel-dev/nomos">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

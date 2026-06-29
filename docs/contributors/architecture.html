@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/svg+xml" href="../assets/logo-mark.svg">
+</head>
+<body data-section="contributors" data-page="architecture">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.svg" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="../users/getting-started.html" data-section="users">User Guide</a>
+      <a href="index.html" data-section="contributors">Contributors</a>
+      <a href="../api/index.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>Contributors</h5>
+    <ul>
+      <li><a href="index.html" data-page="index">Contributing</a></li>
+      <li><a href="architecture.html" data-page="architecture">Architecture</a></li>
+    </ul>
+    <h5>On this page</h5>
+    <ul>
+      <li><a href="#modules">Modules</a></li>
+      <li><a href="#pipeline">Generation pipeline</a></li>
+      <li><a href="#model">The type model</a></li>
+      <li><a href="#embedding">Template embedding</a></li>
+      <li><a href="#extend">Adding a feature</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">Contributors</span>
+      <h1>Architecture</h1>
+      <p class="lede">Nomos is a small multi-module Maven project: a core library, a Maven plugin that drives it, and a BOM for version alignment.</p>
+    </div>
+
+    <h2 id="modules">Modules</h2>
+    <table>
+      <tr><th>Module</th><th>Responsibility</th></tr>
+      <tr><td><code>nomos-bom</code></td><td>Bill of Materials — pins dependency versions for consumers</td></tr>
+      <tr><td><code>nomos-core</code></td><td>The library: parser, model, generator, validator, serializer, and the <code>Nomos</code> facade</td></tr>
+      <tr><td><code>nomos-maven-plugin</code></td><td>Scans templates and invokes the core to generate sources at build time</td></tr>
+      <tr><td><code>nomos-example</code></td><td>End-to-end consumer used as an integration test</td></tr>
+    </table>
+
+    <h2 id="pipeline">Generation pipeline</h2>
+    <div class="flow-chain">
+      <span class="flow-step">Template JSON</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">TemplateParser</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">MultiTemplate (model)</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">CodeGenerator</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">GeneratedFile(s)</span>
+    </div>
+    <ul>
+      <li><b>TemplateParser</b> reads JSON into the type model, resolving <code>$ref</code> variants and applying defaults.</li>
+      <li><b>CodeGenerator</b> walks the model to emit case classes, companions, enum files, and <code>NomosFormats</code>.</li>
+      <li><b>TemplateSerializer</b> renders the model back into Scala source — this is what gets embedded for runtime validation.</li>
+      <li><b>MultiValidator</b> validates JSON against a <code>MultiTemplate</code>, resolving references across definitions.</li>
+    </ul>
+
+    <h2 id="model">The type model</h2>
+    <p>A <code>MultiTemplate</code> holds project settings and a list of <code>TemplateDefinition</code>s, each with a <code>TemplateType</code>:</p>
+<pre><code class="language-scala">sealed trait TemplateType
+// StringType, NumberType, IntType, LongType, DecimalType, BooleanType,
+// DateType, DateTimeType, ArrayType, MapType, UnionType, ObjectType,
+// ReferenceType, RecursiveRef, ExternalType, EnumType, TypeDiscriminator</code></pre>
+    <p>Object and discriminator field order is preserved with <code>ListMap</code>, so generated case-class fields match the template.</p>
+
+    <h2 id="embedding">Template embedding</h2>
+    <p>
+      Rather than ship a schema file, the generator serializes the <code>MultiTemplate</code> into
+      the generated <code>NomosFormats</code> object and builds a validator from it. This keeps the
+      model and its validation in one artifact and guarantees they agree — there is no second copy
+      to drift.
+    </p>
+
+    <h2 id="extend">Adding a feature</h2>
+    <p>A new template capability usually touches the same five seams, in this order:</p>
+    <ol>
+      <li><b>model</b> — add or extend a <code>TemplateType</code> / field.</li>
+      <li><b>parser</b> — recognize the new template syntax.</li>
+      <li><b>generator</b> — emit the corresponding Scala.</li>
+      <li><b>validator</b> — enforce it at runtime.</li>
+      <li><b>serializer</b> — round-trip it into the embedded template.</li>
+    </ol>
+    <div class="callout tip"><p>Write the failing test first, thread the change through these seams, then prove it compiles and runs in <code>nomos-example</code>.</p></div>
+
+    <p class="muted" style="margin-top:28px">Back to <a href="index.html">Contributing</a>.</p>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links"><a href="../index.html">Home</a><a href="https://github.com/cjfravel-dev/nomos">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>
