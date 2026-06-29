@@ -36,7 +36,8 @@ case class TemplateDefinition(
    */
   def fullPackage(basePackage: String): String = {
     subPackage match {
-      case Some(sub) if sub.nonEmpty => s"$basePackage.$sub"
+      case Some(sub) if sub.nonEmpty && basePackage.nonEmpty => s"$basePackage.$sub"
+      case Some(sub) if sub.nonEmpty => sub
       case _ => basePackage
     }
   }
@@ -96,8 +97,8 @@ case class MultiTemplate(
       }
     }
     
-    // Validate base package is not empty
-    if (basePackage.isEmpty) {
+    // Validate base package is not empty unless every definition carries its own sub-package
+    if (basePackage.isEmpty && !definitions.forall(_.subPackage.exists(_.nonEmpty))) {
       errors = "basePackage cannot be empty" :: errors
     }
     
@@ -121,7 +122,7 @@ case class MultiTemplate(
       case ReferenceType(typeName) if !definedTypes.contains(typeName) => Set(typeName)
       case ArrayType(elementType, _) => findInType(elementType)
       case ObjectType(fields, _) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
-      case TypeDiscriminator(_, variants, commonFields, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => findInType(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => findInType(f.fieldType))
         variantRefs.toSet ++ commonRefs
@@ -140,5 +141,31 @@ object MultiTemplate {
     definition: TemplateDefinition
   ): MultiTemplate = {
     MultiTemplate(basePackage, List(definition))
+  }
+
+  /**
+   * Combines templates into one shared definition space so $ref resolves across files.
+   * Each definition's package is flattened into an absolute subPackage; the base package is empty.
+   */
+  def combine(templates: List[MultiTemplate]): MultiTemplate = {
+    val absolute = templates.flatMap { t =>
+      t.definitions.map(d => d.copy(subPackage = Some(d.fullPackage(t.basePackage))))
+    }
+    val base = commonPrefix(templates.map(_.basePackage).filter(_.nonEmpty))
+    val defs = absolute.map { d =>
+      val full = d.subPackage.getOrElse("")
+      val sub = if (base.nonEmpty && full == base) "" else if (base.nonEmpty) full.stripPrefix(base + ".") else full
+      d.copy(subPackage = if (sub.isEmpty) None else Some(sub))
+    }
+    val useOptionTypes = templates.headOption.forall(_.useOptionTypes)
+    val listType = templates.headOption.map(_.listType).getOrElse("List")
+    MultiTemplate(base, defs, useOptionTypes, listType)
+  }
+
+  private def commonPrefix(pkgs: List[String]): String = {
+    if (pkgs.isEmpty) ""
+    else pkgs.map(_.split('.').toList).reduce { (a, b) =>
+      a.zip(b).takeWhile { case (x, y) => x == y }.map(_._1)
+    }.mkString(".")
   }
 }

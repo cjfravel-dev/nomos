@@ -208,6 +208,13 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.sealedTrait(name)
     builder.emptyLine()
     
+    val variantPkg = discriminator.variantSubPackage.map(s => if (currentPackage.nonEmpty) s"$currentPackage.$s" else s)
+    variantPkg.foreach { p =>
+      builder.line(s"package $p {")
+      builder.indent()
+      builder.line(s"import $currentPackage.$name")
+    }
+    
     // Generate case classes for each variant
     discriminator.variants.foreach { case (variantName, variantType) =>
       val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
@@ -232,6 +239,12 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
     
+    variantPkg.foreach { _ =>
+      builder.dedent()
+      builder.line("}")
+      builder.emptyLine()
+    }
+    
     // Always generate companion object with Jackson deserialization
     val variantMap = discriminator.variants.map { case (variantName, _) =>
       (variantName, ScalaCodeBuilder.toPascalCase(variantName))
@@ -246,6 +259,7 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("import NomosFormats._")
       builder.line("import dev.cjfravel.nomos.validation.ValidationError")
       builder.line("import com.fasterxml.jackson.databind.JsonNode")
+      variantPkg.foreach(p => builder.line(s"import $p._"))
       builder.emptyLine()
       builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
       builder.indent()
@@ -410,9 +424,12 @@ class CodeGenerator(config: GeneratorConfig) {
       case UnionType(_) => "Any"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
+      case ObjectType(fields, AllowExtra) if fields.isEmpty => "Map[String, Any]"
+      case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
+        s"Map[String, ${scalaTypeForDefinition(vt, optional = false, definitionsMap)}]"
       case ObjectType(_, _) =>
         "???" // Inline objects not supported in multi-definition mode
-      case TypeDiscriminator(_, _, _, _, _, _) =>
+      case TypeDiscriminator(_, _, _, _, _, _, _) =>
         "???" // Inline discriminators not supported in multi-definition mode
     }
     
@@ -432,7 +449,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType, _) => collectReferences(elementType)
       case ObjectType(fields, _) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
-      case TypeDiscriminator(_, variants, commonFields, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => collectReferences(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => collectReferences(f.fieldType))
         variantRefs.toSet ++ commonRefs

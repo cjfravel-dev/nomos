@@ -72,6 +72,14 @@ object Nomos {
   }
   
   /**
+   * Generate code from many templates sharing one definition space so $ref resolves across files.
+   */
+  def generateAll(templates: java.util.List[MultiTemplate], outputDir: String): Either[GeneratorError, WriteReport] = {
+    val combined = MultiTemplate.combine(scala.collection.JavaConverters.asScalaBuffer(templates).toList)
+    generateCode(combined, outputDir)
+  }
+  
+  /**
    * Validate a JSON string against a template.
    * 
    * @param template The template to validate against

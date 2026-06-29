@@ -69,7 +69,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         if (types.exists(t => validateTypeWithRefs(t, json, path, definitions).isEmpty)) List.empty
         else List(ValidationError.typeMismatch(path, "one of union types", json.getNodeType.toString))
       case ObjectType(fields, additional) => validateObject(fields, json, path, definitions, additional)
-      case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch, _) =>
         validateDiscriminator(fieldName, variants, commonFields, json, path, definitions, variantMatch)
       case ReferenceType(typeName) =>
         // Resolve reference and validate

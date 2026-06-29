@@ -92,77 +92,51 @@ public class GenerateMojo extends AbstractMojo {
 
         getLog().info("Found " + templateFiles.size() + " template file(s)");
 
-        // Process each template
-        int successCount = 0;
-        int failureCount = 0;
-        List<String> generatedSourceRoots = new ArrayList<>();
+        // Parse each template; refs resolve across all files in a shared definition space
+        int parseFailures = 0;
+        java.util.List<MultiTemplate> templates = new ArrayList<>();
 
         for (File templateFile : templateFiles) {
             String relativePath = templateDir.toPath().relativize(templateFile.toPath()).toString();
             getLog().info("");
             getLog().info("Processing: " + relativePath);
-            
+
             try {
-                // Read template; derive base package from the template's location
                 String templateContent = new String(Files.readAllBytes(templateFile.toPath()));
                 String basePackage = packageFromPath(templateDir.toPath(), templateFile.toPath());
                 getLog().info("  Base package: " + basePackage);
 
                 scala.util.Either<?, ?> parseResult = Nomos.parseTemplate(templateContent, basePackage);
-
                 if (parseResult.isLeft()) {
                     getLog().error("  Failed to parse template: " + parseResult.left().get());
-                    failureCount++;
+                    parseFailures++;
                     continue;
                 }
-
                 MultiTemplate template = (MultiTemplate) parseResult.right().get();
                 getLog().info("  Definitions: " + template.definitions().size());
-
-                // Resolve output directory relative to project basedir
-                String resolvedOutputDir = new File(basedir, outputDirectory).getAbsolutePath();
-
-                // Generate code using the Nomos API
-                scala.util.Either<?, ?> generateResult = Nomos.generateCode(template, resolvedOutputDir);
-
-                if (generateResult.isLeft()) {
-                    getLog().error("  Generation failed: " + generateResult.left().get());
-                    failureCount++;
-                    continue;
-                }
-
-                // Get write report
-                Object writeReport = generateResult.right().get();
-                getLog().info("  Code generation completed successfully");
-                successCount++;
-
-                // Add resolved output directory as source root
-                if (!generatedSourceRoots.contains(resolvedOutputDir)) {
-                    generatedSourceRoots.add(resolvedOutputDir);
-                }
-
+                templates.add(template);
             } catch (Exception e) {
                 getLog().error("  Error processing template: " + e.getMessage(), e);
-                failureCount++;
+                parseFailures++;
             }
         }
 
-        // Add generated source roots to project
-        for (String sourceRoot : generatedSourceRoots) {
-            getLog().info("");
-            getLog().info("Adding source root: " + sourceRoot);
-            project.addCompileSourceRoot(sourceRoot);
+        if (parseFailures > 0) {
+            throw new MojoFailureException("Code generation failed for " + parseFailures + " template(s)");
         }
 
-        // Summary
+        String resolvedOutputDir = new File(basedir, outputDirectory).getAbsolutePath();
+        scala.util.Either<?, ?> generateResult = Nomos.generateAll(templates, resolvedOutputDir);
+        if (generateResult.isLeft()) {
+            throw new MojoFailureException("Generation failed: " + generateResult.left().get());
+        }
+        getLog().info("");
+        getLog().info("Code generation completed successfully");
+        getLog().info("Adding source root: " + resolvedOutputDir);
+        project.addCompileSourceRoot(resolvedOutputDir);
+
         getLog().info("");
         getLog().info("=== Generation Complete ===");
-        getLog().info("Success: " + successCount);
-        getLog().info("Failures: " + failureCount);
-        
-        if (failureCount > 0) {
-            throw new MojoFailureException("Code generation failed for " + failureCount + " template(s)");
-        }
     }
 
     /**

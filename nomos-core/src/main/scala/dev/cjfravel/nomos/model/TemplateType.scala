@@ -87,7 +87,8 @@ case class TypeDiscriminator(
   commonFields: ListMap[String, FieldDef] = ListMap.empty,
   includeInOutput: Boolean = true,
   variantNames: Map[String, String] = Map.empty,
-  variantMatch: String = "exact"
+  variantMatch: String = "exact",
+  variantSubPackage: Option[String] = None
 ) extends TemplateType
 
 /**
