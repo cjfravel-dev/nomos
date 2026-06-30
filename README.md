@@ -138,9 +138,29 @@ Json.parse("""{"a":1,"b":2}""") match {
 }
 ```
 
-It is intentionally minimal — an immutable tree with `parse`/`write`, typed accessors, and basic
-transforms (`updated`, `remove`, `mapKeys`). It is **not** meant to grow into a general-purpose
-JSON library (no JSON-path queries, no streaming); those concerns belong outside nomos.
+It is intentionally minimal — it provides only what generated codecs, validation, and
+straightforward hand-written runtime code need, and it is **not** a general-purpose JSON library.
+
+**In scope:**
+
+- an immutable JSON tree (`JsonObject`, `JsonArray`, `JsonString`, `JsonNumber`, `JsonBoolean`,
+  `JsonNull`); objects preserve key order and compare order-independently;
+- `Json.parse` and compact/pretty `Json.write` (whole-document, in-memory);
+- `Option`-returning type accessors (`asString`, `asInt`, `asObject`, ...) and exact numbers
+  (the original lexeme is preserved, so `30.0` round-trips);
+- shallow, single-level lookups (`JsonObject.field`, `JsonArray.get`) and immutable single-level
+  transforms (`updated`, `remove`, `mapKeys`).
+
+**Out of scope (intentionally excluded; requests for these are declined):**
+
+- path/query languages (JSON Pointer, JSONPath) or deep navigation helpers;
+- streaming / incremental parsing — the API is whole-document;
+- schema languages, diff/patch, canonicalization;
+- reflection/macro mapping to arbitrary case classes (that is what generated codecs are for);
+- mutable builders/in-place mutation, lenses/optics, comments/JSON5.
+
+If you need any of the above, layer your own library on top of this model — nomos will not grow
+into a general-purpose JSON toolkit.
 
 ## Project Structure
 

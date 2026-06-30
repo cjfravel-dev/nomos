@@ -9,10 +9,26 @@ package dev.cjfravel.nomos.json
  * '''Public, supported API.''' Because the runtime is dependency-free, this model is the JSON
  * type consumers reach for in hand-written runtime code (it also appears in public signatures
  * such as `MultiValidator.validate` and the `ValidatorRegistry` callback). It is a committed,
- * semver-stable part of `nomos-runtime` and safe to depend on directly. It is intentionally
- * minimal — an immutable tree with parse/write and basic, allocation-aware accessors and
- * transforms — and is not intended to grow into a general-purpose JSON library (no JSON-path
- * queries, no streaming); those concerns belong elsewhere.
+ * semver-stable part of `nomos-runtime` and safe to depend on directly.
+ *
+ * '''Scope (what this is).''' Deliberately minimal: an immutable JSON tree plus exactly the
+ * operations generated codecs, validation, and straightforward hand-written runtime code need.
+ *   - an immutable model: [[JsonNull]], [[JsonBoolean]], [[JsonString]], [[JsonNumber]],
+ *     [[JsonArray]], [[JsonObject]] (insertion-ordered, order-independent equality);
+ *   - parse and (compact / pretty) write via [[Json]];
+ *   - type tests/accessors (`isObject`, `asString`, `asInt`, ...) that return `Option`;
+ *   - shallow, single-level lookups (`JsonObject.field`, `JsonArray.get`/`apply`);
+ *   - immutable single-level transforms (`JsonObject.updated`, `remove`, `mapKeys`);
+ *   - exact number handling: the original lexeme is preserved so output round-trips.
+ *
+ * '''Out of scope (what this is not, and will not become).''' This is not a general-purpose
+ * JSON toolkit; the following are intentionally excluded and requests for them are declined:
+ *   - path/query languages (JSON Pointer, JSONPath) or deep/recursive navigation helpers;
+ *   - streaming, incremental, or push/pull parsing (the API is whole-document, in-memory);
+ *   - schema languages, diff/patch (JSON Merge Patch / RFC 6902), or canonicalization;
+ *   - reflection- or macro-based mapping to arbitrary case classes (use generated codecs);
+ *   - mutable builders or in-place mutation; lenses/optics; comments or JSON5 extensions.
+ * If you need those, layer your own library on top of this model — nomos will not grow into one.
  */
 sealed trait JsonValue {
   def isNull: Boolean = this eq JsonNull
