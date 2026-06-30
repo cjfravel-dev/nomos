@@ -4,7 +4,6 @@ import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation.TemplateSerializer
 import dev.cjfravel.nomos.validation.{MultiValidator, ValidatorRegistry, ValidationError}
-import com.fasterxml.jackson.databind.JsonNode
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues
@@ -30,7 +29,10 @@ class CustomValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "MultiValidator" should "run registered named validators after schema validation" in {
     ValidatorRegistry.register("dates.startBeforeEnd") { json =>
-      if (json.get("startDate").asText() <= json.get("endDate").asText()) Nil
+      val fields = json.asObject.map(_.fieldMap).getOrElse(Map.empty)
+      val start = fields.get("startDate").flatMap(_.asString)
+      val end = fields.get("endDate").flatMap(_.asString)
+      if (start.zip(end).exists { case (s, e) => s <= e }) Nil
       else List(ValidationError("endDate", "must be >= startDate", "ordered", "unordered"))
     }
     val v = new MultiValidator(multi)

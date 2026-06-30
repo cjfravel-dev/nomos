@@ -85,6 +85,198 @@ class CodeGenerator(config: GeneratorConfig) {
     case other     => other
   }
 
+  // --- Dependency-free codec generation ---------------------------------------------------------
+  // The following helpers emit Scala expressions that build/read the first-party JsonValue model,
+  // so generated fromJson/toJson never depend on a third-party JSON library.
+
+  /** A `Codecs.Decoder[T]` expression that decodes a JSON value into the field's Scala type. */
+  private def decoderExpr(tt: TemplateType): String = tt match {
+    case StringType(_) => "Codecs.string"
+    case NumberType(_) => "Codecs.double"
+    case IntType(_) => "Codecs.int"
+    case LongType(_) => "Codecs.long"
+    case DecimalType(_) => "Codecs.bigDecimal"
+    case BooleanType() => "Codecs.boolean"
+    case DateType() => s"""Codecs.temporal[${config.dateType}]("date", s => ${config.dateType}.parse(s))"""
+    case DateTimeType() => s"""Codecs.temporal[${config.dateTimeType}]("datetime", s => ${config.dateTimeType}.parse(s))"""
+    case ArrayType(elem, _) =>
+      if (config.listType == "Array")
+        s"((j: JsonValue) => Codecs.list(${decoderExpr(elem)})(j).right.map(_.toArray))"
+      else s"Codecs.list(${decoderExpr(elem)})"
+    case MapType(v) => s"Codecs.map(${decoderExpr(v)})"
+    // Inline empty object with an additionalProperties policy renders as a Map field.
+    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => s"Codecs.map(${decoderExpr(vt)})"
+    case ObjectType(f, AllowExtra) if f.isEmpty => "Codecs.map[Any]((j: JsonValue) => Right(j))"
+    case UnionType(_) => "Codecs.any"
+    case ReferenceType(n) => s"$n.decode"
+    case RecursiveRef(n) => s"$n.decode"
+    case ExternalType(qn) => s"""((j: JsonValue) => CodecRegistry.decode[$qn]("$qn", j))"""
+    case EnumType(n, _) => s"$n.decode"
+    case _ => "Codecs.any"
+  }
+
+  /** A boxed `Codecs.Decoder` for a nullable value-typed field (so it can hold null). */
+  private def boxedDecoderExpr(tt: TemplateType): String = tt match {
+    case IntType(_) => "Codecs.boxedInt"
+    case LongType(_) => "Codecs.boxedLong"
+    case NumberType(_) => "Codecs.boxedDouble"
+    case BooleanType() => "Codecs.boxedBoolean"
+    case other => decoderExpr(other)
+  }
+
+  /** A JsonValue expression that encodes `v` (an expression of the field's Scala type). */
+  private def encodeValueExpr(tt: TemplateType, v: String): String = tt match {
+    case StringType(_) => s"JsonString($v)"
+    case NumberType(_) => s"JsonNumber.fromDouble($v)"
+    case IntType(_) => s"JsonNumber.fromInt($v)"
+    case LongType(_) => s"JsonNumber.fromLong($v)"
+    case DecimalType(_) => s"JsonNumber.fromBigDecimal($v)"
+    case BooleanType() => s"JsonBoolean($v)"
+    case DateType() => s"JsonString($v.toString)"
+    case DateTimeType() => s"JsonString($v.toString)"
+    case ArrayType(elem, _) => s"JsonArray($v.iterator.map(x => ${encodeValueExpr(elem, "x")}).toVector)"
+    case MapType(vt) => s"JsonObject.fromFields($v.iterator.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
+    // Inline empty object with an additionalProperties policy renders as a Map field.
+    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => s"JsonObject.fromFields($v.iterator.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
+    case ObjectType(f, AllowExtra) if f.isEmpty => s"""JsonObject.fromFields($v.iterator.map { case (k, x) => (k, (x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })) }.toSeq)"""
+    case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
+    case ReferenceType(n) => s"$n.encode($v)"
+    case RecursiveRef(n) => s"$n.encode($v)"
+    case ExternalType(qn) => s"""CodecRegistry.encode("$qn", $v)"""
+    case EnumType(n, _) => s"$n.encode($v)"
+    case _ => "JsonNull"
+  }
+
+  /** Like [[encodeValueExpr]] but unboxes a nullable value-typed field before encoding. */
+  private def encodeNullableValueExpr(tt: TemplateType, v: String): String = tt match {
+    case IntType(_) => s"JsonNumber.fromInt($v.intValue)"
+    case LongType(_) => s"JsonNumber.fromLong($v.longValue)"
+    case NumberType(_) => s"JsonNumber.fromDouble($v.doubleValue)"
+    case BooleanType() => s"JsonBoolean($v.booleanValue)"
+    case other => encodeValueExpr(other, v)
+  }
+
+  /** The decode binding `name <- <expr>` for one field of an object/variant. */
+  private def fieldDecodeBinding(fieldName: String, fieldDef: FieldDef): String = {
+    val valName = ScalaCodeBuilder.escapeKeyword(fieldName)
+    val keyLit = ScalaCodeBuilder.escapeStringLiteral(fieldName)
+    // Order mirrors renderFieldType: a nullable field is a raw (boxed) type, not an Option,
+    // even when also marked optional, so the nullable codec must take precedence.
+    val rhs =
+      if (fieldDef.nullable) {
+        s"""Codecs.nullable(o, "$keyLit", ${boxedDecoderExpr(fieldDef.fieldType)})"""
+      } else if (fieldDef.optional) {
+        s"""Codecs.optional(o, "$keyLit", ${decoderExpr(fieldDef.fieldType)})"""
+      } else if (fieldDef.default.isDefined) {
+        s"""Codecs.optional(o, "$keyLit", ${decoderExpr(fieldDef.fieldType)}).right.map(_.getOrElse(${fieldDef.default.get}))"""
+      } else {
+        s"""Codecs.required(o, "$keyLit", ${decoderExpr(fieldDef.fieldType)})"""
+      }
+    s"$valName <- $rhs"
+  }
+
+  /** The encode entry `Option[(String, JsonValue)]` for one field of an object/variant. */
+  private def fieldEncodeEntry(fieldName: String, fieldDef: FieldDef, accessorPrefix: String): String = {
+    val accessor = s"$accessorPrefix.${ScalaCodeBuilder.escapeKeyword(fieldName)}"
+    val keyLit = ScalaCodeBuilder.escapeStringLiteral(fieldName)
+    if (fieldDef.nullable) {
+      s"""Option($accessor).map(v => "$keyLit" -> ${encodeNullableValueExpr(fieldDef.fieldType, "v")})"""
+    } else if (fieldDef.optional) {
+      s"""$accessor.map(v => "$keyLit" -> ${encodeValueExpr(fieldDef.fieldType, "v")})"""
+    } else {
+      s"""Some("$keyLit" -> ${encodeValueExpr(fieldDef.fieldType, accessor)})"""
+    }
+  }
+
+  /** Emits `decode`, `encode`, `fromJson`, `toJson` for a record with ordered fields. */
+  private def emitRecordCodec(
+    builder: ScalaCodeBuilder,
+    typeName: String,
+    constructor: String,
+    fields: List[(String, FieldDef)]
+  ): Unit = {
+    // decode
+    builder.line(s"def decode(json: JsonValue): Either[String, $typeName] = json match {")
+    builder.indent()
+    builder.line("case o: JsonObject =>")
+    builder.indent()
+    if (fields.isEmpty) {
+      builder.line(s"Right($constructor())")
+    } else {
+      builder.line("for {")
+      builder.indent()
+      fields.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
+      builder.dedent()
+      val args = fields.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }.mkString(", ")
+      builder.line(s"} yield $constructor($args)")
+    }
+    builder.dedent()
+    builder.line(s"""case other => Left("$typeName: expected object, got " + other.typeName)""")
+    builder.dedent()
+    builder.line("}")
+    builder.emptyLine()
+    // encode
+    builder.line(s"def encode(obj: $typeName): JsonValue = JsonObject.fromFields(List(")
+    builder.indent()
+    fields.zipWithIndex.foreach { case ((fn, fd), idx) =>
+      val comma = if (idx < fields.length - 1) "," else ""
+      builder.line(fieldEncodeEntry(fn, fd, "obj") + comma)
+    }
+    builder.dedent()
+    builder.line(").flatten)")
+    builder.emptyLine()
+    emitFromToJson(builder, typeName)
+  }
+
+  /** Emits the public `fromJson`/`toJson` wrappers over `decode`/`encode`. */
+  private def emitFromToJson(builder: ScalaCodeBuilder, typeName: String): Unit = {
+    if (config.throwingFromJson) {
+      builder.line(s"def fromJson(json: String): $typeName = Json.parse(json).right.flatMap(decode) match {")
+      builder.indent()
+      builder.line("case Right(v) => v")
+      builder.line("case Left(e) => throw new IllegalArgumentException(e)")
+      builder.dedent()
+      builder.line("}")
+    } else {
+      builder.line(s"def fromJson(json: String): Either[String, $typeName] = Json.parse(json).right.flatMap(decode)")
+    }
+    builder.emptyLine()
+    builder.line(s"def toJson(obj: $typeName): String = Json.write(encode(obj))")
+  }
+
+  /** Emits the `validate` method that runs the embedded-template validator then parses. */
+  private def emitValidate(builder: ScalaCodeBuilder, typeName: String, fqn: String): Unit = {
+    builder.line("/**")
+    builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
+    builder.line(" * This allows validation without needing the original template file.")
+    builder.line(" */")
+    builder.line(s"def validate(json: String): Either[List[ValidationError], $typeName] = {")
+    builder.indent()
+    builder.line(s"""validator.validate(json, "$fqn") match {""")
+    builder.indent()
+    if (config.throwingFromJson) {
+      builder.line("""case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError("root", e.getMessage, "valid JSON", json))) }""")
+    } else {
+      builder.line("""case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))""")
+    }
+    builder.line("case Left(errors) => Left(errors)")
+    builder.dedent()
+    builder.line("}")
+    builder.dedent()
+    builder.line("}")
+  }
+
+  /** Common imports for a generated file's companion: runtime JSON, codecs, validation, formats. */
+  private def emitCodecImports(builder: ScalaCodeBuilder, basePackage: String, currentPackage: String): Unit = {
+    if (currentPackage != basePackage) {
+      builder.line(s"import $basePackage.NomosFormats")
+    }
+    builder.line("import NomosFormats._")
+    builder.line("import dev.cjfravel.nomos.json._")
+    builder.line("import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}")
+    builder.line("import dev.cjfravel.nomos.validation.ValidationError")
+  }
+
   /**
    * Header prepended to every generated file. Includes a Source pointer when the template
    * file is known, otherwise just the generic generated-by notice.
@@ -191,7 +383,7 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"package $packageName")
     builder.emptyLine()
     
-    // No Jackson imports needed in generated code - NomosFormats provides everything
+    // File-level imports are cross-package references; each companion emits its own codec imports.
     val allImports = imports
     
     if (allImports.nonEmpty) {
@@ -243,62 +435,14 @@ class CodeGenerator(config: GeneratorConfig) {
     
     builder.caseClass(name, fieldList, None, methods)
     
-    // Always generate companion object with Jackson serialization and validation
+    // Companion object with dependency-free codecs and validation
     builder.emptyLine()
     builder.companionObject(name) {
-      // Only add import if not in basePackage
-      if (currentPackage != basePackage) {
-        builder.line(s"import $basePackage.NomosFormats")
-      }
-      builder.line("import NomosFormats._")
-      builder.line("import dev.cjfravel.nomos.validation.ValidationError")
+      emitCodecImports(builder, basePackage, currentPackage)
       builder.emptyLine()
-      
-      // Generate fromJson (Either-returning by default, throwing when configured)
-      if (config.throwingFromJson) {
-        builder.line("def fromJson(json: String): " + name + " = mapper.readValue(json, classOf[" + name + "])")
-      } else {
-        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
-        builder.indent()
-        builder.line("try {")
-        builder.indent()
-        builder.line("Right(mapper.readValue(json, classOf[" + name + "]))")
-        builder.dedent()
-        builder.line("} catch {")
-        builder.indent()
-        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("}")
-      }
-      
+      emitRecordCodec(builder, name, name, objectType.fields.toList)
       builder.emptyLine()
-      builder.line("def toJson(obj: " + name + "): String = {")
-      builder.indent()
-      builder.line("mapper.writeValueAsString(obj)")
-      builder.dedent()
-      builder.line("}")
-      
-      builder.emptyLine()
-      builder.line("/**")
-      builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
-      builder.line(" * This allows validation without needing the original template file.")
-      builder.line(" */")
-      builder.line("def validate(json: String): Either[List[ValidationError], " + name + "] = {")
-      builder.indent()
-      builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
-      builder.indent()
-      if (config.throwingFromJson) {
-        builder.line("case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError(\"root\", e.getMessage, \"valid JSON\", json))) }")
-      } else {
-        builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
-      }
-      builder.line("case Left(errors) => Left(errors)")
-      builder.dedent()
-      builder.line("}")
-      builder.dedent()
-      builder.line("}")
+      emitValidate(builder, name, s"$currentPackage.$name")
     }
   }
 
@@ -336,142 +480,122 @@ class CodeGenerator(config: GeneratorConfig) {
     basePackage: String,
     currentPackage: String
   ): Unit = {
+    // Ordered fields of a variant case class: discriminator (if emitted), then common, then variant.
+    def variantOrderedFields(variantType: ObjectType): List[(String, FieldDef)] = {
+      val disc = if (discriminator.includeInOutput) List(discriminator.fieldName -> FieldDef(StringType(), optional = false)) else Nil
+      disc ++ discriminator.commonFields.toList ++ variantType.fields.toList
+    }
+
     // Generate sealed trait
     builder.sealedTrait(name)
     builder.emptyLine()
-    
+
     val variantPkg = discriminator.variantSubPackage.map(s => if (currentPackage.nonEmpty) s"$currentPackage.$s" else s)
     variantPkg.foreach { p =>
       builder.line(s"package $p {")
       builder.indent()
       builder.line(s"import $currentPackage.$name")
     }
-    
+
     // Generate case classes for each variant
     discriminator.variants.foreach { case (variantName, variantType) =>
       val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
-      
-      // Combine common fields with variant-specific fields
-      val allFields = discriminator.commonFields ++ variantType.fields
-      
-      // Add discriminator field if requested
-      val fieldsWithDiscriminator = if (discriminator.includeInOutput) {
-        Map(discriminator.fieldName -> FieldDef(StringType(), optional = false)) ++ allFields
-      } else {
-        allFields
-      }
-      
-      // Convert to field list
-      val fieldList = fieldsWithDiscriminator.map { case (fieldName, fieldDef) =>
+      val fieldList = variantOrderedFields(variantType).map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
-      }.toList
-      
+      }
       builder.caseClass(caseClassName, fieldList, Some(name))
       builder.emptyLine()
     }
-    
+
     variantPkg.foreach { _ =>
       builder.dedent()
       builder.line("}")
       builder.emptyLine()
     }
-    
-    // Always generate companion object with Jackson deserialization
-    val variantMap = discriminator.variants.map { case (variantName, _) =>
-      (variantName, ScalaCodeBuilder.toPascalCase(variantName))
-    }
-    // When includeInOutput is false the discriminator field is only a JSON key here, so it may
-    // not be a Scala identifier; escape it for the generated string literal and s-interpolation.
+
+    val variantMap = discriminator.variants.map { case (variantName, vt) =>
+      (variantName, ScalaCodeBuilder.toPascalCase(variantName), vt)
+    }.toList
     val fieldKeyLit = ScalaCodeBuilder.escapeStringLiteral(discriminator.fieldName)
-    val fieldMsgLit = fieldKeyLit.replace("$", "$$")
-    
-    // Generate companion object with simple Jackson Scala module deserialization and validation
+
     builder.companionObject(name) {
-      // Only add import if not in basePackage
-      if (currentPackage != basePackage) {
-        builder.line(s"import $basePackage.NomosFormats")
-      }
-      builder.line("import NomosFormats._")
-      builder.line("import dev.cjfravel.nomos.validation.ValidationError")
-      builder.line("import com.fasterxml.jackson.databind.JsonNode")
+      emitCodecImports(builder, basePackage, currentPackage)
       variantPkg.foreach(p => builder.line(s"import $p._"))
       builder.emptyLine()
-      if (config.throwingFromJson) {
-        builder.line("def fromJson(json: String): " + name + " = {")
-        builder.indent()
-        builder.line("val jsonNode = mapper.readTree(json)")
-        builder.line("val discriminatorValue = jsonNode.get(\"" + fieldKeyLit + "\").asText()")
-        builder.line("discriminatorValue match {")
-        builder.indent()
-        variantMap.foreach { case (variantKey, className) =>
-          val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
-          if (discriminator.variantMatch == "prefix") {
-            builder.line("case d if d.startsWith(\"" + keyLit + "\") => mapper.treeToValue(jsonNode, classOf[" + className + "])")
-          } else {
-            builder.line("case \"" + keyLit + "\" => mapper.treeToValue(jsonNode, classOf[" + className + "])")
-          }
-        }
-        builder.line("case other => throw new IllegalArgumentException(s\"Unknown " + fieldMsgLit + " value: $other\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("}")
-      } else {
-        builder.line("def fromJson(json: String): Either[String, " + name + "] = {")
-        builder.indent()
-        builder.line("try {")
-        builder.indent()
-        builder.line("val jsonNode = mapper.readTree(json)")
-        builder.line("val discriminatorValue = jsonNode.get(\"" + fieldKeyLit + "\").asText()")
-        builder.line("discriminatorValue match {")
-        builder.indent()
-        variantMap.foreach { case (variantKey, className) =>
-          val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
-          if (discriminator.variantMatch == "prefix") {
-            builder.line("case d if d.startsWith(\"" + keyLit + "\") => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
-          } else {
-            builder.line("case \"" + keyLit + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
-          }
-        }
-        builder.line("case other => Left(s\"Unknown " + fieldMsgLit + " value: $other\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("} catch {")
-        builder.indent()
-        builder.line("case e: Exception => Left(s\"Failed to parse JSON: ${e.getMessage}\")")
-        builder.dedent()
-        builder.line("}")
-        builder.dedent()
-        builder.line("}")
-      }
-      builder.emptyLine()
-      builder.line("def toJson(obj: " + name + "): String = {")
+
+      // decode: dispatch on the discriminator value, then decode the matched variant's fields
+      builder.line(s"def decode(json: JsonValue): Either[String, $name] = json match {")
       builder.indent()
-      builder.line("mapper.writeValueAsString(obj)")
+      builder.line("case o: JsonObject =>")
+      builder.indent()
+      builder.line(s"""o.field("$fieldKeyLit") match {""")
+      builder.indent()
+      builder.line("case Some(JsonString(d)) =>")
+      builder.indent()
+      builder.line("d match {")
+      builder.indent()
+      variantMap.foreach { case (variantKey, className, vt) =>
+        val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
+        val matchPat = if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>""" else s"""case "$keyLit" =>"""
+        builder.line(matchPat)
+        builder.indent()
+        emitVariantDecode(builder, className, discriminator, vt)
+        builder.dedent()
+      }
+      builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
+      builder.dedent()
+      builder.line("}")
+      builder.dedent()
+      builder.line(s"""case Some(_) => Left("$fieldKeyLit: expected string")""")
+      builder.line(s"""case None => Left("missing required field '$fieldKeyLit'")""")
+      builder.dedent()
+      builder.line("}")
+      builder.dedent()
+      builder.line(s"""case other => Left("$name: expected object, got " + other.typeName)""")
       builder.dedent()
       builder.line("}")
       builder.emptyLine()
-      builder.line("/**")
-      builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
-      builder.line(" * This allows validation without needing the original template file.")
-      builder.line(" */")
-      builder.line("def validate(json: String): Either[List[ValidationError], " + name + "] = {")
+
+      // encode: pattern-match the trait value to its variant and build the JSON object
+      builder.line(s"def encode(obj: $name): JsonValue = obj match {")
       builder.indent()
-      builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
-      builder.indent()
-      if (config.throwingFromJson) {
-        builder.line("case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError(\"root\", e.getMessage, \"valid JSON\", json))) }")
-      } else {
-        builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      variantMap.foreach { case (_, className, vt) =>
+        val entries = variantOrderedFields(vt).map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
+        builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
       }
-      builder.line("case Left(errors) => Left(errors)")
       builder.dedent()
       builder.line("}")
-      builder.dedent()
-      builder.line("}")
+      builder.emptyLine()
+
+      emitFromToJson(builder, name)
+      builder.emptyLine()
+      emitValidate(builder, name, s"$currentPackage.$name")
     }
     builder.emptyLine()
+  }
+
+  /**
+   * Emits the body of a variant's decode branch: binds non-discriminator fields and constructs
+   * the variant case class (passing the matched discriminator value `d` when it is emitted).
+   */
+  private def emitVariantDecode(
+    builder: ScalaCodeBuilder,
+    className: String,
+    discriminator: TypeDiscriminator,
+    variantType: ObjectType
+  ): Unit = {
+    val nonDisc = discriminator.commonFields.toList ++ variantType.fields.toList
+    val discArg = if (discriminator.includeInOutput) List("d") else Nil
+    if (nonDisc.isEmpty) {
+      builder.line(s"Right($className(${discArg.mkString(", ")}))")
+    } else {
+      builder.line("for {")
+      builder.indent()
+      nonDisc.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
+      builder.dedent()
+      val args = (discArg ++ nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
+      builder.line(s"} yield $className($args)")
+    }
   }
 
   /**
@@ -486,9 +610,6 @@ class CodeGenerator(config: GeneratorConfig) {
     basePackage: String,
     currentPackage: String
   ): Unit = {
-    // Get the trait fields (discriminator + common fields)
-    val traitFieldNames = Set(discriminator.fieldName) ++ discriminator.commonFields.keys
-    
     // Generate sealed trait with common fields as abstract vals
     if (discriminator.commonFields.nonEmpty) {
       val commonFieldList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
@@ -504,17 +625,17 @@ class CodeGenerator(config: GeneratorConfig) {
     }
     builder.emptyLine()
     
-    // Group variants by their mapped class names
-    val variantsByClassName = discriminator.variants.groupBy { case (variantKey, _) =>
-      discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
+    // Group variants by their mapped class names, preserving first-appearance order and merging
+    // each class's variant fields in order (so generated case classes, decode, and encode agree).
+    var classFields = scala.collection.immutable.ListMap.empty[String, scala.collection.immutable.ListMap[String, FieldDef]]
+    discriminator.variants.foreach { case (variantKey, vt) =>
+      val cn = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
+      val merged = classFields.getOrElse(cn, scala.collection.immutable.ListMap.empty[String, FieldDef]) ++ vt.fields
+      classFields = classFields.updated(cn, merged)
     }
-    
+
     // Generate one case class per unique mapped name
-    variantsByClassName.foreach { case (caseClassName, variants) =>
-      // Merge all variant-specific fields (they should be compatible if mapping to same class)
-      val variantFields = variants.values.flatMap(_.fields).toMap
-      
-      // Build field list with override for trait fields
+    classFields.foreach { case (caseClassName, variantFields) =>
       val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)  // override = true
       val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)  // override = true
@@ -522,49 +643,83 @@ class CodeGenerator(config: GeneratorConfig) {
       val variantFieldsList = variantFields.map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), false)  // override = false
       }.toList
-      
+
       val allFields = discriminatorField :: (commonFieldsList ++ variantFieldsList)
-      
+
       builder.caseClassWithOverride(caseClassName, allFields, Some(name))
       builder.emptyLine()
     }
-    
-    // Always generate companion object with custom serializer
-    // Map discriminator values to class names (respecting variantNames mapping)
-    val variantMap = discriminator.variants.map { case (variantKey, _) =>
-      val className = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
-      (variantKey, className)
+
+    // Map each discriminator key to its mapped class name (order preserved)
+    val variantMap = discriminator.variants.toList.map { case (variantKey, _) =>
+      (variantKey, discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey)))
     }
-    
-    // Generate companion object with Jackson deserialization and validation
+    val fieldKeyLit = ScalaCodeBuilder.escapeStringLiteral(discriminator.fieldName)
+
     builder.companionObject(name) {
-      // Only add import if not in basePackage
-      if (currentPackage != basePackage) {
-        builder.line(s"import $basePackage.NomosFormats")
-      }
-      builder.line("import NomosFormats._")
-      builder.line("import dev.cjfravel.nomos.validation.ValidationError")
+      emitCodecImports(builder, basePackage, currentPackage)
       builder.emptyLine()
-      builder.customSerializer(name, discriminator.fieldName, variantMap, discriminator.variantMatch == "prefix", config.throwingFromJson)
-      builder.emptyLine()
-      builder.line("/**")
-      builder.line(" * Validates JSON against the embedded template and returns a parsed instance.")
-      builder.line(" * This allows validation without needing the original template file.")
-      builder.line(" */")
-      builder.line("def validate(json: String): Either[List[ValidationError], " + name + "] = {")
+
+      // decode: dispatch on the discriminator value, build the mapped class (common + variant fields)
+      builder.line(s"def decode(json: JsonValue): Either[String, $name] = json match {")
       builder.indent()
-      builder.line("validator.validate(json, \"" + currentPackage + "." + name + "\") match {")
+      builder.line("case o: JsonObject =>")
       builder.indent()
-      if (config.throwingFromJson) {
-        builder.line("case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError(\"root\", e.getMessage, \"valid JSON\", json))) }")
-      } else {
-        builder.line("case Right(_) => fromJson(json).left.map(err => List(ValidationError(\"root\", err, \"valid JSON\", json)))")
+      builder.line(s"""o.field("$fieldKeyLit") match {""")
+      builder.indent()
+      builder.line("case Some(JsonString(d)) =>")
+      builder.indent()
+      builder.line("d match {")
+      builder.indent()
+      variantMap.foreach { case (variantKey, className) =>
+        val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
+        val matchPat = if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>""" else s"""case "$keyLit" =>"""
+        builder.line(matchPat)
+        builder.indent()
+        val nonDisc = discriminator.commonFields.toList ++ classFields.getOrElse(className, scala.collection.immutable.ListMap.empty[String, FieldDef]).toList
+        if (nonDisc.isEmpty) {
+          builder.line(s"Right($className(d))")
+        } else {
+          builder.line("for {")
+          builder.indent()
+          nonDisc.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
+          builder.dedent()
+          val args = ("d" :: nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
+          builder.line(s"} yield $className($args)")
+        }
+        builder.dedent()
       }
-      builder.line("case Left(errors) => Left(errors)")
+      builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
       builder.dedent()
       builder.line("}")
       builder.dedent()
+      builder.line(s"""case Some(_) => Left("$fieldKeyLit: expected string")""")
+      builder.line(s"""case None => Left("missing required field '$fieldKeyLit'")""")
+      builder.dedent()
       builder.line("}")
+      builder.dedent()
+      builder.line(s"""case other => Left("$name: expected object, got " + other.typeName)""")
+      builder.dedent()
+      builder.line("}")
+      builder.emptyLine()
+
+      // encode: pattern-match the trait value to its mapped class and build the JSON object
+      builder.line(s"def encode(obj: $name): JsonValue = obj match {")
+      builder.indent()
+      classFields.foreach { case (className, variantFields) =>
+        val discEntry = s"""Some("$fieldKeyLit" -> JsonString(v.${ScalaCodeBuilder.escapeKeyword(discriminator.fieldName)}))"""
+        val commonEntries = discriminator.commonFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
+        val variantEntries = variantFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
+        val entries = (discEntry :: commonEntries) ++ variantEntries
+        builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
+      }
+      builder.dedent()
+      builder.line("}")
+      builder.emptyLine()
+
+      emitFromToJson(builder, name)
+      builder.emptyLine()
+      emitValidate(builder, name, s"$currentPackage.$name")
     }
     builder.emptyLine()
   }
@@ -639,14 +794,8 @@ class CodeGenerator(config: GeneratorConfig) {
     headerLines(sourcePath).foreach(builder.line)
     builder.line(s"package $packageName")
     builder.emptyLine()
-    builder.line("import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}")
-    builder.line("import com.fasterxml.jackson.databind.{SerializerProvider, DeserializationContext}")
-    builder.line("import com.fasterxml.jackson.databind.annotation.{JsonSerialize, JsonDeserialize}")
-    builder.line("import com.fasterxml.jackson.databind.ser.std.StdSerializer")
-    builder.line("import com.fasterxml.jackson.databind.deser.std.StdDeserializer")
+    builder.line("import dev.cjfravel.nomos.json.{JsonValue, JsonString}")
     builder.emptyLine()
-    builder.line(s"@JsonSerialize(using = classOf[${enumName}Serializer])")
-    builder.line(s"@JsonDeserialize(using = classOf[${enumName}Deserializer])")
     builder.line(s"sealed trait $enumName")
     builder.emptyLine()
     builder.line(s"object $enumName {")
@@ -667,24 +816,15 @@ class CodeGenerator(config: GeneratorConfig) {
     cases.foreach { case (raw, obj) => builder.line("case " + obj + " => \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\"") }
     builder.dedent()
     builder.line("}")
+    builder.emptyLine()
+    builder.line(s"def decode(json: JsonValue): Either[String, $enumName] = json match {")
+    builder.indent()
+    builder.line(s"""case JsonString(s) => fromString(s).toRight("invalid $enumName: " + s)""")
+    builder.line(s"""case other => Left("expected string, got " + other.typeName)""")
     builder.dedent()
     builder.line("}")
     builder.emptyLine()
-    builder.line(s"class ${enumName}Serializer extends StdSerializer[$enumName](classOf[$enumName]) {")
-    builder.indent()
-    builder.line(s"override def serialize(value: $enumName, gen: JsonGenerator, provider: SerializerProvider): Unit =")
-    builder.indent()
-    builder.line(s"gen.writeString($enumName.asString(value))")
-    builder.dedent()
-    builder.dedent()
-    builder.line("}")
-    builder.emptyLine()
-    builder.line(s"class ${enumName}Deserializer extends StdDeserializer[$enumName](classOf[$enumName]) {")
-    builder.indent()
-    builder.line(s"override def deserialize(p: JsonParser, ctxt: DeserializationContext): $enumName =")
-    builder.indent()
-    builder.line(s"""$enumName.fromString(p.getValueAsString).getOrElse(throw new IllegalArgumentException("Invalid $enumName: " + p.getValueAsString))""")
-    builder.dedent()
+    builder.line(s"def encode(v: $enumName): JsonValue = JsonString(asString(v))")
     builder.dedent()
     builder.line("}")
     
@@ -783,34 +923,16 @@ class CodeGenerator(config: GeneratorConfig) {
     headerLines(None).foreach(builder.line)
     builder.line(s"package $basePackage")
     builder.emptyLine()
-    builder.line("import com.fasterxml.jackson.databind.ObjectMapper")
-    builder.line("import com.fasterxml.jackson.databind.SerializationFeature")
-    builder.line("import com.fasterxml.jackson.module.scala.DefaultScalaModule")
-    builder.line("import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule")
     builder.line("import dev.cjfravel.nomos.model._")
-    builder.line("import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError}")
-    builder.line("import com.fasterxml.jackson.databind.JsonNode")
+    builder.line("import dev.cjfravel.nomos.validation.MultiValidator")
     builder.line("import scala.collection.immutable.ListMap")
     builder.emptyLine()
     builder.line("/**")
-    builder.line(" * Provides Jackson ObjectMapper with Scala module support.")
-    builder.line(" * The Scala module enables automatic serialization/deserialization of case classes.")
-    builder.line(" * Also contains the embedded template for runtime validation.")
-    builder.line(" * Import NomosFormats._ to use the mapper in your code.")
+    builder.line(" * Holds the embedded template and a validator for runtime validation.")
+    builder.line(" * Generated companions import this to validate without the original template file.")
     builder.line(" */")
     builder.line("object NomosFormats {")
     builder.indent()
-    builder.line("// Create a shared ObjectMapper instance with Scala module")
-    builder.line("val mapper: ObjectMapper = {")
-    builder.indent()
-    builder.line("val m = new ObjectMapper()")
-    builder.line("m.registerModule(DefaultScalaModule)")
-    builder.line("m.registerModule(new JavaTimeModule())")
-    builder.line("m.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)")
-    builder.line("m")
-    builder.dedent()
-    builder.line("}")
-    builder.emptyLine()
     builder.line("// Embedded template for runtime validation")
     builder.line("lazy val embeddedTemplate: MultiTemplate = {")
     builder.indent()

@@ -125,17 +125,31 @@ case class Profile(
 
 object Profile {
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, Profile] = {
-    try {
-      Right(mapper.readValue(json, classOf[Profile]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, Profile] = json match {
+    case o: JsonObject =>
+      for {
+        firstName <- Codecs.required(o, "firstName", Codecs.string)
+        lastName <- Codecs.required(o, "lastName", Codecs.string)
+        age <- Codecs.required(o, "age", Codecs.double)
+        bio <- Codecs.optional(o, "bio", Codecs.string)
+      } yield Profile(firstName, lastName, age, bio)
+    case other => Left("Profile: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Profile): String = mapper.writeValueAsString(obj)
+  def encode(obj: Profile): JsonValue = JsonObject.fromFields(List(
+    Some("firstName" -> JsonString(obj.firstName)),
+    Some("lastName" -> JsonString(obj.lastName)),
+    Some("age" -> JsonNumber.fromDouble(obj.age)),
+    obj.bio.map(v => "bio" -> JsonString(v))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, Profile] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Profile): String = Json.write(encode(obj))
 
   def validate(json: String): Either[List[ValidationError], Profile] = {
     validator.validate(json, "com.myapp.models.user.Profile") match {
@@ -168,25 +182,48 @@ case class Guest(
 
 object Role {
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
-  import com.fasterxml.jackson.databind.JsonNode
 
-  def fromJson(json: String): Either[String, Role] = {
-    try {
-      val jsonNode = mapper.readTree(json)
-      val discriminatorValue = jsonNode.get("roleType").asText()
-      discriminatorValue match {
-        case "admin" => Right(mapper.treeToValue(jsonNode, classOf[Admin]))
-        case "member" => Right(mapper.treeToValue(jsonNode, classOf[Member]))
-        case "guest" => Right(mapper.treeToValue(jsonNode, classOf[Guest]))
-        case other => Left(s"Unknown roleType value: $other")
+  def decode(json: JsonValue): Either[String, Role] = json match {
+    case o: JsonObject =>
+      o.field("roleType") match {
+        case Some(JsonString(d)) =>
+          d match {
+            case "admin" =>
+              for {
+                createdAt <- Codecs.required(o, "createdAt", Codecs.string)
+                permissions <- Codecs.required(o, "permissions", Codecs.list(Codecs.string))
+                department <- Codecs.required(o, "department", Codecs.string)
+              } yield Admin(d, createdAt, permissions, department)
+            case "member" =>
+              for {
+                createdAt <- Codecs.required(o, "createdAt", Codecs.string)
+                subscriptionLevel <- Codecs.required(o, "subscriptionLevel", Codecs.string)
+                subscriptionExpiry <- Codecs.optional(o, "subscriptionExpiry", Codecs.string)
+              } yield Member(d, createdAt, subscriptionLevel, subscriptionExpiry)
+            case "guest" =>
+              for {
+                createdAt <- Codecs.required(o, "createdAt", Codecs.string)
+              } yield Guest(d, createdAt)
+            case other => Left("Unknown roleType value: " + other)
+          }
+        case Some(_) => Left("roleType: expected string")
+        case None => Left("missing required field 'roleType'")
       }
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+    case other => Left("Role: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Role): String = mapper.writeValueAsString(obj)
+  def encode(obj: Role): JsonValue = obj match {
+    case v: Admin => JsonObject.fromFields(List(Some("roleType" -> JsonString(v.roleType)), Some("createdAt" -> JsonString(v.createdAt)), Some("permissions" -> JsonArray(v.permissions.iterator.map(x => JsonString(x)).toVector)), Some("department" -> JsonString(v.department))).flatten)
+    case v: Member => JsonObject.fromFields(List(Some("roleType" -> JsonString(v.roleType)), Some("createdAt" -> JsonString(v.createdAt)), Some("subscriptionLevel" -> JsonString(v.subscriptionLevel)), v.subscriptionExpiry.map(x => "subscriptionExpiry" -> JsonString(x))).flatten)
+    case v: Guest => JsonObject.fromFields(List(Some("roleType" -> JsonString(v.roleType)), Some("createdAt" -> JsonString(v.createdAt))).flatten)
+  }
+
+  def fromJson(json: String): Either[String, Role] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Role): String = Json.write(encode(obj))
 
   def validate(json: String): Either[List[ValidationError], Role] = {
     validator.validate(json, "com.myapp.models.user.Role") match {
@@ -206,17 +243,33 @@ case class User(
 
 object User {
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, User] = {
-    try {
-      Right(mapper.readValue(json, classOf[User]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, User] = json match {
+    case o: JsonObject =>
+      for {
+        id <- Codecs.required(o, "id", Codecs.string)
+        username <- Codecs.required(o, "username", Codecs.string)
+        email <- Codecs.required(o, "email", Codecs.string)
+        profile <- Codecs.required(o, "profile", Profile.decode)
+        role <- Codecs.required(o, "role", Role.decode)
+      } yield User(id, username, email, profile, role)
+    case other => Left("User: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: User): String = mapper.writeValueAsString(obj)
+  def encode(obj: User): JsonValue = JsonObject.fromFields(List(
+    Some("id" -> JsonString(obj.id)),
+    Some("username" -> JsonString(obj.username)),
+    Some("email" -> JsonString(obj.email)),
+    Some("profile" -> Profile.encode(obj.profile)),
+    Some("role" -> Role.encode(obj.role))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, User] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: User): String = Json.write(encode(obj))
 
   def validate(json: String): Either[List[ValidationError], User] = {
     validator.validate(json, "com.myapp.models.user.User") match {

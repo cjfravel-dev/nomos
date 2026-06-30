@@ -6,7 +6,7 @@ This is a working example demonstrating how to use Nomos for code generation and
 
 1. **Template Definition** - JSON templates for User, Column, Limits, and Account models
 2. **Code Generation** - Automatic case class generation via Maven plugin
-3. **Serialization** - JSON to/from Scala objects using Jackson
+3. **Serialization** - JSON to/from Scala objects using the generated dependency-free codecs
 4. **Validation** - Runtime JSON validation against template schemas
 
 ## Project Structure
@@ -204,7 +204,7 @@ The plugin scans `src/main/resources/nomos/templates` by default. Override with 
 - ✅ Template-based code generation
 - ✅ Optional fields with `Option[T]`
 - ✅ Array types with configurable collection types
-- ✅ Jackson-based JSON serialization
+- ✅ Dependency-free JSON serialization (no third-party JSON library)
 - ✅ Runtime validation with detailed error messages
 - ✅ Type-safe Scala case classes
 - ✅ Compile-time safety with generated code

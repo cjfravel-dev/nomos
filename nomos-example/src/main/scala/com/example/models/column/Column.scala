@@ -14,26 +14,37 @@ case class Varchar(`type`: String) extends Column
 object Column {
   import com.example.models.NomosFormats
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
-  import com.fasterxml.jackson.databind.JsonNode
 
-  def fromJson(json: String): Either[String, Column] = {
-    try {
-      val jsonNode = mapper.readTree(json)
-      val discriminatorValue = jsonNode.get("type").asText()
-      discriminatorValue match {
-        case d if d.startsWith("Decimal") => Right(mapper.treeToValue(jsonNode, classOf[Decimal]))
-        case d if d.startsWith("Varchar") => Right(mapper.treeToValue(jsonNode, classOf[Varchar]))
-        case other => Left(s"Unknown type value: $other")
+  def decode(json: JsonValue): Either[String, Column] = json match {
+    case o: JsonObject =>
+      o.field("type") match {
+        case Some(JsonString(d)) =>
+          d match {
+            case d2 if d2.startsWith("Decimal") =>
+              for {
+                scale <- Codecs.required(o, "scale", Codecs.int)
+              } yield Decimal(d, scale)
+            case d2 if d2.startsWith("Varchar") =>
+              Right(Varchar(d))
+            case other => Left("Unknown type value: " + other)
+          }
+        case Some(_) => Left("type: expected string")
+        case None => Left("missing required field 'type'")
       }
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+    case other => Left("Column: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Column): String = {
-    mapper.writeValueAsString(obj)
+  def encode(obj: Column): JsonValue = obj match {
+    case v: Decimal => JsonObject.fromFields(List(Some("type" -> JsonString(v.`type`)), Some("scale" -> JsonNumber.fromInt(v.scale))).flatten)
+    case v: Varchar => JsonObject.fromFields(List(Some("type" -> JsonString(v.`type`))).flatten)
   }
+
+  def fromJson(json: String): Either[String, Column] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Column): String = Json.write(encode(obj))
 
   /**
    * Validates JSON against the embedded template and returns a parsed instance.

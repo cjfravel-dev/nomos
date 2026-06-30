@@ -34,7 +34,8 @@ class EnumTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
     enumFile should include("case object Active extends Status")
     enumFile should include("case object Inactive extends Status")
     enumFile should include("def fromString")
-    enumFile should include("@JsonSerialize")
+    enumFile should include("def decode(json: JsonValue)")
+    enumFile should include("def encode(v: Status): JsonValue")
   }
 
   "validator" should "accept enum values and reject others" in {

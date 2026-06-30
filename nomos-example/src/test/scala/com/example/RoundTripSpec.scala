@@ -1,7 +1,7 @@
 package com.example
 
 import com.example.models.user.User
-import com.example.models.NomosFormats
+import dev.cjfravel.nomos.json.Json
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -13,10 +13,10 @@ class RoundTripSpec extends AnyFlatSpec with Matchers {
     User.toJson(user) shouldBe original
   }
 
-  it should "preserve key order and produce JsonNode-equal output" in {
+  it should "preserve key order and produce structurally-equal output" in {
     val original = """{"id":"a","username":"b","email":"c@d.com","age":1.0,"roles":[]}"""
     val out = User.toJson(User.fromJson(original).right.get)
-    NomosFormats.mapper.readTree(out) shouldBe NomosFormats.mapper.readTree(original)
+    Json.parse(out).right.get shouldBe Json.parse(original).right.get
   }
 
   it should "validate then round-trip without loss" in {

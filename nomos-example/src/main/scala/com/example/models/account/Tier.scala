@@ -2,14 +2,8 @@
 // Source: com/example/models/account/account.json
 package com.example.models.account
 
-import com.fasterxml.jackson.core.{JsonGenerator, JsonParser}
-import com.fasterxml.jackson.databind.{SerializerProvider, DeserializationContext}
-import com.fasterxml.jackson.databind.annotation.{JsonSerialize, JsonDeserialize}
-import com.fasterxml.jackson.databind.ser.std.StdSerializer
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer
+import dev.cjfravel.nomos.json.{JsonValue, JsonString}
 
-@JsonSerialize(using = classOf[TierSerializer])
-@JsonDeserialize(using = classOf[TierDeserializer])
 sealed trait Tier
 
 object Tier {
@@ -28,14 +22,11 @@ object Tier {
     case Free => "free"
     case Pro => "pro"
   }
-}
 
-class TierSerializer extends StdSerializer[Tier](classOf[Tier]) {
-  override def serialize(value: Tier, gen: JsonGenerator, provider: SerializerProvider): Unit =
-    gen.writeString(Tier.asString(value))
-}
+  def decode(json: JsonValue): Either[String, Tier] = json match {
+    case JsonString(s) => fromString(s).toRight("invalid Tier: " + s)
+    case other => Left("expected string, got " + other.typeName)
+  }
 
-class TierDeserializer extends StdDeserializer[Tier](classOf[Tier]) {
-  override def deserialize(p: JsonParser, ctxt: DeserializationContext): Tier =
-    Tier.fromString(p.getValueAsString).getOrElse(throw new IllegalArgumentException("Invalid Tier: " + p.getValueAsString))
+  def encode(v: Tier): JsonValue = JsonString(asString(v))
 }

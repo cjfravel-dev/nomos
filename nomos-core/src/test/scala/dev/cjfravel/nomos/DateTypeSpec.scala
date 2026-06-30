@@ -29,10 +29,12 @@ class DateTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
     content should include("ts: java.time.LocalDateTime")
   }
 
-  "NomosFormats" should "register the java.time module" in {
+  "generated codec" should "decode and encode dates via java.time without a JSON library" in {
     val t = parse("""{"name":"N","template":{"d":"date"}}""").value
-    new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "NomosFormats.scala").get.content should include("JavaTimeModule")
+    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+      .generateMulti(t).value.find(_.fileName == "N.scala").get.content
+    content should include("""Codecs.temporal[java.time.LocalDate]("date"""")
+    content should include("JsonString(obj.d.toString)")
   }
 
   "validator" should "accept ISO dates and reject malformed ones" in {

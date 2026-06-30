@@ -4,25 +4,36 @@ package com.example.models.limits
 
 case class Limits(
   name: String,
-  maxFiles: java.lang.Integer = null
+  maxFiles: java.lang.Integer = null,
+  attributes: Map[String, String]
 )
 
 object Limits {
   import com.example.models.NomosFormats
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, Limits] = {
-    try {
-      Right(mapper.readValue(json, classOf[Limits]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, Limits] = json match {
+    case o: JsonObject =>
+      for {
+        name <- Codecs.required(o, "name", Codecs.string)
+        maxFiles <- Codecs.nullable(o, "maxFiles", Codecs.boxedInt)
+        attributes <- Codecs.required(o, "attributes", Codecs.map(Codecs.string))
+      } yield Limits(name, maxFiles, attributes)
+    case other => Left("Limits: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Limits): String = {
-    mapper.writeValueAsString(obj)
-  }
+  def encode(obj: Limits): JsonValue = JsonObject.fromFields(List(
+    Some("name" -> JsonString(obj.name)),
+    Option(obj.maxFiles).map(v => "maxFiles" -> JsonNumber.fromInt(v.intValue)),
+    Some("attributes" -> JsonObject.fromFields(obj.attributes.iterator.map { case (k, x) => (k, JsonString(x)) }.toSeq))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, Limits] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Limits): String = Json.write(encode(obj))
 
   /**
    * Validates JSON against the embedded template and returns a parsed instance.

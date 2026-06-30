@@ -108,7 +108,7 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
         "b" -> ObjectType(ListMap("y" -> FieldDef(StringType(), optional = false)))
       ), ListMap.empty, includeInOutput = false)
     val content = gen.generateMulti(multi(TemplateDefinition("Entity", disc))).value.find(_.fileName == "Entity.scala").get.content
-    content should include("""jsonNode.get("@type")""")
+    content should include("""o.field("@type")""")
   }
 
   it should "escape a discriminator field name that is only a JSON key" in {
@@ -118,7 +118,7 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
         "d" -> ObjectType(ListMap("y" -> FieldDef(StringType(), optional = false)))
       ), ListMap.empty, includeInOutput = false)
     val content = gen.generateMulti(multi(TemplateDefinition("E", disc))).value.find(_.fileName == "E.scala").get.content
-    content should include("""get("a\"b")""")
+    content should include("""field("a\"b")""")
   }
 
   it should "accept an external type with generic parameters" in {

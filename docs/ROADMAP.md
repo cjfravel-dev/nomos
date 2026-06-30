@@ -341,11 +341,10 @@ the generator preserves).
 > instance method that references fields (e.g. `def displayName = name + version`) does not
 > compile. Support instance-level methods (emit into the case class body).
 
-### P5-6. Pluggable serializer + `fromJson` signature — **Medium**
-Generated ser/de is Jackson-only and `fromJson` returns `Either`. A legacy API may use a
-different library and a throwing `fromJson: T`. Make the serializer pluggable and the
-`fromJson` signature selectable (throwing vs `Either`).
-*Effort: M.*
+### P5-6. Pluggable serializer + `fromJson` signature — **Resolved**
+Generated serialization is now a first-party, dependency-free codec (no third-party JSON library),
+and `fromJson` is selectable between `Either`-returning (default) and throwing `T` via the
+template-level `"fromJsonStyle"`.
 
 > Follow-up (found on retest): the template-level `"fromJsonStyle": "throwing"` is not wired
 > through the maven plugin to the generator, so generated `fromJson` still returns `Either`.
@@ -428,13 +427,11 @@ of ISO-8601. Today this forces suppressing datetime errors as a workaround.
 ```
 *Effort: S.*
 
-### P8-2. Jackson can't deserialize external Gson-polymorphic types / nested unions — **High**
-Generated `fromJson` uses Jackson. When a generated type references (a) an `$extern` type that
-deserializes via another library's polymorphism (e.g. a runtime type-adapter factory), or (b) a
-nested discriminated union field, Jackson can't construct it without a hand-written deserializer.
-Generate Jackson deserializers for nested unions, and provide a documented hook to plug an
-external type's deserializer.
-*Effort: M.*
+### P8-2. Nested unions / external-type deserialization — **Resolved** (dependency-free migration)
+Generated `fromJson`/`toJson` are now explicit, reflection-free first-party codecs (no Jackson).
+Nested discriminated unions decode directly via each type's generated `decode`, and `$extern`
+types are decoded/encoded through a registered codec (`dev.cjfravel.nomos.serialization.CodecRegistry`,
+keyed by fully-qualified name). Applications register an external codec at startup.
 
 ### P8-3. `validate()` does not recurse into `$extern` types — **Medium**
 Fields typed as `$extern` are treated opaquely by the generated validator (presence/array shape
@@ -442,16 +439,14 @@ only), so their internals aren't schema-checked. Allow an external type to suppl
 nomos can call, or document that externs are unvalidated.
 *Effort: M.*
 
-### P8-4. `toJson` parity with legacy serializers — **Medium**
-Generated Jackson `toJson` differs from a legacy serializer in null-field emission, date string
-shape, and key ordering, so output isn't byte-compatible. Offer emission options (omit/keep
-nulls, date format, key order) for drop-in replacement.
-*Effort: M.*
+### P8-4. `toJson` parity (null emission, key order, dates) — **Resolved** (dependency-free migration)
+Generated encoders now emit object keys in template field order, omit absent `Option` fields,
+and format dates via `toString` (ISO-8601). Numbers preserve their lexeme, so round-trips are
+byte-stable. Further emission knobs (keep-null, custom date format) can be added if needed.
 
-### P8-5. Companion (de)serialization hook — **Low**
-No first-class way to inject custom companion serialization (e.g. a post-process step, legacy
-quote handling). Add a generator hook for custom companion `fromJson`/`toJson` wrapping.
-*Effort: S.*
+### P8-5. Companion (de)serialization hook — **Resolved** (dependency-free migration)
+Each generated companion exposes public `decode`/`encode` (and `fromJson`/`toJson`) so consumers
+can compose custom wrapping without editing generated code, with no global mutable state.
 
 ---
 

@@ -6,16 +6,20 @@ Nomos is organized as a multi-module Maven project using a **Bill of Materials (
 
 ## Module Structure
 
-```
+```text
 nomos/
 ├── pom.xml                      # Parent POM
 ├── nomos-bom/                  # BOM for dependency management
 │   └── pom.xml
-├── nomos-core/                 # Core library
+├── nomos-core/                 # Build-time generator/parser
 │   ├── pom.xml
 │   └── src/
 │       ├── main/scala/          # Template parsing & code generation
 │       └── test/scala/          # Unit tests
+├── nomos-runtime/              # Dependency-free runtime for generated code
+│   ├── pom.xml
+│   └── src/
+│       └── main/scala/          # JSON model/parser/writer, validation, codecs
 ├── nomos-maven-plugin/         # Maven plugin for build integration
 │   ├── pom.xml
 │   └── src/
@@ -38,9 +42,8 @@ nomos/
 **Purpose**: Bill of Materials for centralized dependency version management.
 
 **Features**:
-- Declares Jackson 2.15.2 versions
 - Declares Scala library versions
-- Declares Nomos module versions
+- Declares Nomos module versions, including `nomos-runtime`
 - Provides consistent versions across all projects
 
 **Benefits**:
@@ -66,21 +69,33 @@ nomos/
 
 ### 2. nomos-core
 
-**Purpose**: Core functionality for template processing and code generation.
+**Purpose**: Build-time functionality for template processing and code generation.
 
 **Components**:
 - **Template Parsing**: [`TemplateParser`](../nomos-core/src/main/scala/dev/cjfravel/nomos/parser/TemplateParser.scala) - Parses JSON templates
 - **Code Generation**: [`CodeGenerator`](../nomos-core/src/main/scala/dev/cjfravel/nomos/generation/CodeGenerator.scala) - Generates Scala case classes
-- **Validation**: [`Validator`](../nomos-core/src/main/scala/dev/cjfravel/nomos/validation/Validator.scala) - Runtime JSON validation
-- **Models**: [`MultiTemplate`/`TemplateDefinition`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/Template.scala), [`TemplateType`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/TemplateType.scala) - Core data structures
+- **Validation Wiring**: Generates calls to the first-party runtime validator
+- **Models**: Uses the runtime `MultiTemplate`/`TemplateDefinition` and `TemplateType` data structures
 - **File I/O**: [`FileWriter`](../nomos-core/src/main/scala/dev/cjfravel/nomos/generation/FileWriter.scala) - File writing utilities
 
 **Dependencies** (versions managed by BOM):
 - `scala-library`
-- `jackson-databind`
-- `jackson-module-scala`
+- `nomos-runtime`
 
-### 3. nomos-maven-plugin
+### 3. nomos-runtime
+
+**Purpose**: First-party, zero-dependency runtime used by generated code and runtime validation.
+
+**Components**:
+- **JSON Model**: `dev.cjfravel.nomos.json.JsonValue`, `JsonObject`, `JsonArray`, `JsonString`, `JsonNumber`, `JsonBoolean`, `JsonNull`
+- **JSON Parser/Writer**: `Json.parse` and `Json.write`
+- **Validation**: Runtime validation against embedded templates
+- **Models and Codecs**: Shared model types and codec helpers for generated companions
+
+**Dependencies**:
+- `scala-library` only
+
+### 4. nomos-maven-plugin
 
 **Purpose**: Maven plugin for automatic code generation during builds.
 
@@ -135,27 +150,49 @@ This provides:
 package com.example.models.user
 
 case class User(
-  email: String,
-  username: String,
-  age: Option[Double],
   id: String,
+  username: String,
+  email: String,
+  age: Option[Double],
   roles: List[String]
 )
 
 object User {
   import com.example.models.NomosFormats
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
+  import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, User] = {
-    try {
-      Right(mapper.readValue(json, classOf[User]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, User] = json match {
+    case o: JsonObject =>
+      for {
+        id <- Codecs.required(o, "id", Codecs.string)
+        username <- Codecs.required(o, "username", Codecs.string)
+        email <- Codecs.required(o, "email", Codecs.string)
+        age <- Codecs.optional(o, "age", Codecs.double)
+        roles <- Codecs.required(o, "roles", Codecs.list(Codecs.string))
+      } yield User(id, username, email, age, roles)
+    case other => Left("User: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: User): String = {
-    mapper.writeValueAsString(obj)
+  def encode(obj: User): JsonValue = JsonObject.fromFields(List(
+    Some("id" -> JsonString(obj.id)),
+    Some("username" -> JsonString(obj.username)),
+    Some("email" -> JsonString(obj.email)),
+    obj.age.map(v => "age" -> JsonNumber.fromDouble(v)),
+    Some("roles" -> JsonArray(obj.roles.iterator.map(x => JsonString(x)).toVector))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, User] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: User): String = Json.write(encode(obj))
+
+  def validate(json: String): Either[List[ValidationError], User] = {
+    validator.validate(json, "com.example.models.user.User") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
   }
 }
 ```
@@ -165,57 +202,94 @@ object User {
 ```scala
 package com.example.models
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import dev.cjfravel.nomos.model._
+import dev.cjfravel.nomos.validation.MultiValidator
+import scala.collection.immutable.ListMap
 
 object NomosFormats {
-  val mapper: ObjectMapper = {
-    val m = new ObjectMapper()
-    m.registerModule(DefaultScalaModule)
-    m
+  lazy val embeddedTemplate: MultiTemplate = {
+    MultiTemplate(
+      basePackage = "com.example.models",
+      definitions = List(
+        TemplateDefinition(
+          name = "User",
+          templateType = ObjectType(ListMap(
+            "id" -> FieldDef(StringType(List()), optional = false),
+            "username" -> FieldDef(StringType(List()), optional = false),
+            "email" -> FieldDef(StringType(List()), optional = false),
+            "age" -> FieldDef(NumberType(List()), optional = true),
+            "roles" -> FieldDef(ArrayType(StringType(List()), List()), optional = false)
+          ), ForbidExtra),
+          subPackage = Some("user"),
+          description = Some("User model with basic information"),
+          validators = List(),
+          methods = List()
+        )
+      ),
+      useOptionTypes = true,
+      listType = "List",
+      fromJsonStyle = "either"
+    )
   }
+
+  lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate)
 }
 ```
 
 ### Discriminated Types (Sealed Traits)
 
 ```scala
-sealed trait Shape {
-  def shapeType: String
-}
+package com.example.models.column
 
-case class Circle(
-  shapeType: String,
-  radius: Double
-) extends Shape
+sealed trait Column
 
-case class Rectangle(
-  shapeType: String,
-  width: Double,
-  height: Double
-) extends Shape
+case class Decimal(
+  `type`: String,
+  scale: Int
+) extends Column
 
-object Shape {
+case class Varchar(`type`: String) extends Column
+
+object Column {
   import com.example.models.NomosFormats
   import NomosFormats._
-  import com.fasterxml.jackson.databind.JsonNode
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
+  import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, Shape] = {
-    try {
-      val jsonNode = mapper.readTree(json)
-      val discriminatorValue = jsonNode.get("shapeType").asText()
-      discriminatorValue match {
-        case "circle" => Right(mapper.treeToValue(jsonNode, classOf[Circle]))
-        case "rectangle" => Right(mapper.treeToValue(jsonNode, classOf[Rectangle]))
-        case other => Left(s"Unknown shapeType value: $other")
+  def decode(json: JsonValue): Either[String, Column] = json match {
+    case o: JsonObject =>
+      o.field("type") match {
+        case Some(JsonString(d)) =>
+          d match {
+            case d2 if d2.startsWith("Decimal") =>
+              for {
+                scale <- Codecs.required(o, "scale", Codecs.int)
+              } yield Decimal(d, scale)
+            case d2 if d2.startsWith("Varchar") =>
+              Right(Varchar(d))
+            case other => Left("Unknown type value: " + other)
+          }
+        case Some(_) => Left("type: expected string")
+        case None => Left("missing required field 'type'")
       }
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+    case other => Left("Column: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Shape): String = {
-    mapper.writeValueAsString(obj)
+  def encode(obj: Column): JsonValue = obj match {
+    case v: Decimal => JsonObject.fromFields(List(Some("type" -> JsonString(v.`type`)), Some("scale" -> JsonNumber.fromInt(v.scale))).flatten)
+    case v: Varchar => JsonObject.fromFields(List(Some("type" -> JsonString(v.`type`))).flatten)
+  }
+
+  def fromJson(json: String): Either[String, Column] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Column): String = Json.write(encode(obj))
+
+  def validate(json: String): Either[List[ValidationError], Column] = {
+    validator.validate(json, "com.example.models.column.Column") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
   }
 }
 ```
@@ -241,16 +315,8 @@ Add BOM and dependencies to `pom.xml`:
 
 <dependencies>
     <dependency>
-        <groupId>org.scala-lang</groupId>
-        <artifactId>scala-library</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>com.fasterxml.jackson.module</groupId>
-        <artifactId>jackson-module-scala_2.12</artifactId>
+        <groupId>dev.cjfravel</groupId>
+        <artifactId>nomos-runtime</artifactId>
     </dependency>
 </dependencies>
 ```
@@ -332,7 +398,7 @@ Nomos.validate(template, jsonData, "User") match {
 
 The plugin works seamlessly in multi-module projects. Each module can have its own templates:
 
-```
+```text
 my-project/
 ├── pom.xml              # Parent POM
 ├── core/
@@ -352,19 +418,19 @@ Each template specifies its configuration:
 
 ## Architecture Benefits
 
-1. **Clean Dependencies**: Standard Jackson with Scala module support
-2. **Version Consistency**: BOM ensures compatible versions
+1. **Clean Dependencies**: Generated code uses the first-party zero-dependency JSON runtime
+2. **Version Consistency**: BOM ensures compatible Nomos module versions
 3. **Industry Standard**: Follows Maven best practices
-4. **Simple Generated Code**: Clean, readable Jackson calls
-5. **User Control**: Version overrides possible when needed
+4. **Simple Generated Code**: Explicit, readable generated codecs
+5. **User Control**: Runtime and plugin versions are managed independently
 6. **Maintainability**: Clear module boundaries
 
 ## Compatibility
 
-- **Scala**: 2.12.x (2.13.x support via appropriate jackson-module-scala)
+- **Scala**: 2.12.x
 - **Maven**: 3.6.0+
 - **Java**: 8+ (for Maven plugin execution)
-- **Jackson**: 2.15.2+ (managed by BOM, overridable)
+- **Runtime JSON**: First-party `nomos-runtime`, which depends only on `scala-library`
 
 ## Future Enhancements
 

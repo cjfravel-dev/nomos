@@ -18,7 +18,7 @@ class FromJsonStylePluginPathSpec extends AnyFlatSpec with Matchers with EitherV
     Nomos.generateAll(templates, tmpDir.getAbsolutePath).value
     val content = scala.io.Source.fromFile(new File(tmpDir, "com/example/U.scala")).mkString
     content should include("def fromJson(json: String): U =")
-    content should not include "Either[String, U]"
+    content should not include "def fromJson(json: String): Either"
   }
 
   it should "honor throwing style even when a non-styled template is processed first" in {
@@ -31,6 +31,6 @@ class FromJsonStylePluginPathSpec extends AnyFlatSpec with Matchers with EitherV
     Nomos.generateAll(templates, dir.getAbsolutePath).value
     val content = scala.io.Source.fromFile(new File(dir, "com/example/U.scala")).mkString
     content should include("def fromJson(json: String): U =")
-    content should not include "Either[String, U]"
+    content should not include "def fromJson(json: String): Either"
   }
 }

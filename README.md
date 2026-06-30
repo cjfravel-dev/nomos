@@ -5,7 +5,7 @@ A Scala library for generating case classes and JSON validators from declarative
 ## Features
 
 - **Code Generation**: Generate Scala case classes from JSON templates
-- **Type Safety**: Automatic serialization/deserialization with Jackson
+- **Type Safety**: Dependency-free serialization with generated codecs (no third-party JSON library)
 - **Validation**: Runtime JSON validation against template schemas
 - **Type Discriminators**: Support for sealed traits with variants
 - **Maven Integration**: Maven plugin for build-time code generation

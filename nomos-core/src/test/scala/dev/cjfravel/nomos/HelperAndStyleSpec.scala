@@ -49,6 +49,6 @@ class FromJsonStyleSpec extends AnyFlatSpec with Matchers with EitherValues {
     val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen", throwingFromJson = true))
       .generateMulti(t).value.find(_.fileName == "U.scala").get.content
     content should include("def fromJson(json: String): U =")
-    content should not include "Either[String, U]"
+    content should not include "def fromJson(json: String): Either"
   }
 }
