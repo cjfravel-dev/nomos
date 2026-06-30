@@ -377,6 +377,52 @@ case class Triangle(
 ) extends Shape
 ```
 
+**Discriminator options:**
+
+| Key | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `discriminator` | yes | — | Name of the field whose value selects the variant. |
+| `variants` | yes | — | Map of discriminator value → that variant's object structure. |
+| `commonFields` | no | `{}` | Fields shared by every variant. |
+| `includeDiscriminator` | no | `true` | Emit the discriminator field on the generated case classes. |
+| `variantNames` | no | `{}` | Override the generated class name for a variant key (e.g. `"string"` → `"StringColumn"`). |
+| `variantMatch` | no | `"exact"` | How a discriminator value is matched to a variant. |
+| `variantSubPackage` | no | — | Emit the variant case classes into a sub-package of the trait's package (see below). |
+
+#### `variantSubPackage`: split the trait and its variants across packages
+
+By default the sealed trait and all of its variant case classes are generated into the same
+package (the definition's package). Set `variantSubPackage` to keep the **trait** in the
+definition's package `P` while emitting every **variant case class** into the sub-package
+`P.<variantSubPackage>`:
+
+```json
+{
+  "name": "Shape",
+  "subPackage": "shapes",
+  "template": {
+    "$type": {
+      "discriminator": "kind",
+      "variantSubPackage": "kinds",
+      "variants": {
+        "circle": { "radius": "number" },
+        "square": { "side": "number" }
+      }
+    }
+  }
+}
+```
+
+With a base package of `com.example`, this generates:
+
+- `com.example.shapes.Shape` — the sealed trait (and its `decode`/`encode` codecs)
+- `com.example.shapes.kinds.Circle`, `com.example.shapes.kinds.Square` — the variant case classes
+
+This is purely a code-layout control; it does not affect validation or serialization semantics.
+It is intended for porting an existing public API whose union trait lives in one package while
+its (often numerous) variant types live in a dedicated sibling package, so the generated layout
+can match the existing one without relocating public types.
+
 ### 5. Constraints
 
 Add validation constraints to fields:
