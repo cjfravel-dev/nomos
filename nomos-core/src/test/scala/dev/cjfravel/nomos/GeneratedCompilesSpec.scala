@@ -89,4 +89,26 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
     val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
     compileErrors(files) shouldBe empty
   }
+
+  "a variantNames discriminator with variantSubPackage (variants reference another type)" should "compile" in {
+    val tmpl =
+      """{"definitions":[
+        |{"name":"Props","subPackage":"defs","template":{"limit":"int"}},
+        |{"name":"Condition","template":{"$type":{
+        |"discriminator":"type","variantSubPackage":"defs","commonFields":{"id":"string"},
+        |"variantNames":{"threshold":"ThresholdCondition"},
+        |"variants":{"threshold":{"props":"$ref:Props"}}}}}
+        |]}""".stripMargin
+    val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
+    compileErrors(files) shouldBe empty
+  }
+
+  "an inline-variants discriminator with variantSubPackage" should "compile" in {
+    val tmpl =
+      """{"definitions":[{"name":"Shape","subPackage":"shapes","template":{"$type":{
+        |"discriminator":"kind","variantSubPackage":"kinds",
+        |"variants":{"circle":{"radius":"number"},"square":{"side":"number"}}}}}]}""".stripMargin
+    val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
+    compileErrors(files) shouldBe empty
+  }
 }

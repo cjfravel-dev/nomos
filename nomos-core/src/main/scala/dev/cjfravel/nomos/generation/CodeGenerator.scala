@@ -417,7 +417,16 @@ class CodeGenerator(config: GeneratorConfig) {
     
     // Collect all referenced types to generate imports
     val referencedTypes = collectReferences(definition.templateType)
-    val imports = generateImports(packageName, basePackage, referencedTypes, allDefinitions)
+    // For a discriminator that relocates its variants into a sub-package, a referenced type that
+    // lives in that same sub-package is visible to the variants without an import; a file-level
+    // import of it would be ambiguous inside the nested package block, so drop it here.
+    val variantSubExcluded: Set[String] = definition.templateType match {
+      case d: TypeDiscriminator if d.variantSubPackage.isDefined =>
+        val subPkg = if (packageName.nonEmpty) s"$packageName.${d.variantSubPackage.get}" else d.variantSubPackage.get
+        referencedTypes.filter(rt => allDefinitions.find(_.name == rt).exists(_.fullPackage(basePackage) == subPkg))
+      case _ => Set.empty
+    }
+    val imports = generateImports(packageName, basePackage, referencedTypes -- variantSubExcluded, allDefinitions)
     
     val builder = ScalaCodeBuilder()
     
@@ -535,10 +544,11 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.emptyLine()
 
     val variantPkg = discriminator.variantSubPackage.map(s => if (currentPackage.nonEmpty) s"$currentPackage.$s" else s)
-    variantPkg.foreach { p =>
-      builder.line(s"package $p {")
+    // The block uses the *relative* sub-package name so it nests correctly under the file's
+    // package clause (an FQN here would double the prefix); imports are _root_-anchored.
+    discriminator.variantSubPackage.foreach { sub =>
+      builder.line(s"package $sub {")
       builder.indent()
-      builder.line(s"import $currentPackage.$name")
     }
 
     // Generate case classes for each variant
@@ -574,7 +584,7 @@ class CodeGenerator(config: GeneratorConfig) {
 
     builder.companionObject(name) {
       emitCodecImports(builder, basePackage, currentPackage)
-      variantPkg.foreach(p => builder.line(s"import $p._"))
+      variantPkg.foreach(p => builder.line(s"import _root_.$p._"))
       builder.emptyLine()
 
       // decode: dispatch on the discriminator value, then decode the matched variant's fields
@@ -696,6 +706,14 @@ class CodeGenerator(config: GeneratorConfig) {
       classFields = classFields.updated(cn, merged)
     }
 
+    // Variant case classes (and the fallback) may be relocated into a sub-package while the trait
+    // stays put; mirror the inline-variants path so variantSubPackage works here too.
+    val variantPkg = discriminator.variantSubPackage.map(s => if (currentPackage.nonEmpty) s"$currentPackage.$s" else s)
+    discriminator.variantSubPackage.foreach { sub =>
+      builder.line(s"package $sub {")
+      builder.indent()
+    }
+
     // Generate one case class per unique mapped name
     classFields.foreach { case (caseClassName, variantFields) =>
       val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)  // override = true
@@ -723,6 +741,12 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.caseClassWithOverride(fb, discriminatorField :: (commonFieldsList :+ rawField), Some(name))
       builder.emptyLine()
     }
+
+    variantPkg.foreach { _ =>
+      builder.dedent()
+      builder.line("}")
+      builder.emptyLine()
+    }
     // Map each discriminator key to its mapped class name (order preserved)
     val variantMap = discriminator.variants.toList.map { case (variantKey, _) =>
       (variantKey, discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey)))
@@ -731,6 +755,7 @@ class CodeGenerator(config: GeneratorConfig) {
 
     builder.companionObject(name) {
       emitCodecImports(builder, basePackage, currentPackage)
+      variantPkg.foreach(p => builder.line(s"import _root_.$p._"))
       builder.emptyLine()
 
       // decode: dispatch on the discriminator value, build the mapped class (common + variant fields)
