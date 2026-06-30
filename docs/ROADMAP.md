@@ -418,14 +418,14 @@ Found taking real modules all the way: deleting the hand-rolled validation DSL a
 all validation/(de)serialization through generated `validate()`/`fromJson`/`toJson`. The model
 layer ports cleanly; these are the friction points at the validation + serde boundary.
 
-### P8-1. `datetime` rejects ISO-8601 instants with `Z` — **High**
-The generated `datetime` validator rejects values like `2024-01-02T09:57:26Z` (trailing `Z`
-UTC instant), which are extremely common in real payloads. Accept the `Z` (and offset) forms
-of ISO-8601. Today this forces suppressing datetime errors as a workaround.
+### P8-1. `datetime` rejects ISO-8601 instants with `Z` — **Resolved**
+Datetime validation now accepts the common ISO-8601 forms — UTC instants (trailing `Z`),
+explicit offsets, and naive local date-times, all with optional fractional seconds — via
+`OffsetDateTime.parse` with a `LocalDateTime.parse` fallback, so validation agrees with the
+generated codecs and with real payloads.
 ```json
-{ "effective_date": "datetime" }   // must accept "2024-01-02T09:57:26Z"
+{ "effective_date": "datetime" }   // accepts "2024-01-02T09:57:26Z" and "...645000Z"
 ```
-*Effort: S.*
 
 ### P8-2. Nested unions / external-type deserialization — **Resolved** (dependency-free migration)
 Generated `fromJson`/`toJson` are now explicit, reflection-free first-party codecs (no Jackson).

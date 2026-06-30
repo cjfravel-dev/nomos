@@ -62,7 +62,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case DecimalType(constraints) => validateNumber(json, path, constraints)
       case BooleanType() => validateBoolean(json, path)
       case DateType() => validateTemporal(json, path, "date", s => java.time.LocalDate.parse(s))
-      case DateTimeType() => validateTemporal(json, path, "datetime", s => java.time.LocalDateTime.parse(s))
+      case DateTimeType() => validateTemporal(json, path, "datetime", s => parseFlexibleDateTime(s))
       case ArrayType(elementType, constraints) => validateArray(elementType, json, path, definitions, constraints)
       case MapType(valueType) => validateMap(valueType, json, path, definitions)
       case UnionType(types) =>
@@ -178,6 +178,16 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         try { parse(value); List.empty }
         catch { case _: Exception => List(ValidationError.constraintViolation(path, s"format: $expected", value)) }
     }
+  }
+
+  /**
+   * Accepts the common ISO-8601 datetime forms so validation agrees with the generated codecs and
+   * with real data: UTC instants (trailing `Z`), explicit offsets, and naive local date-times, all
+   * with optional fractional seconds. Throws if none parse (handled by validateTemporal).
+   */
+  private def parseFlexibleDateTime(s: String): Unit = {
+    try { java.time.OffsetDateTime.parse(s); () }
+    catch { case _: Exception => java.time.LocalDateTime.parse(s); () }
   }
   
   private def validateArray(
