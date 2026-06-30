@@ -79,8 +79,7 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
     compileErrors(generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))) shouldBe empty
   }
 
-  "generated code with a $gen reference to another generated type" should "compile against that type's decode/encode" in {
-    // A stand-in for a nomos-generated type defined in another module: a companion with the
+  "generated code with a $gen reference to another generated type" should "compile against that type's decode/encode" in {    // A stand-in for a nomos-generated type defined in another module: a companion with the
     // same decode/encode shape the generator emits.
     val ownerStub =
       """package com.other.models
@@ -99,6 +98,18 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
         |""".stripMargin
     val tmpl = """{"definitions":[{"name":"Holder","template":{"id":"string","owner":"$gen:com.other.models.Owner"}}]}"""
     val files = GeneratedFile("com/other/models/Owner.scala", ownerStub) :: generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
+    compileErrors(files) shouldBe empty
+  }
+
+  "two definitions with the same simple name in different sub-packages, each referencing its own" should "compile" in {
+    val tmpl =
+      """{"definitions":[
+        |{"name":"UpstreamMapping","subPackage":"lineage","template":{"src":"string"}},
+        |{"name":"UpstreamMapping","subPackage":"sla","template":{"target":"int"}},
+        |{"name":"LineageHolder","subPackage":"lineage","template":{"m":"$ref:UpstreamMapping"}},
+        |{"name":"SlaHolder","subPackage":"sla","template":{"m":"$ref:UpstreamMapping"}}
+        |]}""".stripMargin
+    val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
     compileErrors(files) shouldBe empty
   }
 }

@@ -32,7 +32,7 @@ class CodeGenerator(config: GeneratorConfig) {
     
     // Generate a file for each definition
     val fileResults = multiTemplate.definitions.map { definition =>
-      generateFromDefinition(definition, multiTemplate.basePackage, definitionsMap)
+      generateFromDefinition(definition, multiTemplate.basePackage, definitionsMap, multiTemplate.definitions)
     }
     
     // Check for errors
@@ -381,7 +381,8 @@ class CodeGenerator(config: GeneratorConfig) {
   private def generateFromDefinition(
     definition: TemplateDefinition,
     basePackage: String,
-    definitionsMap: Map[String, TemplateDefinition]
+    definitionsMap: Map[String, TemplateDefinition],
+    allDefinitions: List[TemplateDefinition]
   ): Either[GeneratorError, GeneratedFile] = {
     
     // Validate definition name
@@ -396,7 +397,7 @@ class CodeGenerator(config: GeneratorConfig) {
     
     // Collect all referenced types to generate imports
     val referencedTypes = collectReferences(definition.templateType)
-    val imports = generateImports(packageName, basePackage, referencedTypes, definitionsMap)
+    val imports = generateImports(packageName, basePackage, referencedTypes, allDefinitions)
     
     val builder = ScalaCodeBuilder()
     
@@ -872,16 +873,25 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Generates import statements for referenced types in different packages
+   * Generates import statements for referenced types in different packages. A simple-name
+   * reference resolves to a definition in the referrer's own package when one exists (no import
+   * needed); otherwise to the unique definition with that name elsewhere. Identical simple names
+   * in distinct packages are therefore supported as long as each is referenced from its own
+   * package (ambiguous references are rejected earlier by `MultiTemplate.validate`).
    */
   private def generateImports(
     currentPackage: String,
     basePackage: String,
     referencedTypes: Set[String],
-    definitionsMap: Map[String, TemplateDefinition]
+    allDefinitions: List[TemplateDefinition]
   ): List[String] = {
+    val byName = allDefinitions.groupBy(_.name)
     referencedTypes.flatMap { refTypeName =>
-      definitionsMap.get(refTypeName).flatMap { refDef =>
+      val candidates = byName.getOrElse(refTypeName, Nil)
+      val resolved =
+        candidates.find(_.fullPackage(basePackage) == currentPackage)
+          .orElse(if (candidates.lengthCompare(1) == 0) candidates.headOption else None)
+      resolved.flatMap { refDef =>
         val refPackage = refDef.fullPackage(basePackage)
         if (refPackage != currentPackage) {
           Some(s"import $refPackage.$refTypeName")

@@ -95,11 +95,13 @@ case class MultiTemplate(
       }
     }
     
-    // Validate that definition names are unique
-    val nameGroups = definitions.groupBy(_.name)
-    nameGroups.foreach { case (name, defs) =>
+    // Validate that definition names are unique within each package (identical simple names in
+    // distinct sub-packages are allowed, matching normal Scala/Java package semantics).
+    val nameGroups = definitions.groupBy(d => (d.fullPackage(basePackage), d.name))
+    nameGroups.foreach { case ((pkg, name), defs) =>
       if (defs.length > 1) {
-        errors = s"Duplicate definition name: $name" :: errors
+        val where = if (pkg.isEmpty) "" else s" in package $pkg"
+        errors = s"Duplicate definition name: $name$where" :: errors
       }
     }
     
@@ -108,13 +110,26 @@ case class MultiTemplate(
       errors = "basePackage cannot be empty" :: errors
     }
     
-    // Validate that all references point to existing definitions
+    // Validate that all references point to existing definitions, and that simple-name references
+    // are not ambiguous (the same simple name defined in two packages, neither being the
+    // referrer's own package). Ambiguous references must be disambiguated with $gen:<FQN>.
     if (checkRefs) {
       val definitionNames = definitions.map(_.name).toSet
+      val byName = definitions.groupBy(_.name)
       definitions.foreach { definition =>
-        val unresolvedRefs = findUnresolvedReferences(definition.templateType, definitionNames)
-        unresolvedRefs.foreach { refName =>
-          errors = s"Definition '${definition.name}' references undefined type: $refName" :: errors
+        val fromPackage = definition.fullPackage(basePackage)
+        val refs = collectReferenceNames(definition.templateType)
+        refs.foreach { refName =>
+          val candidates = byName.getOrElse(refName, Nil)
+          if (candidates.isEmpty) {
+            if (!definitionNames.contains(refName)) {
+              errors = s"Definition '${definition.name}' references undefined type: $refName" :: errors
+            }
+          } else if (candidates.length > 1 && !candidates.exists(_.fullPackage(basePackage) == fromPackage)) {
+            val pkgs = candidates.map(_.fullPackage(basePackage)).sorted.mkString(", ")
+            errors = s"Definition '${definition.name}' references ambiguous type '$refName' " +
+              s"(defined in: $pkgs); disambiguate with \\$$gen:<fully.qualified.Name>" :: errors
+          }
         }
       }
     }
@@ -123,12 +138,13 @@ case class MultiTemplate(
   }
   
   /**
-   * Finds all unresolved references in a template type
+   * Collects every simple type-reference name used within a template type (ReferenceType).
    */
-  private def findUnresolvedReferences(templateType: TemplateType, definedTypes: Set[String]): Set[String] = {
+  private def collectReferenceNames(templateType: TemplateType): Set[String] = {
     def findInType(tt: TemplateType): Set[String] = tt match {
-      case ReferenceType(typeName) if !definedTypes.contains(typeName) => Set(typeName)
+      case ReferenceType(typeName) => Set(typeName)
       case ArrayType(elementType, _) => findInType(elementType)
+      case MapType(valueType) => findInType(valueType)
       case ObjectType(fields, _) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
       case TypeDiscriminator(_, variants, commonFields, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => findInType(f.fieldType)))
