@@ -418,7 +418,7 @@ class CodeGenerator(config: GeneratorConfig) {
     // Generate based on template type
     definition.templateType match {
       case obj: ObjectType =>
-        generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName, definition.methods)
+        generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName)
       
       case disc: TypeDiscriminator =>
         // Reject ambiguous variants up front so the failure surfaces through the Either API
@@ -450,14 +450,13 @@ class CodeGenerator(config: GeneratorConfig) {
     builder: ScalaCodeBuilder,
     definitionsMap: Map[String, TemplateDefinition],
     basePackage: String,
-    currentPackage: String,
-    methods: List[String] = List.empty
+    currentPackage: String
   ): Unit = {
     val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
       (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
     }.toList
     
-    builder.caseClass(name, fieldList, None, methods)
+    builder.caseClass(name, fieldList, None)
     
     // Companion object with dependency-free codecs and validation
     builder.emptyLine()

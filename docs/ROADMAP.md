@@ -6,7 +6,7 @@ P0-1..5, P1-1..4, P2, P3-1..4, P4-1..4, and P5-1..7 are implemented. Adapters (P
 template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
 P3 parity gaps and P4 multi-template adoption gaps (cross-template refs, open-map objects, variant sub-packages,
 prefix dispatch) are closed. P5 exact-parity gaps (nullable-raw fields, external-type refs, native date/datetime,
-generated enum types, helper methods, selectable fromJson style, source field order) are closed.
+generated enum types, selectable fromJson style, source field order) are closed.
 
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing
@@ -331,15 +331,13 @@ enum type and use it as the field type.
 ```
 *Effort: M.*
 
-### P5-5. Custom / helper methods on generated classes — **Medium**
-No way to attach derived helpers (e.g. a computed display name) to a generated class, so such
-methods are lost. Allow declaring derived members in the template (or a partial/companion mixin
-the generator preserves).
-*Effort: M.*
-
-> Follow-up (found on retest): declared `methods` emit into the **companion object only**, so an
-> instance method that references fields (e.g. `def displayName = name + version`) does not
-> compile. Support instance-level methods (emit into the case class body).
+### P5-5. Custom / helper methods on generated classes — **Removed** (out of scope)
+The `methods` template feature (raw Scala member injection) was removed. It is language-specific
+(incompatible with non-Scala targets), encourages behavior on data objects, and never worked on
+discriminated-union definitions. Derived behavior belongs in ordinary hand-written code in the
+consuming language — e.g. a Scala extension object over the generated type (see
+`nomos-example` `AccountOps`). A future language-neutral *computed-field* concept could be
+considered if declarative derived members are ever wanted.
 
 ### P5-6. Pluggable serializer + `fromJson` signature — **Resolved**
 Generated serialization is now a first-party, dependency-free codec (no third-party JSON library),

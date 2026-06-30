@@ -50,7 +50,11 @@ Each definition in the `definitions` array has:
 - **`subPackage`** (optional): Additional package path (e.g., "models" → "com.example.models")
 - **`description`** (optional): Human-readable description of the type
 - **`validators`** (optional): Names of registered cross-field validators to run after schema validation (see `Nomos.validators`)
-- **`methods`** (optional): Raw Scala member declarations emitted into the generated case class body
+
+> Nomos generates the data shape, codecs, and validation only. Derived behavior (helper or
+> computed members) belongs in ordinary hand-written code in the consuming language — e.g. a
+> Scala extension object (`implicit class`) over the generated type — which keeps the extra
+> behavior explicit and portable rather than injected into the generated class.
 
 ## Basic Types
 

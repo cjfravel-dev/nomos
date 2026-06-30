@@ -7,9 +7,7 @@ case class Account(
   active: Boolean,
   openedOn: java.time.LocalDate,
   tier: Tier
-) {
-  def label: String = accountId + "/" + active
-}
+)
 
 object Account {
   import com.example.models.NomosFormats

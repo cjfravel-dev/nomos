@@ -450,10 +450,9 @@ class TemplateParser {
       subPackage = extractOptionalString(json, "subPackage")
       description = extractOptionalString(json, "description")
       validators = extractStringList(json, "validators")
-      methods = extractStringList(json, "methods")
       templateJson <- extractField(json, "template", path)
       templateType <- parseType(templateJson, s"$path.template")
-    } yield TemplateDefinition(name, templateType, subPackage, description, validators, methods)
+    } yield TemplateDefinition(name, templateType, subPackage, description, validators)
   }
 }
 

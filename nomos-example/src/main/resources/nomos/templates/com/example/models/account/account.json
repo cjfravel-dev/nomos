@@ -5,7 +5,6 @@
     {
       "name": "Account",
       "description": "Account model in a sibling package",
-      "methods": ["def label: String = accountId + \"/\" + active"],
       "template": {
         "accountId": "string",
         "active": "boolean",
