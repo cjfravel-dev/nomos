@@ -35,6 +35,11 @@ class TemplateParser {
           case ext if ext.startsWith("$extern:") =>
             Right(ExternalType(ext.substring(8)))
 
+          // Reference to a nomos-generated type in another module (by fully-qualified name).
+          // Its companion's decode/encode are called directly; no runtime registration needed.
+          case gen if gen.startsWith("$gen:") =>
+            Right(ExternalType(gen.substring(5), generated = true))
+
           case _ => Left(ParseError.InvalidType(text, path))
         }
       case None =>

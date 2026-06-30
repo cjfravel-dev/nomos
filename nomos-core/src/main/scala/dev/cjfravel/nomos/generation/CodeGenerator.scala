@@ -110,7 +110,8 @@ class CodeGenerator(config: GeneratorConfig) {
     case UnionType(_) => "Codecs.any"
     case ReferenceType(n) => s"$n.decode"
     case RecursiveRef(n) => s"$n.decode"
-    case ExternalType(qn) => s"""((j: JsonValue) => CodecRegistry.decode[$qn]("$qn", j))"""
+    case ExternalType(qn, true) => s"$qn.decode"
+    case ExternalType(qn, false) => s"""((j: JsonValue) => CodecRegistry.decode[$qn]("$qn", j))"""
     case EnumType(n, _) => s"$n.decode"
     case _ => "Codecs.any"
   }
@@ -142,7 +143,8 @@ class CodeGenerator(config: GeneratorConfig) {
     case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
     case ReferenceType(n) => s"$n.encode($v)"
     case RecursiveRef(n) => s"$n.encode($v)"
-    case ExternalType(qn) => s"""CodecRegistry.encode("$qn", $v)"""
+    case ExternalType(qn, true) => s"$qn.encode($v)"
+    case ExternalType(qn, false) => s"""CodecRegistry.encode("$qn", $v)"""
     case EnumType(n, _) => s"$n.encode($v)"
     case _ => "JsonNull"
   }
@@ -350,7 +352,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case EnumType(enumName, values) =>
         ident(enumName, s"$ctx enum name") ++
           values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)"))
-      case ExternalType(qn) => externalType(qn, s"$ctx external type")
+      case ExternalType(qn, _) => externalType(qn, s"$ctx external type")
       case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage) =>
         // The discriminator field becomes a generated Scala field only when it is included in the
         // output or when variantNames forces a trait val; otherwise it is purely a JSON key.
@@ -770,7 +772,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case UnionType(_) => "Any"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
-      case ExternalType(qn) => qn
+      case ExternalType(qn, _) => qn
       case EnumType(enumName, _) => enumName
       case ObjectType(fields, AllowExtra) if fields.isEmpty => "Map[String, Any]"
       case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>

@@ -201,7 +201,38 @@ case class Address(
 )
 ```
 
-### 2. Recursive Types
+### 2. External Types (`$extern:` and `$gen:`)
+
+A field may reference a type that is **not** defined in the current template set, by its
+fully-qualified Scala name. There are two forms, depending on whether the target is a
+nomos-generated type:
+
+- **`$gen:<fully.qualified.Name>`** — the target is *another nomos-generated type* (typically
+  generated in a different Maven module and consumed as a JAR). Generated code calls that type's
+  companion `decode`/`encode` **directly**, so there is no runtime registration and the reference
+  is checked at compile time. Use this for generated types you can't reach with `$ref` because they
+  live in another generation unit.
+
+  ```json
+  { "owner": "$gen:com.example.shared.models.Owner" }
+  ```
+
+- **`$extern:<fully.qualified.Name>`** — the target is an *opaque, hand-written* type that nomos
+  does not generate. Generated code (de)serializes it through the runtime `CodecRegistry`, so the
+  application must register a codec at startup:
+
+  ```scala
+  import dev.cjfravel.nomos.serialization.CodecRegistry
+  CodecRegistry.register("com.example.legacy.Money")(MyMoneyCodec)
+  ```
+
+  If no codec is registered, `fromJson`/`toJson` fail with a descriptive error. Use `$gen:` instead
+  whenever the target is itself a nomos-generated type.
+
+In both forms the field's Scala type is the fully-qualified name, emitted verbatim, and the runtime
+validator treats the value as opaque (it is not schema-checked).
+
+### 3. Recursive Types
 
 Use `$ref:TypeName` for self-referential structures:
 

@@ -78,4 +78,27 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
         |}}}]}""".stripMargin
     compileErrors(generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))) shouldBe empty
   }
+
+  "generated code with a $gen reference to another generated type" should "compile against that type's decode/encode" in {
+    // A stand-in for a nomos-generated type defined in another module: a companion with the
+    // same decode/encode shape the generator emits.
+    val ownerStub =
+      """package com.other.models
+        |import dev.cjfravel.nomos.json._
+        |case class Owner(team: String)
+        |object Owner {
+        |  def decode(json: JsonValue): Either[String, Owner] = json match {
+        |    case o: JsonObject => o.field("team") match {
+        |      case Some(JsonString(s)) => Right(Owner(s))
+        |      case _ => Left("team")
+        |    }
+        |    case _ => Left("expected object")
+        |  }
+        |  def encode(obj: Owner): JsonValue = JsonObject("team" -> JsonString(obj.team))
+        |}
+        |""".stripMargin
+    val tmpl = """{"definitions":[{"name":"Holder","template":{"id":"string","owner":"$gen:com.other.models.Owner"}}]}"""
+    val files = GeneratedFile("com/other/models/Owner.scala", ownerStub) :: generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
+    compileErrors(files) shouldBe empty
+  }
 }

@@ -22,15 +22,21 @@ object CodecRegistry {
   def decode[A](qualifiedName: String, json: JsonValue): Either[String, A] =
     codecs.get(qualifiedName) match {
       case Some(codec) => codec.decode(json).asInstanceOf[Either[String, A]]
-      case None => Left(s"No JSON codec registered for external type '$qualifiedName'")
+      case None => Left(unregistered(qualifiedName))
     }
 
   /** Encodes a value of an external type, or throws if no codec is registered. */
   def encode(qualifiedName: String, value: Any): JsonValue =
     codecs.get(qualifiedName) match {
       case Some(codec) => codec.encode(value)
-      case None => throw new IllegalStateException(s"No JSON codec registered for external type '$qualifiedName'")
+      case None => throw new IllegalStateException(unregistered(qualifiedName))
     }
+
+  private def unregistered(qualifiedName: String): String =
+    s"No JSON codec registered for external type '$qualifiedName'. " +
+      s"""Register one at startup with CodecRegistry.register("$qualifiedName")(codec), """ +
+      s"or, if '$qualifiedName' is itself a nomos-generated type, reference it with " +
+      s""""$$gen:$qualifiedName" instead of "$$extern:$qualifiedName" to call its decode/encode directly."""
 
   def clear(): Unit = codecs.clear()
 }

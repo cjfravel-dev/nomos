@@ -35,7 +35,25 @@ class ExternalTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
     new MultiValidator(t).validate("""{"rule":{"anything":1}}""", "N") shouldBe a[Right[_, _]]
   }
 
+  "parser" should "parse $gen into a generated external type" in {
+    val d = parse("""{"name":"N","template":{"owner":"$gen:com.other.models.Owner"}}""").value.definitions.head
+    d.templateType.asInstanceOf[ObjectType].fields("owner").fieldType shouldBe ExternalType("com.other.models.Owner", generated = true)
+  }
+
+  "generator" should "call decode/encode directly for a $gen type (no registry)" in {
+    val t = parse("""{"name":"N","template":{"owner":"$gen:com.other.models.Owner"}}""").value
+    val c = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+      .generateMulti(t).value.find(_.fileName == "N.scala").get.content
+    c should include("owner: com.other.models.Owner")
+    c should include("com.other.models.Owner.decode")
+    c should include("com.other.models.Owner.encode(obj.owner)")
+    // It must call the type's codec directly, not route through the runtime registry.
+    c should not include "CodecRegistry.decode"
+    c should not include "CodecRegistry.encode("
+  }
+
   "serializer" should "round-trip an external type" in {
-    TemplateSerializer.serializeTemplateType(ExternalType("com.x.Y")) shouldBe "ExternalType(\"com.x.Y\")"
+    TemplateSerializer.serializeTemplateType(ExternalType("com.x.Y")) shouldBe "ExternalType(\"com.x.Y\", generated = false)"
+    TemplateSerializer.serializeTemplateType(ExternalType("com.x.Y", generated = true)) shouldBe "ExternalType(\"com.x.Y\", generated = true)"
   }
 }

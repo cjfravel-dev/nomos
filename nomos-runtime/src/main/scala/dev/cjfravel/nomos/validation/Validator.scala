@@ -86,7 +86,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
           case None =>
             List.empty
         }
-      case ExternalType(_) =>
+      case ExternalType(_, _) =>
         List.empty
       case EnumType(_, values) =>
         json.asString match {

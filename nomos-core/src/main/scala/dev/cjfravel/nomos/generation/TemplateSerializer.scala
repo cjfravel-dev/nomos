@@ -92,8 +92,8 @@ object TemplateSerializer {
       case RecursiveRef(typeName) =>
         s"""RecursiveRef("${escapeString(typeName)}")"""
       
-      case ExternalType(qn) =>
-        s"""ExternalType("${escapeString(qn)}")"""
+      case ExternalType(qn, generated) =>
+        s"""ExternalType("${escapeString(qn)}", generated = $generated)"""
       
       case EnumType(enumName, values) =>
         s"""EnumType("${escapeString(enumName)}", List(${values.map(v => s""""${escapeString(v)}"""").mkString(", ")}))"""

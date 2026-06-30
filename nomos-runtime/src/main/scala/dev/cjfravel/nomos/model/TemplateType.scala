@@ -116,8 +116,14 @@ case class RecursiveRef(typeName: String) extends TemplateType
 /**
  * Reference to an external, hand-written type that nomos does not generate or validate.
  * Used for $extern:fully.qualified.Name syntax.
+ *
+ * @param qualifiedName the fully-qualified Scala type name, emitted verbatim
+ * @param generated when true, the target is another nomos-generated type (referenced via
+ *   `$gen:`): its companion's `decode`/`encode` are called directly, so no runtime codec
+ *   registration is needed. When false (`$extern:`), the type is opaque and (de)serialized
+ *   through the runtime CodecRegistry.
  */
-case class ExternalType(qualifiedName: String) extends TemplateType
+case class ExternalType(qualifiedName: String, generated: Boolean = false) extends TemplateType
 
 /**
  * Closed enum generated as a named sealed-trait type with string (de)serialization.
