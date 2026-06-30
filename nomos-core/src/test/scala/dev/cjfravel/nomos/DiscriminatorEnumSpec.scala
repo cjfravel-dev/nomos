@@ -88,12 +88,36 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
     enumFile.get.content should include("case object Circle extends ShapeType")
   }
 
-  "validation" should "reject discriminatorEnum combined with fallbackVariant or prefix matching" in {
-    val withFallback = """{"definitions":[{"name":"Shape","template":{"$type":{
+  "an unknown value with discriminatorEnum + fallbackVariant" should "decode into the fallback as Enum.Unknown and round-trip" in {
+    val tmpl = """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","fallbackVariant":"UnknownShape",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
-    parser.parseMultiTemplate(withFallback, "com.example").left.value.toString should include("incompatible with fallbackVariant")
+    val driver =
+      """package com.example
+        |import dev.cjfravel.nomos.json._
+        |object FbEnumDriver {
+        |  def run(): String = {
+        |    val unknown = Json.parse("{\"kind\":\"hexagon\",\"sides\":6}").toOption.get
+        |    val known = Json.parse("{\"kind\":\"circle\",\"radius\":3}").toOption.get
+        |    val u = Shape.decode(unknown) match {
+        |      case Right(us: UnknownShape) =>
+        |        // unknown value is held as the enum's open-ended Unknown member, and round-trips
+        |        (us.kind == ShapeType.Unknown("hexagon")) + ":" + Json.write(Shape.encode(us))
+        |      case other => "unexpected:" + other
+        |    }
+        |    val k = Shape.decode(known) match {
+        |      case Right(c: Circle) => (c.kind == ShapeType.Circle).toString
+        |      case other => "unexpected:" + other
+        |    }
+        |    u + "|" + k
+        |  }
+        |}
+        |""".stripMargin
+    val files = GeneratedFile("com/example/FbEnumDriver.scala", driver) :: generate(tmpl)
+    runDriver(files, "com.example.FbEnumDriver") shouldBe """true:{"kind":"hexagon","sides":6}|true"""
+  }
 
+  "validation" should "still reject discriminatorEnum combined with prefix matching" in {
     val withPrefix = """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","variantMatch":"prefix",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin

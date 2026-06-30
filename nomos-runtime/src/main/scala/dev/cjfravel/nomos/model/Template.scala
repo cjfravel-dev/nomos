@@ -135,7 +135,7 @@ case class MultiTemplate(
     }
     
     // Validate discriminator option consistency (e.g. discriminatorEnum requires an emitted,
-    // fixed-value, non-fallback discriminator field).
+    // fixed-value discriminator field).
     definitions.foreach { definition =>
       definition.templateType match {
         case d: TypeDiscriminator if d.discriminatorEnum.isDefined =>
@@ -144,8 +144,6 @@ case class MultiTemplate(
             errors = s"$ctx: discriminatorEnum requires includeDiscriminator to be true" :: errors
           if (d.variantMatch == "prefix")
             errors = s"$ctx: discriminatorEnum is incompatible with variantMatch 'prefix' (parameterized values are not a fixed enum set)" :: errors
-          if (d.fallbackVariant.isDefined)
-            errors = s"$ctx: discriminatorEnum is incompatible with fallbackVariant (an unknown value cannot be an enum constant)" :: errors
         case _ =>
       }
     }

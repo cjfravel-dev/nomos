@@ -54,8 +54,8 @@ class CodeGenerator(config: GeneratorConfig) {
       // Generate a file per unique enum type, in its owning definition's package
       val enumFiles = multiTemplate.definitions.flatMap { definition =>
         val pkg = definition.fullPackage(multiTemplate.basePackage)
-        collectEnums(definition.templateType).map { case (enumName, values) =>
-          generateEnum(pkg, enumName, values, definition.sourcePath)
+        collectEnums(definition.templateType).map { case (enumName, values, withUnknown) =>
+          generateEnum(pkg, enumName, values, withUnknown, definition.sourcePath)
         }
       }.groupBy(_.relativePath).values.map(_.head).toList
       
@@ -557,6 +557,17 @@ class CodeGenerator(config: GeneratorConfig) {
     }
 
   /**
+   * Decode expression for the discriminator field value of the *fallback* (unmatched) variant.
+   * With a discriminatorEnum the unknown string is wrapped in the enum's open-ended `Unknown`
+   * member; otherwise it is the raw string.
+   */
+  private def discFallbackArg(d: TypeDiscriminator, valueExpr: String): String =
+    d.discriminatorEnum match {
+      case Some(en) => s"$en.Unknown($valueExpr)"
+      case None => valueExpr
+    }
+
+  /**
    * Generates a sealed trait with one case class per variant.
    */
   private def generateDiscriminatorOriginal(
@@ -596,10 +607,11 @@ class CodeGenerator(config: GeneratorConfig) {
     }
 
     // Catch-all variant: preserves the unrecognized discriminator value and the raw object so an
-    // unknown variant can be read and re-emitted verbatim (forward compatibility).
+    // unknown variant can be read and re-emitted verbatim (forward compatibility). With a
+    // discriminatorEnum the value is held as the enum's open-ended Unknown member.
     discriminator.fallbackVariant.foreach { fb =>
       builder.caseClass(fb, List(
-        (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String"),
+        (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator)),
         ("raw", "dev.cjfravel.nomos.json.JsonObject")
       ), Some(name))
       builder.emptyLine()
@@ -642,7 +654,7 @@ class CodeGenerator(config: GeneratorConfig) {
       }
       discriminator.fallbackVariant match {
         case Some(fb) =>
-          builder.line(s"""case other => Right($fb(other, o))""")
+          builder.line(s"""case other => Right($fb(${discFallbackArg(discriminator, "other")}, o))""")
         case None =>
           builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
       }
@@ -769,7 +781,7 @@ class CodeGenerator(config: GeneratorConfig) {
     // Catch-all variant: overrides the trait's discriminator (and any common fields, which every
     // variant shares) and preserves the raw object so an unknown variant round-trips verbatim.
     discriminator.fallbackVariant.foreach { fb =>
-      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)
+      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)
       val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)
       }.toList
@@ -827,8 +839,9 @@ class CodeGenerator(config: GeneratorConfig) {
       discriminator.fallbackVariant match {
         case Some(fb) =>
           val common = discriminator.commonFields.toList
+          val discArg = discFallbackArg(discriminator, "d")
           if (common.isEmpty) {
-            builder.line(s"case _ => Right($fb(d, o))")
+            builder.line(s"case _ => Right($fb($discArg, o))")
           } else {
             builder.line("case _ =>")
             builder.indent()
@@ -836,7 +849,7 @@ class CodeGenerator(config: GeneratorConfig) {
             builder.indent()
             common.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
             builder.dedent()
-            val args = ("d" :: common.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) } ::: List("o")).mkString(", ")
+            val args = (discArg :: common.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) } ::: List("o")).mkString(", ")
             builder.line(s"} yield $fb($args)")
             builder.dedent()
           }
@@ -923,20 +936,23 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Collects all enum (name, values) declarations from a template type.
+   * Collects all enum (name, values, openEnded) declarations from a template type. `openEnded`
+   * marks a discriminator enum whose union also has a `fallbackVariant`, so the enum needs an
+   * `Unknown(value)` member to carry an unrecognized discriminator value.
    */
-  private def collectEnums(templateType: TemplateType): List[(String, List[String])] = {
+  private def collectEnums(templateType: TemplateType): List[(String, List[String], Boolean)] = {
     templateType match {
-      case EnumType(name, values) => List((name, values))
+      case EnumType(name, values) => List((name, values, false))
       case ArrayType(elementType, _) => collectEnums(elementType)
       case MapType(valueType) => collectEnums(valueType)
       case UnionType(types) => types.flatMap(collectEnums)
       case ObjectType(fields, _) => fields.values.flatMap(f => collectEnums(f.fieldType)).toList
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, discriminatorEnum) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, fallbackVariant, discriminatorEnum) =>
         val v = variants.values.flatMap(o => o.fields.values.flatMap(f => collectEnums(f.fieldType)))
         val c = commonFields.values.flatMap(f => collectEnums(f.fieldType))
-        // A discriminator enum is one case object per variant value (the discriminator strings).
-        val d = discriminatorEnum.toList.map(en => (en, variants.keys.toList))
+        // A discriminator enum is one case object per variant value (the discriminator strings);
+        // it is open-ended when the union also has a fallback variant.
+        val d = discriminatorEnum.toList.map(en => (en, variants.keys.toList, fallbackVariant.isDefined))
         (v ++ c).toList ++ d
       case _ => Nil
     }
@@ -974,9 +990,11 @@ class CodeGenerator(config: GeneratorConfig) {
 
   /**
    * Generates a sealed-trait enum type whose case objects (de)serialize via the on-the-wire
-   * string values, using only the first-party JSON model.
+   * string values, using only the first-party JSON model. When `withUnknown` is set the enum is
+   * open-ended: it also gets a `case class Unknown(value: String)` member so an unrecognized
+   * string can be represented (used by a union's `fallbackVariant`), and `fromString` is total.
    */
-  private def generateEnum(packageName: String, enumName: String, values: List[String], sourcePath: Option[String] = None): GeneratedFile = {
+  private def generateEnum(packageName: String, enumName: String, values: List[String], withUnknown: Boolean = false, sourcePath: Option[String] = None): GeneratedFile = {
     val builder = ScalaCodeBuilder()
     val cases = values.map(v => (v, ScalaCodeBuilder.toPascalCase(v)))
     
@@ -990,19 +1008,21 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"object $enumName {")
     builder.indent()
     cases.foreach { case (_, obj) => builder.line(s"case object $obj extends $enumName") }
+    if (withUnknown) builder.line(s"final case class Unknown(value: String) extends $enumName")
     builder.emptyLine()
     builder.line(s"val values: List[$enumName] = List(${cases.map(_._2).mkString(", ")})")
     builder.emptyLine()
     builder.line(s"def fromString(s: String): Option[$enumName] = s match {")
     builder.indent()
     cases.foreach { case (raw, obj) => builder.line("case \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\" => Some(" + obj + ")") }
-    builder.line("case _ => None")
+    builder.line(if (withUnknown) "case other => Some(Unknown(other))" else "case _ => None")
     builder.dedent()
     builder.line("}")
     builder.emptyLine()
     builder.line(s"def asString(v: $enumName): String = v match {")
     builder.indent()
     cases.foreach { case (raw, obj) => builder.line("case " + obj + " => \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\"") }
+    if (withUnknown) builder.line("case Unknown(value) => value")
     builder.dedent()
     builder.line("}")
     builder.emptyLine()

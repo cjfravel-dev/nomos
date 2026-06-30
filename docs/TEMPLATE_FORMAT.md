@@ -540,7 +540,9 @@ Behavior when set:
   variant shares them; the unknown variant-specific shape is not validated).
 
 When unset, behavior is unchanged: an unrecognized discriminator value is rejected (fail-closed).
-This keeps strict-by-default validation while allowing opt-in forward compatibility.
+This keeps strict-by-default validation while allowing opt-in forward compatibility. To keep the
+discriminator type-safe while still accepting unknowns, combine it with
+[`discriminatorEnum`](#discriminatorenum-type-the-discriminator-as-a-generated-enum).
 
 #### `discriminatorEnum`: type the discriminator as a generated enum
 
@@ -584,8 +586,24 @@ comparing to a string. Codecs map the enum to/from its JSON string, so the wire 
 unchanged. Case-object names are the `PascalCase` of the discriminator values.
 
 `discriminatorEnum` requires `includeDiscriminator: true` (there must be a field to type) and is
-incompatible with `variantMatch: "prefix"` (parameterized values are not a fixed set) and with
-`fallbackVariant` (an unknown value cannot be an enum constant); these combinations are rejected.
+incompatible with `variantMatch: "prefix"` (parameterized values are not a fixed set); these
+combinations are rejected.
+
+It **can** be combined with [`fallbackVariant`](#fallbackvariant-forward-compatible-catch-all-for-unknown-values):
+the generated enum then also gets an open-ended `final case class Unknown(value: String)` member,
+and the fallback variant carries the unrecognized discriminator value as `<Enum>.Unknown("…")`.
+So an unknown value is both type-safe (it is still an `<Enum>`) and preserved — `encode` re-emits
+the original payload verbatim, and `<Enum>.asString` recovers the original string:
+
+```scala
+sealed trait ConditionType
+object ConditionType {
+  case object Threshold extends ConditionType
+  case object Window extends ConditionType
+  final case class Unknown(value: String) extends ConditionType   // only when fallbackVariant is set
+  // ...
+}
+```
 
 ### 5. Constraints
 
