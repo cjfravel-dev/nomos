@@ -33,5 +33,8 @@ class ConfigurableDateSpec extends AnyFlatSpec with Matchers with EitherValues {
       GeneratorConfig("com.example", "target/test-gen", dateType = "java.util.Date", dateTimeType = "java.util.Date"))
     c should include("d: java.util.Date")
     c should include("ts: java.util.Date")
+    // java.util.Date.parse(s) returns a long, so it must be bridged through java.time, not called directly.
+    c should not include "java.util.Date.parse(s)"
+    c should include("java.util.Date.from(java.time.Instant.parse(s))")
   }
 }

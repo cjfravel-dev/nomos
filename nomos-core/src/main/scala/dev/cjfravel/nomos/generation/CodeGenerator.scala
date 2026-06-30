@@ -97,8 +97,8 @@ class CodeGenerator(config: GeneratorConfig) {
     case LongType(_) => "Codecs.long"
     case DecimalType(_) => "Codecs.bigDecimal"
     case BooleanType() => "Codecs.boolean"
-    case DateType() => s"""Codecs.temporal[${config.dateType}]("date", s => ${config.dateType}.parse(s))"""
-    case DateTimeType() => s"""Codecs.temporal[${config.dateTimeType}]("datetime", s => ${config.dateTimeType}.parse(s))"""
+    case DateType() => s"""Codecs.temporal[${config.dateType}]("date", ${temporalParseLambda(config.dateType, isDate = true)})"""
+    case DateTimeType() => s"""Codecs.temporal[${config.dateTimeType}]("datetime", ${temporalParseLambda(config.dateTimeType, isDate = false)})"""
     case ArrayType(elem, _) =>
       if (config.listType == "Array")
         s"((j: JsonValue) => Codecs.list(${decoderExpr(elem)})(j).right.map(_.toArray))"
@@ -132,8 +132,8 @@ class CodeGenerator(config: GeneratorConfig) {
     case LongType(_) => s"JsonNumber.fromLong($v)"
     case DecimalType(_) => s"JsonNumber.fromBigDecimal($v)"
     case BooleanType() => s"JsonBoolean($v)"
-    case DateType() => s"JsonString($v.toString)"
-    case DateTimeType() => s"JsonString($v.toString)"
+    case DateType() => temporalEncodeExpr(config.dateType, isDate = true, v)
+    case DateTimeType() => temporalEncodeExpr(config.dateTimeType, isDate = false, v)
     case ArrayType(elem, _) => s"JsonArray($v.iterator.map(x => ${encodeValueExpr(elem, "x")}).toVector)"
     case MapType(vt) => s"JsonObject.fromFields($v.iterator.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
     // Inline empty object with an additionalProperties policy renders as a Map field.
@@ -154,6 +154,28 @@ class CodeGenerator(config: GeneratorConfig) {
     case NumberType(_) => s"JsonNumber.fromDouble($v.doubleValue)"
     case BooleanType() => s"JsonBoolean($v.booleanValue)"
     case other => encodeValueExpr(other, v)
+  }
+
+  /**
+   * A `String => T` parser lambda for a temporal field of the configured type. `java.time.*`
+   * types have a static `parse` that returns the type, so they are emitted directly; other
+   * types (e.g. `java.util.Date`, whose `parse` returns a `long`) are bridged through `java.time`.
+   */
+  private def temporalParseLambda(typeName: String, isDate: Boolean): String = typeName match {
+    case "java.util.Date" if isDate =>
+      "s => java.util.Date.from(java.time.LocalDate.parse(s).atStartOfDay(java.time.ZoneOffset.UTC).toInstant)"
+    case "java.util.Date" =>
+      "s => java.util.Date.from(java.time.Instant.parse(s))"
+    case other => s"s => $other.parse(s)"
+  }
+
+  /** A JsonValue expression that encodes a temporal value of the configured type as a string. */
+  private def temporalEncodeExpr(typeName: String, isDate: Boolean, v: String): String = typeName match {
+    case "java.util.Date" if isDate =>
+      s"JsonString($v.toInstant.atZone(java.time.ZoneOffset.UTC).toLocalDate.toString)"
+    case "java.util.Date" =>
+      s"JsonString($v.toInstant.toString)"
+    case _ => s"JsonString($v.toString)"
   }
 
   /** The decode binding `name <- <expr>` for one field of an object/variant. */

@@ -36,6 +36,22 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Scala compiler: used by tests that compile generated output in-process -->
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-compiler</artifactId>
+            <version>${scala.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Pin scala-reflect to match scala-compiler so the in-process compiler loads cleanly -->
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-reflect</artifactId>
+            <version>${scala.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ScalaTest Mockito integration -->
         <dependency>
             <groupId>org.scalatestplus</groupId>
