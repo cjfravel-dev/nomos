@@ -59,7 +59,7 @@ class CodeGenerator(config: GeneratorConfig) {
         }
       }.groupBy(_.relativePath).values.map(_.head).toList
       
-      // Always generate NomosFormats with Jackson serialization and embedded template
+      // NomosFormats holds the embedded template and a validator for runtime validation.
       val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate)
       Right(nomosFormatsFile :: generatedFiles ::: enumFiles)
     }
@@ -372,12 +372,18 @@ class CodeGenerator(config: GeneratorConfig) {
         ident(enumName, s"$ctx enum name") ++
           values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)"))
       case ExternalType(qn, _) => externalType(qn, s"$ctx external type")
-      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage, fallbackVariant) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage, fallbackVariant, discriminatorEnum) =>
         // The discriminator field becomes a generated Scala field only when it is included in the
         // output or when variantNames forces a trait val; otherwise it is purely a JSON key.
         val fieldErrs =
           if (includeInOutput || variantNames.nonEmpty) ident(fieldName, s"$ctx discriminator field") else Nil
-        fieldErrs ++
+        // A discriminator enum generates a sealed-trait type named discriminatorEnum with one case
+        // object per variant value, so validate both the enum name and the derived case names.
+        val discEnumErrs = discriminatorEnum.toList.flatMap { en =>
+          ident(en, s"$ctx discriminatorEnum name") ++
+            variants.keys.toList.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx discriminatorEnum value '$v' (case object name)"))
+        }
+        fieldErrs ++ discEnumErrs ++
           variantSubPackage.toList.flatMap(qualified(_, s"$ctx variantSubPackage")) ++
           fallbackVariant.toList.flatMap(ident(_, s"$ctx fallbackVariant (class name)")) ++
           commonFields.toList.flatMap { case (n, fd) => ident(n, s"$ctx common field") ++ walk(fd.fieldType, s"$ctx.$n") } ++
@@ -523,6 +529,34 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
+   * The discriminator field's `FieldDef`. When `discriminatorEnum` is set it is an enum over the
+   * variant values (so rendering, encoding, and enum-file generation reuse the EnumType path);
+   * otherwise it is a plain string.
+   */
+  private def discFieldDef(d: TypeDiscriminator): FieldDef =
+    d.discriminatorEnum match {
+      case Some(en) => FieldDef(EnumType(en, d.variants.keys.toList), optional = false)
+      case None => FieldDef(StringType(), optional = false)
+    }
+
+  /** The discriminator field's rendered Scala type (the enum name, or `String`). */
+  private def discScalaType(d: TypeDiscriminator): String = d.discriminatorEnum.getOrElse("String")
+
+  /** Decode expression for the discriminator field value of a matched variant key. */
+  private def discDecodeArg(d: TypeDiscriminator, variantKey: String): String =
+    d.discriminatorEnum match {
+      case Some(en) => s"$en.${ScalaCodeBuilder.toPascalCase(variantKey)}"
+      case None => "d"
+    }
+
+  /** Encode expression mapping the discriminator field value to its JSON string. */
+  private def discEncodeExpr(d: TypeDiscriminator, accessor: String): String =
+    d.discriminatorEnum match {
+      case Some(en) => s"$en.encode($accessor)"
+      case None => s"JsonString($accessor)"
+    }
+
+  /**
    * Generates a sealed trait with one case class per variant.
    */
   private def generateDiscriminatorOriginal(
@@ -535,7 +569,7 @@ class CodeGenerator(config: GeneratorConfig) {
   ): Unit = {
     // Ordered fields of a variant case class: discriminator (if emitted), then common, then variant.
     def variantOrderedFields(variantType: ObjectType): List[(String, FieldDef)] = {
-      val disc = if (discriminator.includeInOutput) List(discriminator.fieldName -> FieldDef(StringType(), optional = false)) else Nil
+      val disc = if (discriminator.includeInOutput) List(discriminator.fieldName -> discFieldDef(discriminator)) else Nil
       disc ++ discriminator.commonFields.toList ++ variantType.fields.toList
     }
 
@@ -603,7 +637,7 @@ class CodeGenerator(config: GeneratorConfig) {
         val matchPat = if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>""" else s"""case "$keyLit" =>"""
         builder.line(matchPat)
         builder.indent()
-        emitVariantDecode(builder, className, discriminator, vt)
+        emitVariantDecode(builder, className, discriminator, variantKey, vt)
         builder.dedent()
       }
       discriminator.fallbackVariant match {
@@ -648,16 +682,18 @@ class CodeGenerator(config: GeneratorConfig) {
 
   /**
    * Emits the body of a variant's decode branch: binds non-discriminator fields and constructs
-   * the variant case class (passing the matched discriminator value `d` when it is emitted).
+   * the variant case class (passing the matched discriminator value when it is emitted — the
+   * enum constant for `variantKey` when a discriminatorEnum is configured, else the raw string).
    */
   private def emitVariantDecode(
     builder: ScalaCodeBuilder,
     className: String,
     discriminator: TypeDiscriminator,
+    variantKey: String,
     variantType: ObjectType
   ): Unit = {
     val nonDisc = discriminator.commonFields.toList ++ variantType.fields.toList
-    val discArg = if (discriminator.includeInOutput) List("d") else Nil
+    val discArg = if (discriminator.includeInOutput) List(discDecodeArg(discriminator, variantKey)) else Nil
     if (nonDisc.isEmpty) {
       builder.line(s"Right($className(${discArg.mkString(", ")}))")
     } else {
@@ -689,11 +725,11 @@ class CodeGenerator(config: GeneratorConfig) {
       }.toList
       
       // Always include discriminator field on trait
-      val allTraitFields = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String") :: commonFieldList
+      val allTraitFields = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator)) :: commonFieldList
       builder.sealedTraitWithFields(name, allTraitFields)
     } else {
       // Just discriminator field on trait
-      builder.sealedTraitWithFields(name, List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String")))
+      builder.sealedTraitWithFields(name, List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator))))
     }
     builder.emptyLine()
     
@@ -716,7 +752,7 @@ class CodeGenerator(config: GeneratorConfig) {
 
     // Generate one case class per unique mapped name
     classFields.foreach { case (caseClassName, variantFields) =>
-      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)  // override = true
+      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)  // override = true
       val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)  // override = true
       }.toList
@@ -775,14 +811,15 @@ class CodeGenerator(config: GeneratorConfig) {
         builder.line(matchPat)
         builder.indent()
         val nonDisc = discriminator.commonFields.toList ++ classFields.getOrElse(className, scala.collection.immutable.ListMap.empty[String, FieldDef]).toList
+        val discArg = discDecodeArg(discriminator, variantKey)
         if (nonDisc.isEmpty) {
-          builder.line(s"Right($className(d))")
+          builder.line(s"Right($className($discArg))")
         } else {
           builder.line("for {")
           builder.indent()
           nonDisc.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
           builder.dedent()
-          val args = ("d" :: nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
+          val args = (discArg :: nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
           builder.line(s"} yield $className($args)")
         }
         builder.dedent()
@@ -823,7 +860,7 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line(s"def encode(obj: $name): JsonValue = obj match {")
       builder.indent()
       classFields.foreach { case (className, variantFields) =>
-        val discEntry = s"""Some("$fieldKeyLit" -> JsonString(v.${ScalaCodeBuilder.escapeKeyword(discriminator.fieldName)}))"""
+        val discEntry = s"""Some("$fieldKeyLit" -> ${discEncodeExpr(discriminator, "v." + ScalaCodeBuilder.escapeKeyword(discriminator.fieldName))})"""
         val commonEntries = discriminator.commonFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         val variantEntries = variantFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         val entries = (discEntry :: commonEntries) ++ variantEntries
@@ -874,7 +911,7 @@ class CodeGenerator(config: GeneratorConfig) {
         s"Map[String, ${scalaTypeForDefinition(vt, optional = false, definitionsMap)}]"
       case ObjectType(_, _) =>
         "???" // Inline objects not supported in multi-definition mode
-      case TypeDiscriminator(_, _, _, _, _, _, _, _) =>
+      case TypeDiscriminator(_, _, _, _, _, _, _, _, _) =>
         "???" // Inline discriminators not supported in multi-definition mode
     }
     
@@ -895,10 +932,12 @@ class CodeGenerator(config: GeneratorConfig) {
       case MapType(valueType) => collectEnums(valueType)
       case UnionType(types) => types.flatMap(collectEnums)
       case ObjectType(fields, _) => fields.values.flatMap(f => collectEnums(f.fieldType)).toList
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, discriminatorEnum) =>
         val v = variants.values.flatMap(o => o.fields.values.flatMap(f => collectEnums(f.fieldType)))
         val c = commonFields.values.flatMap(f => collectEnums(f.fieldType))
-        (v ++ c).toList
+        // A discriminator enum is one case object per variant value (the discriminator strings).
+        val d = discriminatorEnum.toList.map(en => (en, variants.keys.toList))
+        (v ++ c).toList ++ d
       case _ => Nil
     }
   }
@@ -923,7 +962,7 @@ class CodeGenerator(config: GeneratorConfig) {
     def walkFields(tt: TemplateType, ctx: String): List[String] = tt match {
       case ObjectType(fields, _) =>
         fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") }
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
         commonFields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") } ++
           variants.toList.flatMap { case (k, obj) =>
             obj.fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx[$k].$n") }
@@ -990,7 +1029,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType, _) => collectReferences(elementType)
       case ObjectType(fields, _) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => collectReferences(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => collectReferences(f.fieldType))
         variantRefs.toSet ++ commonRefs
@@ -1073,8 +1112,8 @@ class CodeGenerator(config: GeneratorConfig) {
   }
   
   /**
-   * Generates the NomosFormats object: a shared Jackson ObjectMapper, the embedded
-   * MultiTemplate, and a MultiValidator built from it for runtime validation.
+   * Generates the NomosFormats object: the embedded MultiTemplate and a MultiValidator built from
+   * it for runtime validation.
    */
   private def generateNomosFormats(basePackage: String, multiTemplate: MultiTemplate): GeneratedFile = {
     val builder = ScalaCodeBuilder()

@@ -91,7 +91,7 @@ final case class JsonNumber(raw: String) extends JsonValue {
   /** Exact decimal value of this number. */
   lazy val asBigDecimal: BigDecimal = BigDecimal(raw)
 
-  /** Double approximation, matching the prior Jackson `asDouble` behavior. */
+  /** Double approximation of this number. */
   def asDouble: Double = java.lang.Double.parseDouble(raw)
 
   /** True when this number has no fractional part (e.g. `1`, `1.0`, `1e2` are all integral). */

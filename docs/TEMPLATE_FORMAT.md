@@ -471,6 +471,7 @@ case class Triangle(
 | `variantMatch` | no | `"exact"` | How a discriminator value selects a variant: `"exact"` (equality) or `"prefix"` (the value *starts with* the variant key). |
 | `variantSubPackage` | no | — | Emit the variant case classes into a sub-package of the trait's package (see below). |
 | `fallbackVariant` | no | — | Name of a catch-all variant for unrecognized discriminator values (see below). |
+| `discriminatorEnum` | no | — | Generate an enum over the discriminator values and type the discriminator field as it (see below). |
 
 #### `variantSubPackage`: split the trait and its variants across packages
 
@@ -540,6 +541,51 @@ Behavior when set:
 
 When unset, behavior is unchanged: an unrecognized discriminator value is rejected (fail-closed).
 This keeps strict-by-default validation while allowing opt-in forward compatibility.
+
+#### `discriminatorEnum`: type the discriminator as a generated enum
+
+By default the discriminator field is generated as a plain `String`, so call sites compare
+against string literals. Set `discriminatorEnum` to a class name to generate a sealed-trait enum
+with one case object per discriminator value and type the discriminator field — on the trait and
+every variant — as that enum:
+
+```json
+{
+  "name": "Condition",
+  "template": {
+    "$type": {
+      "discriminator": "type",
+      "discriminatorEnum": "ConditionType",
+      "variants": {
+        "threshold": { "limit": "int" },
+        "window": { "seconds": "int" }
+      }
+    }
+  }
+}
+```
+
+Generates `ConditionType` (in the union's package, the same machinery as the
+[named enum type](#named-enum-type-as-enumtype)) and types the field as it:
+
+```scala
+sealed trait ConditionType
+object ConditionType {
+  case object Threshold extends ConditionType
+  case object Window extends ConditionType
+  // values / fromString / asString / decode / encode
+}
+
+case class Threshold(`type`: ConditionType, limit: Int) extends Condition
+```
+
+So call sites read `c.`type` == ConditionType.Window` (type-checked, discoverable) instead of
+comparing to a string. Codecs map the enum to/from its JSON string, so the wire format is
+unchanged. Case-object names are the `PascalCase` of the discriminator values.
+
+`discriminatorEnum` requires `includeDiscriminator: true` (there must be a field to type) and is
+incompatible with `variantMatch: "prefix"` (parameterized values are not a fixed set) and with
+`fallbackVariant` (an unknown value cannot be an enum constant); these combinations are rejected.
 
 ### 5. Constraints
 

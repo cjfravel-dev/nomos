@@ -93,6 +93,7 @@ case class ObjectType(
  * @param variantMatch How a discriminator value is matched to a variant (default "exact")
  * @param variantSubPackage Optional sub-package (relative to the trait's package) for the generated variant case classes; the trait stays in its own package
  * @param fallbackVariant Optional name for a catch-all variant: an unrecognized discriminator value decodes into this case class (carrying the value and the raw object) and re-emits the preserved payload on encode, instead of failing
+ * @param discriminatorEnum Optional name for a generated enum over the discriminator values; when set, the discriminator field (on the trait and every variant) is typed as that enum instead of a raw String, and codecs map it to/from its JSON string
  */
 case class TypeDiscriminator(
   fieldName: String,
@@ -102,7 +103,8 @@ case class TypeDiscriminator(
   variantNames: Map[String, String] = Map.empty,
   variantMatch: String = "exact",
   variantSubPackage: Option[String] = None,
-  fallbackVariant: Option[String] = None
+  fallbackVariant: Option[String] = None,
+  discriminatorEnum: Option[String] = None
 ) extends TemplateType
 
 /**

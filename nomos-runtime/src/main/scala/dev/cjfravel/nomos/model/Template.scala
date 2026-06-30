@@ -134,9 +134,25 @@ case class MultiTemplate(
       }
     }
     
+    // Validate discriminator option consistency (e.g. discriminatorEnum requires an emitted,
+    // fixed-value, non-fallback discriminator field).
+    definitions.foreach { definition =>
+      definition.templateType match {
+        case d: TypeDiscriminator if d.discriminatorEnum.isDefined =>
+          val ctx = s"Definition '${definition.name}'"
+          if (!d.includeInOutput)
+            errors = s"$ctx: discriminatorEnum requires includeDiscriminator to be true" :: errors
+          if (d.variantMatch == "prefix")
+            errors = s"$ctx: discriminatorEnum is incompatible with variantMatch 'prefix' (parameterized values are not a fixed enum set)" :: errors
+          if (d.fallbackVariant.isDefined)
+            errors = s"$ctx: discriminatorEnum is incompatible with fallbackVariant (an unknown value cannot be an enum constant)" :: errors
+        case _ =>
+      }
+    }
+    
     errors.reverse
   }
-  
+
   /**
    * Collects every simple type-reference name used within a template type (ReferenceType).
    */
@@ -146,7 +162,7 @@ case class MultiTemplate(
       case ArrayType(elementType, _) => findInType(elementType)
       case MapType(valueType) => findInType(valueType)
       case ObjectType(fields, _) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => findInType(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => findInType(f.fieldType))
         variantRefs.toSet ++ commonRefs
