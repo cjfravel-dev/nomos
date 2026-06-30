@@ -26,6 +26,15 @@ class CodeGenerator(config: GeneratorConfig) {
         return Left(GeneratorError.TemplateError(errors.mkString(", ")))
       case _ =>
     }
+
+    // Reject inline (anonymous) objects/discriminators used as a field's type: multi-definition
+    // codegen has no name to emit for them, so fail with a clear message instead of producing
+    // uncompilable `???`. Give the nested shape its own definition and reference it with $ref.
+    collectInlineTypeErrors(multiTemplate) match {
+      case errors if errors.nonEmpty =>
+        return Left(GeneratorError.TemplateError(errors.mkString(", ")))
+      case _ =>
+    }
     
     // Get definitions map for reference resolution
     val definitionsMap = multiTemplate.definitionsMap
@@ -870,7 +879,38 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Generates a sealed-trait enum type with string (de)serialization wired via Jackson annotations.
+   * Errors for inline (anonymous) objects or discriminators used as a field's type. Multi-definition
+   * codegen cannot name them, so they would otherwise emit uncompilable `???`. An empty object with
+   * an `$additionalProperties` policy (an open map) is allowed.
+   */
+  private def collectInlineTypeErrors(multiTemplate: MultiTemplate): List[String] = {
+    def fieldTypeError(tt: TemplateType, ctx: String): List[String] = tt match {
+      case ObjectType(fields, AllowExtra) if fields.isEmpty => Nil
+      case ObjectType(fields, TypedExtra(_)) if fields.isEmpty => Nil
+      case _: ObjectType =>
+        List(s"$ctx: inline nested objects are not supported as a field type; define a separate type and reference it with $$ref")
+      case _: TypeDiscriminator =>
+        List(s"$ctx: inline discriminators are not supported as a field type; define a separate type and reference it with $$ref")
+      case ArrayType(elem, _) => fieldTypeError(elem, ctx)
+      case MapType(v) => fieldTypeError(v, ctx)
+      case _ => Nil
+    }
+    def walkFields(tt: TemplateType, ctx: String): List[String] = tt match {
+      case ObjectType(fields, _) =>
+        fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") }
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
+        commonFields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") } ++
+          variants.toList.flatMap { case (k, obj) =>
+            obj.fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx[$k].$n") }
+          }
+      case _ => Nil
+    }
+    multiTemplate.definitions.flatMap(d => walkFields(d.templateType, s"Definition '${d.name}'"))
+  }
+
+  /**
+   * Generates a sealed-trait enum type whose case objects (de)serialize via the on-the-wire
+   * string values, using only the first-party JSON model.
    */
   private def generateEnum(packageName: String, enumName: String, values: List[String], sourcePath: Option[String] = None): GeneratedFile = {
     val builder = ScalaCodeBuilder()

@@ -106,6 +106,7 @@ nomos/
   - `templateDirectory`: Directory containing templates (default: `src/main/resources/nomos/templates`)
   - `includes`: File patterns to include (default: `**/*.json`)
   - `excludes`: File patterns to exclude (optional)
+  - `outputDirectory`: Directory for generated Scala sources (default: `src/main/scala`)
 
 **Design Philosophy**:
 The base package is derived from each template file's path under the template directory

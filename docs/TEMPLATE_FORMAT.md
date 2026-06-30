@@ -118,6 +118,35 @@ Closed value sets on a string or array items:
 }
 ```
 
+This keeps the field a `String` (or `List[String]`) and **validates** membership; it does not
+create a new type.
+
+#### Named enum type (`as: "enumType"`)
+
+To instead generate a dedicated sealed-trait enum and type the field as that enum, add
+`"as": "enumType"` and a `"name"`:
+
+```json
+{ "status": { "type": "string", "as": "enumType", "name": "Status", "enum": ["active", "inactive"] } }
+```
+
+Generates a `Status` type (in the definition's package) and types the field as `Status`:
+
+```scala
+sealed trait Status
+object Status {
+  case object Active extends Status
+  case object Inactive extends Status
+  val values: List[Status] = List(Active, Inactive)
+  def fromString(s: String): Option[Status] = ...
+  def asString(v: Status): String = ...
+  // plus decode / encode against the on-the-wire string
+}
+```
+
+Case-object names are the `PascalCase` of the enum values; encode/decode use the original
+string values.
+
 ### Defaults
 ```json
 {
@@ -145,15 +174,28 @@ Definitions may run registered cross-field validators by name (see `Nomos.valida
 ```
 
 ### Nested Objects
+
+A field's type must be a named type, not an inline (anonymous) object. Give the nested shape its
+own definition and reference it with [`$ref`](#1-type-references):
+
 ```json
 {
-  "address": {
-    "street": "string",
-    "city": "string",
-    "zipCode": "string"
-  }
+  "definitions": [
+    {
+      "name": "Person",
+      "template": { "name": "string", "address": "$ref:Address" }
+    },
+    {
+      "name": "Address",
+      "template": { "street": "string", "city": "string", "zipCode": "string" }
+    }
+  ]
 }
 ```
+
+Inline nested objects (an object literal as a field's value) are rejected at generation time with
+a message pointing here. (An empty object with [`$additionalProperties`](#additional-properties)
+is the exception — it is the supported way to express an open map.)
 
 ## Advanced Features
 
@@ -660,3 +702,14 @@ case class Owner(
   call resolves references only within the single template string passed to it.
 - Circular references are supported (e.g., TreeNode can reference itself)
 - Validation targets a definition by its fully-qualified name (e.g., `com.example.models.User`)
+- Two definitions may share the same simple `name` as long as they are in **different**
+  sub-packages; a duplicate name within one package is an error. A bare `$ref:Name` resolves to a
+  definition in the **referrer's own package** first, otherwise to the unique definition with that
+  name; if the same name exists in two other packages the reference is ambiguous and must be
+  qualified with `$gen:<fully.qualified.Name>`.
+- Inline (anonymous) objects and discriminators are not supported as a field's type in
+  multi-definition templates — give the nested shape its own named definition and reference it
+  with `$ref`. (An empty object with `$additionalProperties` is the supported way to express an
+  open map.)
+- The runtime JSON parser bounds hostile input: maximum nesting depth 512 and maximum input size
+  16 MB.

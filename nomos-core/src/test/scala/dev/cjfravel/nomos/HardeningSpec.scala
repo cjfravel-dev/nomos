@@ -133,4 +133,18 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
       ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false))), subPackage = Some(""))
     gen.generateMulti(multi(d)) shouldBe a[Right[_, _]]
   }
+
+  "an inline nested object used as a field type" should "be rejected with a clear message, not emit ???" in {
+    val tmpl = """{"definitions":[{"name":"Person","template":{"name":"string","address":{"street":"string","city":"string"}}}]}"""
+    val t = parser.parseMultiTemplate(tmpl, "com.example").value
+    val err = gen.generateMulti(t).left.value.toString
+    err should include("inline nested objects are not supported")
+    err should include("address")
+  }
+
+  it should "still allow an empty object with additionalProperties (open map)" in {
+    val tmpl = """{"definitions":[{"name":"Bag","template":{"meta":{"$additionalProperties":"string"}}}]}"""
+    val t = parser.parseMultiTemplate(tmpl, "com.example").value
+    gen.generateMulti(t) shouldBe a[Right[_, _]]
+  }
 }
