@@ -1,8 +1,11 @@
 package dev.cjfravel.nomos.json
 
 /**
- * Ergonomic facade over the JSON model, parser, and writer. Generated code and runtime
- * validation use these helpers so they never reference a third-party JSON library.
+ * Ergonomic facade over the JSON model, parser, and writer.
+ *
+ * This is a public, supported part of `nomos-runtime`: generated code and runtime validation use
+ * it, and consumers may use it directly for hand-written runtime JSON (parse, inspect, transform,
+ * and write). See [[JsonValue]] for the stability/scope contract.
  */
 object Json {
 

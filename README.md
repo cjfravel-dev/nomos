@@ -119,12 +119,36 @@ User.validate("""{"id":"123","username":"john","email":"j@x.com","roles":[]}""")
 - [Examples](docs/EXAMPLES.md) - Usage examples
 - [Template Embedding](docs/TEMPLATE_EMBEDDING.md) - Runtime validation from the embedded template
 
+## Runtime JSON API
+
+`nomos-runtime` is dependency-free: generated code, validation, and your own runtime code use a
+first-party JSON model in `dev.cjfravel.nomos.json` instead of a third-party library. This model
+is a **public, supported, semver-stable** part of `nomos-runtime` — safe to depend on directly
+from hand-written runtime code:
+
+```scala
+import dev.cjfravel.nomos.json._
+
+Json.parse("""{"a":1,"b":2}""") match {
+  case Right(obj: JsonObject) =>
+    val renamed = obj.mapKeys(_.toUpperCase).updated("c", JsonNumber.fromInt(3))
+    Json.write(renamed)            // {"A":1,"B":2,"c":3}
+  case Right(other) => other.typeName
+  case Left(error)  => error
+}
+```
+
+It is intentionally minimal — an immutable tree with `parse`/`write`, typed accessors, and basic
+transforms (`updated`, `remove`, `mapKeys`). It is **not** meant to grow into a general-purpose
+JSON library (no JSON-path queries, no streaming); those concerns belong outside nomos.
+
 ## Project Structure
 
 ```
 nomos/
 ├── nomos-bom/          # Dependency management BOM
-├── nomos-core/         # Core library (parser, validator, generator)
+├── nomos-runtime/      # Zero-dependency runtime: JSON model, validation, codecs
+├── nomos-core/         # Build-time library (parser, generator)
 ├── nomos-maven-plugin/ # Maven plugin
 └── nomos-example/      # Example project
 ```

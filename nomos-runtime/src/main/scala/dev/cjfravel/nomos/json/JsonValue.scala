@@ -5,6 +5,14 @@ package dev.cjfravel.nomos.json
  *
  * This exists so generated code and runtime validation never expose a third-party JSON
  * library (e.g. Jackson) on a consumer's classpath. It uses only the Scala standard library.
+ *
+ * '''Public, supported API.''' Because the runtime is dependency-free, this model is the JSON
+ * type consumers reach for in hand-written runtime code (it also appears in public signatures
+ * such as `MultiValidator.validate` and the `ValidatorRegistry` callback). It is a committed,
+ * semver-stable part of `nomos-runtime` and safe to depend on directly. It is intentionally
+ * minimal — an immutable tree with parse/write and basic, allocation-aware accessors and
+ * transforms — and is not intended to grow into a general-purpose JSON library (no JSON-path
+ * queries, no streaming); those concerns belong elsewhere.
  */
 sealed trait JsonValue {
   def isNull: Boolean = this eq JsonNull
@@ -143,6 +151,24 @@ final class JsonObject private (val orderedFields: Vector[(String, JsonValue)]) 
   def isEmpty: Boolean = orderedFields.isEmpty
   def field(name: String): Option[JsonValue] = fieldMap.get(name)
   def contains(name: String): Boolean = fieldMap.contains(name)
+
+  /**
+   * Returns a copy with `name` set to `value`: replaced in place if the key exists, otherwise
+   * appended. The original object is unchanged (the model is immutable).
+   */
+  def updated(name: String, value: JsonValue): JsonObject =
+    JsonObject.fromFields(orderedFields :+ (name -> value))
+
+  /** Returns a copy without `name` (unchanged if the key is absent). */
+  def remove(name: String): JsonObject =
+    new JsonObject(orderedFields.filterNot(_._1 == name))
+
+  /**
+   * Returns a copy with every key transformed by `f`, preserving order. Useful for runtime key
+   * rewriting; if `f` collapses two keys, the later value wins (matching parser semantics).
+   */
+  def mapKeys(f: String => String): JsonObject =
+    JsonObject.fromFields(orderedFields.map { case (k, v) => (f(k), v) })
 
   override def equals(other: Any): Boolean = other match {
     case that: JsonObject => this.fieldMap == that.fieldMap

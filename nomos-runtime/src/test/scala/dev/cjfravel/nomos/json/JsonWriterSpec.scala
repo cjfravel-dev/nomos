@@ -119,4 +119,20 @@ class JsonObjectSpec extends AnyFlatSpec with Matchers {
     (JsonNull: JsonValue).typeName shouldBe "null"
     (JsonArray.empty: JsonValue).isArray shouldBe true
   }
+
+  it should "support immutable updated/remove/mapKeys preserving order" in {
+    val o = JsonObject("a" -> JsonNumber("1"), "b" -> JsonNumber("2"))
+    // updated replaces in place
+    o.updated("a", JsonNumber("9")).keys shouldBe Vector("a", "b")
+    o.updated("a", JsonNumber("9")).field("a") shouldBe Some(JsonNumber("9"))
+    // updated appends a new key
+    o.updated("c", JsonNumber("3")).keys shouldBe Vector("a", "b", "c")
+    // remove
+    o.remove("a").keys shouldBe Vector("b")
+    o.remove("missing") shouldBe o
+    // mapKeys (runtime key rewriting), order preserved
+    o.mapKeys(_.toUpperCase).keys shouldBe Vector("A", "B")
+    // original is unchanged (immutable)
+    o.keys shouldBe Vector("a", "b")
+  }
 }
