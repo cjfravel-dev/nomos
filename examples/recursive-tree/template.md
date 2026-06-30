@@ -4,53 +4,53 @@ This example demonstrates recursive type references for tree-like structures.
 
 ## Template
 
-We'll create a TreeNode type that can contain child TreeNodes.
+Place the template at `src/main/resources/nomos/templates/com/example/examples/tree/tree-node.json`. The Maven plugin derives the base package `com.example.examples.tree` from that path. Recursive self-reference uses `$ref:TreeNode`.
+
+```json
+{
+  "useOptionTypes": true,
+  "listType": "List",
+  "definitions": [
+    {
+      "name": "TreeNode",
+      "description": "Recursive tree node",
+      "template": {
+        "id": "string",
+        "value": "number",
+        "label": { "$optional": "string" },
+        "children": ["$ref:TreeNode"]
+      }
+    }
+  ]
+}
+```
 
 ## Running the Example
 
+With the Maven plugin configured, generate sources with:
+
+```bash
+mvn generate-sources
+```
+
+Or use the public API directly:
+
 ```scala
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.generation._
+import dev.cjfravel.nomos.Nomos
+import scala.io.Source
 
-// Define the template
-val treeTemplate = Template(
-  name = "TreeNode",
-  subPackage = Some("examples.tree"),
-  templateType = ObjectType(Map(
-    "id" -> FieldDef(StringType(), optional = false),
-    "value" -> FieldDef(NumberType(), optional = false),
-    "label" -> FieldDef(StringType(), optional = true),
-    "children" -> FieldDef(
-      ArrayType(RecursiveRef("TreeNode")), 
-      optional = false
-    )
-  ))
-)
+val source = Source.fromFile("src/main/resources/nomos/templates/com/example/examples/tree/tree-node.json")
+val templateJson = try source.mkString finally source.close()
 
-// Configure the generator
-val config = GeneratorConfig(
-  basePackage = "com.example",
-  outputDir = "target/generated-sources"
-)
-
-// Generate code
-val generator = new CodeGenerator(config)
-val result = generator.generate(treeTemplate)
-
-result match {
-  case Right(files) =>
-    files.foreach { file =>
-      println(s"Generated: ${file.relativePath}")
-      file.writeTo(config.outputDirectory)
-    }
-  case Left(error) =>
-    println(s"Error: ${error.message}")
-}
+val generated = for {
+  template <- Nomos.parseTemplate(templateJson, "com.example.examples.tree")
+  report <- Nomos.generateCode(template, "target/generated-sources")
+} yield report
 ```
 
 ## Generated Code
 
-The above will generate `target/generated-sources/com/example/examples/tree/TreeNode.scala`:
+The template generates `target/generated-sources/com/example/examples/tree/TreeNode.scala` plus `NomosFormats` in the same base package:
 
 ```scala
 package com.example.examples.tree
@@ -61,11 +61,34 @@ case class TreeNode(
   label: Option[String],
   children: List[TreeNode]
 )
+
+object TreeNode {
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+
+  def fromJson(json: String): Either[String, TreeNode] = {
+    try {
+      Right(mapper.readValue(json, classOf[TreeNode]))
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: TreeNode): String = mapper.writeValueAsString(obj)
+
+  def validate(json: String): Either[List[ValidationError], TreeNode] = {
+    validator.validate(json, "com.example.examples.tree.TreeNode") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}
 ```
 
 ## Example JSON
 
 Valid JSON for a tree structure:
+
 ```json
 {
   "id": "root",
@@ -103,47 +126,38 @@ Valid JSON for a tree structure:
 ## Usage Example
 
 ```scala
-package com.example.examples.tree
+import com.example.examples.tree.TreeNode
 
 val tree = TreeNode(
   id = "root",
   value = 1,
   label = Some("Root"),
   children = List(
-    TreeNode(
-      id = "left",
-      value = 2,
-      label = None,
-      children = List.empty
-    ),
+    TreeNode("left", 2, None, List.empty),
     TreeNode(
       id = "right",
       value = 3,
       label = Some("Right Branch"),
-      children = List(
-        TreeNode(
-          id = "right-child",
-          value = 4,
-          label = None,
-          children = List.empty
-        )
-      )
+      children = List(TreeNode("right-child", 4, None, List.empty))
     )
   )
 )
 
-// Traverse the tree
 def printTree(node: TreeNode, indent: Int = 0): Unit = {
   println("  " * indent + s"${node.id}: ${node.value}")
   node.children.foreach(child => printTree(child, indent + 1))
 }
 
+val json = TreeNode.toJson(tree)
+val validated = TreeNode.validate(json)
 printTree(tree)
 ```
 
 Output:
-```
+
+```text
 root: 1.0
   left: 2.0
   right: 3.0
     right-child: 4.0
+```

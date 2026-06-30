@@ -72,8 +72,8 @@ nomos/
 - **Template Parsing**: [`TemplateParser`](../nomos-core/src/main/scala/dev/cjfravel/nomos/parser/TemplateParser.scala) - Parses JSON templates
 - **Code Generation**: [`CodeGenerator`](../nomos-core/src/main/scala/dev/cjfravel/nomos/generation/CodeGenerator.scala) - Generates Scala case classes
 - **Validation**: [`Validator`](../nomos-core/src/main/scala/dev/cjfravel/nomos/validation/Validator.scala) - Runtime JSON validation
-- **Models**: [`Template`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/Template.scala), [`TemplateType`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/TemplateType.scala) - Core data structures
-- **File I/O**: [`FileWriter`](../nomos-core/src/main/scala/dev/cjfravel/nomos/io/FileWriter.scala) - File writing utilities
+- **Models**: [`MultiTemplate`/`TemplateDefinition`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/Template.scala), [`TemplateType`](../nomos-core/src/main/scala/dev/cjfravel/nomos/model/TemplateType.scala) - Core data structures
+- **File I/O**: [`FileWriter`](../nomos-core/src/main/scala/dev/cjfravel/nomos/generation/FileWriter.scala) - File writing utilities
 
 **Dependencies** (versions managed by BOM):
 - `scala-library`
@@ -93,15 +93,18 @@ nomos/
   - `excludes`: File patterns to exclude (optional)
 
 **Design Philosophy**:
-Templates are self-contained with all configuration embedded:
-- `basePackage`: Target package for generated code
-- `outputDir`: Where to write generated files
-- `useOptionTypes`: Whether to use Option[T] for optional fields
-- `listType`: Collection type (List or Array)
+The base package is derived from each template file's path under the template directory
+(e.g. `.../templates/com/example/models/user.json` → `com.example.models`); the output
+directory is a plugin parameter. Generation behavior is controlled by optional top-level
+keys in the template file:
+- `useOptionTypes`: Whether to use `Option[T]` for optional fields (default: `true`)
+- `listType`: Collection type for arrays — `List` or `Array` (default: `List`)
+- `fromJsonStyle`: `either` (default) or `throwing`
+- `dateType` / `dateTimeType` / `mapType`: override the generated date/date-time/map types
 
 This provides:
 - Multi-module support (paths relative to `${project.basedir}`)
-- Template autonomy (each template controls its generation)
+- Package layout that mirrors the template directory structure
 - Minimal plugin configuration
 - Maximum flexibility
 
@@ -275,10 +278,9 @@ Add BOM and dependencies to `pom.xml`:
 
 ### 3. Create Template
 
-`src/main/resources/nomos/templates/user.json`:
+`src/main/resources/nomos/templates/com/example/models/user.json` (base package `com.example.models` is derived from the path):
 ```json
 {
-  "basePackage": "com.example.models",
   "useOptionTypes": true,
   "listType": "List",
   "definitions": [

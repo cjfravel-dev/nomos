@@ -6,8 +6,8 @@ package dev.cjfravel.nomos.serialization
  * byte-compatible with existing payloads. Decode runs on parse, encode on output.
  */
 object AdapterRegistry {
-  private val decoders = scala.collection.mutable.Map.empty[String, String => String]
-  private val encoders = scala.collection.mutable.Map.empty[String, String => String]
+  private val decoders = scala.collection.concurrent.TrieMap.empty[String, String => String]
+  private val encoders = scala.collection.concurrent.TrieMap.empty[String, String => String]
 
   def register(name: String)(decode: String => String, encode: String => String): Unit = {
     decoders(name) = decode

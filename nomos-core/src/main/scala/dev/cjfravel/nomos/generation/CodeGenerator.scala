@@ -17,6 +17,15 @@ class CodeGenerator(config: GeneratorConfig) {
         return Left(GeneratorError.TemplateError(errors.mkString(", ")))
       case _ =>
     }
+
+    // Reject template-derived names that are not valid Scala identifiers before emitting any
+    // source. This prevents uncompilable output and closes path-traversal/code-injection vectors
+    // where a name (e.g. an enum name used as a file name) flows into generated paths or source.
+    collectNameErrors(multiTemplate) match {
+      case errors if errors.nonEmpty =>
+        return Left(GeneratorError.TemplateError(errors.mkString(", ")))
+      case _ =>
+    }
     
     // Get definitions map for reference resolution
     val definitionsMap = multiTemplate.definitionsMap
@@ -90,6 +99,67 @@ class CodeGenerator(config: GeneratorConfig) {
 
 
   /**
+   * Collects every template-derived name that would be emitted as a Scala identifier or
+   * qualified name but is not a valid one. Running this before generation turns what would be
+   * uncompilable (or injectable) output into a clean, actionable error.
+   */
+  private def collectNameErrors(multiTemplate: MultiTemplate): List[String] = {
+    def ident(value: String, context: String): List[String] =
+      if (ScalaCodeBuilder.isSimpleIdentifier(value)) Nil
+      else List(s"$context is not a valid Scala identifier: '$value'")
+
+    def qualified(value: String, context: String): List[String] =
+      if (value.isEmpty || ScalaCodeBuilder.isQualifiedName(value)) Nil
+      else List(s"$context is not a valid package or type name: '$value'")
+
+    // External types are emitted verbatim as a Scala type, so generics/tuples/function types are
+    // allowed; only reject characters that could break out of the field/type declaration.
+    def externalType(value: String, context: String): List[String] = {
+      val forbidden = Set('"', '\\', ';', '{', '}', '\n', '\r', '\t')
+      if (value.nonEmpty && !value.exists(forbidden.contains)) Nil
+      else List(s"$context is not a safe external type name: '$value'")
+    }
+
+    def walk(tt: TemplateType, ctx: String): List[String] = tt match {
+      case ObjectType(fields, additional) =>
+        val fieldErrs = fields.toList.flatMap { case (fieldName, fieldDef) =>
+          ident(fieldName, s"$ctx field name") ++ walk(fieldDef.fieldType, s"$ctx.$fieldName")
+        }
+        val extraErrs = additional match {
+          case TypedExtra(vt) => walk(vt, s"$ctx.<additionalProperties>")
+          case _ => Nil
+        }
+        fieldErrs ++ extraErrs
+      case ArrayType(elementType, _) => walk(elementType, s"$ctx[]")
+      case MapType(valueType) => walk(valueType, s"$ctx{}")
+      case UnionType(types) => types.flatMap(walk(_, ctx))
+      case EnumType(enumName, values) =>
+        ident(enumName, s"$ctx enum name") ++
+          values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)"))
+      case ExternalType(qn) => externalType(qn, s"$ctx external type")
+      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage) =>
+        // The discriminator field becomes a generated Scala field only when it is included in the
+        // output or when variantNames forces a trait val; otherwise it is purely a JSON key.
+        val fieldErrs =
+          if (includeInOutput || variantNames.nonEmpty) ident(fieldName, s"$ctx discriminator field") else Nil
+        fieldErrs ++
+          variantSubPackage.toList.flatMap(qualified(_, s"$ctx variantSubPackage")) ++
+          commonFields.toList.flatMap { case (n, fd) => ident(n, s"$ctx common field") ++ walk(fd.fieldType, s"$ctx.$n") } ++
+          variants.toList.flatMap { case (key, obj) =>
+            val className = variantNames.getOrElse(key, ScalaCodeBuilder.toPascalCase(key))
+            ident(className, s"$ctx variant '$key' (class name)") ++ walk(obj, s"$ctx.$key")
+          }
+      case _ => Nil
+    }
+
+    multiTemplate.definitions.flatMap { d =>
+      val ctx = s"Definition '${d.name}'"
+      d.subPackage.toList.flatMap(qualified(_, s"$ctx subPackage")) ++ walk(d.templateType, ctx)
+    }
+  }
+
+
+  /**
    * Generates code for a single definition within a multi-template
    */
   private def generateFromDefinition(
@@ -135,6 +205,14 @@ class CodeGenerator(config: GeneratorConfig) {
         generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName, definition.methods)
       
       case disc: TypeDiscriminator =>
+        // Reject ambiguous variants up front so the failure surfaces through the Either API
+        // rather than as an uncaught exception thrown from deep in generation.
+        if (!disc.includeInOutput) {
+          detectAmbiguity(disc) match {
+            case Some(error) => return Left(GeneratorError.AmbiguityError(error))
+            case None =>
+          }
+        }
         generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap, basePackage, packageName)
       
       case _ =>
@@ -236,13 +314,8 @@ class CodeGenerator(config: GeneratorConfig) {
     basePackage: String,
     currentPackage: String
   ): Unit = {
-    // Check for ambiguity if discriminator is not included
-    if (!discriminator.includeInOutput) {
-      detectAmbiguity(discriminator) match {
-        case Some(error) => throw new Exception(error) // This will be caught by caller
-        case None =>
-      }
-    }
+    // Ambiguity (when the discriminator field is omitted from output) is checked by the caller
+    // so the failure can be returned through the Either API.
     
     // If variantNames is provided, use custom naming and grouping logic
     if (discriminator.variantNames.nonEmpty) {
@@ -307,6 +380,10 @@ class CodeGenerator(config: GeneratorConfig) {
     val variantMap = discriminator.variants.map { case (variantName, _) =>
       (variantName, ScalaCodeBuilder.toPascalCase(variantName))
     }
+    // When includeInOutput is false the discriminator field is only a JSON key here, so it may
+    // not be a Scala identifier; escape it for the generated string literal and s-interpolation.
+    val fieldKeyLit = ScalaCodeBuilder.escapeStringLiteral(discriminator.fieldName)
+    val fieldMsgLit = fieldKeyLit.replace("$", "$$")
     
     // Generate companion object with simple Jackson Scala module deserialization and validation
     builder.companionObject(name) {
@@ -323,17 +400,18 @@ class CodeGenerator(config: GeneratorConfig) {
         builder.line("def fromJson(json: String): " + name + " = {")
         builder.indent()
         builder.line("val jsonNode = mapper.readTree(json)")
-        builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
+        builder.line("val discriminatorValue = jsonNode.get(\"" + fieldKeyLit + "\").asText()")
         builder.line("discriminatorValue match {")
         builder.indent()
         variantMap.foreach { case (variantKey, className) =>
+          val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
           if (discriminator.variantMatch == "prefix") {
-            builder.line("case d if d.startsWith(\"" + variantKey + "\") => mapper.treeToValue(jsonNode, classOf[" + className + "])")
+            builder.line("case d if d.startsWith(\"" + keyLit + "\") => mapper.treeToValue(jsonNode, classOf[" + className + "])")
           } else {
-            builder.line("case \"" + variantKey + "\" => mapper.treeToValue(jsonNode, classOf[" + className + "])")
+            builder.line("case \"" + keyLit + "\" => mapper.treeToValue(jsonNode, classOf[" + className + "])")
           }
         }
-        builder.line("case other => throw new IllegalArgumentException(s\"Unknown " + discriminator.fieldName + " value: $other\")")
+        builder.line("case other => throw new IllegalArgumentException(s\"Unknown " + fieldMsgLit + " value: $other\")")
         builder.dedent()
         builder.line("}")
         builder.dedent()
@@ -344,17 +422,18 @@ class CodeGenerator(config: GeneratorConfig) {
         builder.line("try {")
         builder.indent()
         builder.line("val jsonNode = mapper.readTree(json)")
-        builder.line("val discriminatorValue = jsonNode.get(\"" + discriminator.fieldName + "\").asText()")
+        builder.line("val discriminatorValue = jsonNode.get(\"" + fieldKeyLit + "\").asText()")
         builder.line("discriminatorValue match {")
         builder.indent()
         variantMap.foreach { case (variantKey, className) =>
+          val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
           if (discriminator.variantMatch == "prefix") {
-            builder.line("case d if d.startsWith(\"" + variantKey + "\") => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+            builder.line("case d if d.startsWith(\"" + keyLit + "\") => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
           } else {
-            builder.line("case \"" + variantKey + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
+            builder.line("case \"" + keyLit + "\" => Right(mapper.treeToValue(jsonNode, classOf[" + className + "]))")
           }
         }
-        builder.line("case other => Left(s\"Unknown " + discriminator.fieldName + " value: $other\")")
+        builder.line("case other => Left(s\"Unknown " + fieldMsgLit + " value: $other\")")
         builder.dedent()
         builder.line("}")
         builder.dedent()
@@ -578,14 +657,14 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.emptyLine()
     builder.line(s"def fromString(s: String): Option[$enumName] = s match {")
     builder.indent()
-    cases.foreach { case (raw, obj) => builder.line("case \"" + raw + "\" => Some(" + obj + ")") }
+    cases.foreach { case (raw, obj) => builder.line("case \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\" => Some(" + obj + ")") }
     builder.line("case _ => None")
     builder.dedent()
     builder.line("}")
     builder.emptyLine()
     builder.line(s"def asString(v: $enumName): String = v match {")
     builder.indent()
-    cases.foreach { case (raw, obj) => builder.line("case " + obj + " => \"" + raw + "\"") }
+    cases.foreach { case (raw, obj) => builder.line("case " + obj + " => \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\"") }
     builder.dedent()
     builder.line("}")
     builder.dedent()

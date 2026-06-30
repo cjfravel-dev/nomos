@@ -16,14 +16,10 @@ import scala.collection.JavaConverters;
 import scala.util.Either;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Maven goal to generate Scala case classes from Nomos JSON templates.
@@ -163,14 +159,44 @@ public class GenerateMojo extends AbstractMojo {
      * Finds all template files in the directory matching the include/exclude patterns.
      */
     private List<File> findTemplateFiles(File directory) throws MojoExecutionException {
-        try (Stream<Path> paths = Files.walk(directory.toPath())) {
-            return paths
-                .filter(Files::isRegularFile)
-                .filter(path -> path.toString().endsWith(".json"))
-                .map(Path::toFile)
-                .collect(Collectors.toList());
-        } catch (IOException e) {
+        try {
+            org.codehaus.plexus.util.DirectoryScanner scanner = new org.codehaus.plexus.util.DirectoryScanner();
+            scanner.setBasedir(directory);
+            String[] includePatterns = splitPatterns(includes);
+            if (includePatterns.length > 0) {
+                scanner.setIncludes(includePatterns);
+            }
+            String[] excludePatterns = splitPatterns(excludes);
+            if (excludePatterns.length > 0) {
+                scanner.setExcludes(excludePatterns);
+            }
+            scanner.addDefaultExcludes();
+            scanner.scan();
+
+            List<File> matched = new ArrayList<>();
+            for (String relative : scanner.getIncludedFiles()) {
+                matched.add(new File(directory, relative));
+            }
+            return matched;
+        } catch (RuntimeException e) {
             throw new MojoExecutionException("Failed to scan template directory", e);
         }
+    }
+
+    /**
+     * Splits a comma-separated Ant pattern list into trimmed, non-empty patterns.
+     */
+    private String[] splitPatterns(String patterns) {
+        if (patterns == null || patterns.trim().isEmpty()) {
+            return new String[0];
+        }
+        List<String> result = new ArrayList<>();
+        for (String part : patterns.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                result.add(trimmed);
+            }
+        }
+        return result.toArray(new String[0]);
     }
 }

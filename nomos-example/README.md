@@ -4,38 +4,48 @@ This is a working example demonstrating how to use Nomos for code generation and
 
 ## What This Example Demonstrates
 
-1. **Template Definition** - JSON template for a User model
+1. **Template Definition** - JSON templates for User, Column, Limits, and Account models
 2. **Code Generation** - Automatic case class generation via Maven plugin
 3. **Serialization** - JSON to/from Scala objects using Jackson
-4. **Validation** - Runtime JSON validation against template schema
+4. **Validation** - Runtime JSON validation against template schemas
 
 ## Project Structure
 
-```
+```text
 nomos-example/
 ├── pom.xml                              # Maven configuration
-├── src/main/resources/templates/
-│   └── user.json                        # Template definition
+├── src/main/resources/nomos/templates/
+│   └── com/example/models/
+│       ├── user.json                    # Generates com.example.models.user.User
+│       ├── account/account.json         # Generates com.example.models.account.Account and Tier
+│       ├── column/column.json           # Generates com.example.models.column.Column variants
+│       └── limits/limits.json           # Generates com.example.models.limits.Limits
 └── src/main/scala/com/example/
     ├── ExampleApp.scala                 # Demo application
     └── models/                          # Generated code (auto-generated)
         ├── NomosFormats.scala
-        └── user/
-            └── User.scala
+        ├── user/User.scala
+        ├── account/Account.scala
+        ├── account/Tier.scala
+        ├── column/Column.scala
+        └── limits/Limits.scala
 ```
 
 ## Running the Example
 
 ### Build and Generate Code
 
+From `nomos-example/`:
+
 ```bash
 mvn clean compile
 ```
 
 This will:
-1. Generate `User` case class from the template
-2. Generate serialization methods (`fromJson`, `toJson`)
-3. Compile all code
+1. Scan `src/main/resources/nomos/templates` for `**/*.json`
+2. Derive base packages from template paths, such as `com.example.models` for `com/example/models/user.json`
+3. Generate case classes, companion methods (`fromJson`, `toJson`, `validate`), and `NomosFormats`
+4. Compile all code
 
 ### Run the Application
 
@@ -44,7 +54,8 @@ mvn exec:java
 ```
 
 Expected output:
-```
+
+```text
 === Nomos Example Application ===
 
 Created user:
@@ -74,30 +85,32 @@ Created user:
 
 ## Template Format
 
-The `user.json` template defines the structure:
+The real `src/main/resources/nomos/templates/com/example/models/user.json` template is:
 
 ```json
 {
-  "basePackage": "com.example.models",
-  "outputDir": "src/main/scala",
-  "mainClass": "User",
   "useOptionTypes": true,
   "listType": "List",
   "definitions": [
     {
       "name": "User",
       "subPackage": "user",
+      "description": "User model with basic information",
       "template": {
         "id": "string",
         "username": "string",
         "email": "string",
-        "age": { "$optional": "number" },
+        "age": {
+          "$optional": "number"
+        },
         "roles": ["string"]
       }
     }
   ]
 }
 ```
+
+There are no `basePackage`, `outputDir`, or `mainClass` keys in template JSON. The Maven plugin derives the base package from the file path under `src/main/resources/nomos/templates`.
 
 ## Generated Code Usage
 
@@ -106,7 +119,6 @@ The `user.json` template defines the structure:
 ```scala
 import com.example.models.user.User
 
-// Create instance
 val user = User(
   id = "123",
   username = "john",
@@ -115,30 +127,34 @@ val user = User(
   roles = List("admin", "user")
 )
 
-// Serialize to JSON
 val json = User.toJson(user)
-
-// Deserialize from JSON
 val result = User.fromJson(json) // Either[String, User]
+val validation = User.validate(json) // Either[List[ValidationError], User]
 ```
 
-### With Validation
+### With Nomos Validation API
 
 ```scala
 import dev.cjfravel.nomos.Nomos
+import scala.io.Source
 
-// Load template
-val template = Nomos.parseTemplate(templateJson).right.get
+val source = Source.fromResource("nomos/templates/com/example/models/user.json")
+val templateJson = try source.mkString finally source.close()
 
-// Validate before parsing
-Nomos.validate(template, jsonData, "User") match {
-  case Right(_) => 
-    // Valid - safe to parse
+val template = Nomos.parseTemplate(templateJson, "com.example.models").right.get
+
+Nomos.validate(template, jsonData, "com.example.models.user.User") match {
+  case Right(_) =>
     User.fromJson(jsonData)
-  case Left(errors) => 
-    // Invalid - handle errors
+  case Left(errors) =>
     errors.foreach(e => println(s"${e.path}: ${e.message}"))
 }
+```
+
+You can also validate by simple definition name when it is unambiguous:
+
+```scala
+Nomos.validate(template, jsonData, "User")
 ```
 
 ## Maven Configuration
@@ -180,6 +196,8 @@ Minimal plugin setup:
     </executions>
 </plugin>
 ```
+
+The plugin scans `src/main/resources/nomos/templates` by default. Override with `nomos.templateDirectory`, `nomos.includes`, `nomos.excludes`, or `nomos.outputDirectory` if needed.
 
 ## Key Features Demonstrated
 
