@@ -21,6 +21,12 @@
             <!-- Nomos Modules -->
             <dependency>
                 <groupId>dev.cjfravel</groupId>
+                <artifactId>nomos-runtime</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-core</artifactId>
                 <version>${project.version}</version>
             </dependency>

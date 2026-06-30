@@ -15,6 +15,7 @@
 
     <modules>
         <module>nomos-bom</module>
+        <module>nomos-runtime</module>
         <module>nomos-core</module>
         <module>nomos-maven-plugin</module>
     </modules>
@@ -84,6 +85,12 @@
             </dependency>
 
             <!-- Nomos Modules -->
+            <dependency>
+                <groupId>dev.cjfravel</groupId>
+                <artifactId>nomos-runtime</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-core</artifactId>
