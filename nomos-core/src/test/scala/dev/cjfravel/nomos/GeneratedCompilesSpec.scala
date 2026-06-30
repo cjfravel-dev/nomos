@@ -6,37 +6,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues
 
-import java.nio.file.Files
-import scala.tools.nsc.{Global, Settings}
-import scala.tools.nsc.reporters.StoreReporter
-
 /**
  * Compiles generated output in-process with the Scala compiler. String-only assertions on
  * generated source have let type errors (e.g. an unconfigurable temporal `parse`) slip through;
  * these tests actually compile the emitted code against nomos-runtime.
  */
-class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues {
+class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
   private val parser = new TemplateParser()
-
-  /** Compiles the generated files and returns any compiler error messages. */
-  private def compileErrors(files: List[GeneratedFile]): Seq[String] = {
-    val srcDir = Files.createTempDirectory("nomos-compile-src")
-    val paths = files.map { f =>
-      val p = srcDir.resolve(f.relativePath)
-      Files.createDirectories(p.getParent)
-      Files.write(p, f.content.getBytes("UTF-8"))
-      p.toString
-    }
-    val settings = new Settings()
-    settings.usejavacp.value = true
-    settings.classpath.value = System.getProperty("java.class.path")
-    settings.outdir.value = Files.createTempDirectory("nomos-compile-out").toString
-    val reporter = new StoreReporter(settings)
-    val global = new Global(settings, reporter)
-    new global.Run().compile(paths)
-    reporter.infos.collect { case i if i.severity == reporter.ERROR => s"${i.pos}: ${i.msg}" }.toSeq
-  }
 
   private def generate(template: String, cfg: GeneratorConfig): List[GeneratedFile] =
     new CodeGenerator(cfg).generateMulti(parser.parseMultiTemplate(template, "com.example").value).value

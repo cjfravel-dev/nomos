@@ -110,4 +110,12 @@ object Codecs {
       case None | Some(JsonNull) => Right(null)
       case Some(v) => dec(v).left.map(e => s"$name: $e")
     }
+
+  /** Decodes a JSON string then maps it through the named adapter (wire -> model). */
+  def adapted(name: String): Decoder[String] =
+    (j: JsonValue) => string(j).right.map(s => AdapterRegistry.decode(name, s))
+
+  /** Encodes a model string as JSON, mapping it through the named adapter first (model -> wire). */
+  def adaptedEncode(name: String, value: String): JsonValue =
+    JsonString(AdapterRegistry.encode(name, value))
 }

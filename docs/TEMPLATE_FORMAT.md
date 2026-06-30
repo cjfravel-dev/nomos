@@ -307,6 +307,46 @@ case class Person(
 )
 ```
 
+#### `nullable`: a boxed, null-defaulting field instead of `Option`
+
+For interop with sources that represent "absent" as JSON `null` (or omission) but where you want
+a plain reference type rather than `Option`, add `"nullable": true` to an `$optional` field. The
+field is generated as its **raw (boxed) type defaulting to `null`** — not `Option[T]` — and a
+missing or `null` value decodes to `null`:
+
+```json
+{ "score": { "$optional": "int", "nullable": true } }
+```
+
+```scala
+case class Row(score: java.lang.Integer = null)   // not Option[Int]
+```
+
+`nullable` takes precedence over `optional`: a field marked both is the boxed raw type, never an
+`Option`.
+
+#### `adapter`: a named (de)serialization adapter for a string field
+
+A required string field may declare an `adapter` to convert between its on-the-wire form and the
+value stored in the case class, keeping output byte-compatible with existing payloads. Register
+the named adapter at runtime; `decode` runs on parse and `encode` on output:
+
+```json
+{ "createdAt": { "type": "string", "adapter": "epochMillis" } }
+```
+
+```scala
+import dev.cjfravel.nomos.Nomos
+Nomos.adapters.register("epochMillis")(
+  decode = wire => /* wire -> model */ wire,
+  encode = model => /* model -> wire */ model
+)
+```
+
+`adapter` is only supported on **string** fields (a non-string field with an adapter is rejected
+at parse time). If no adapter is registered for the name at runtime, the value passes through
+unchanged.
+
 ### 4. Type Discriminators (Enum-like Behavior)
 
 Use the `$type` field to define a discriminator that determines which properties are valid:

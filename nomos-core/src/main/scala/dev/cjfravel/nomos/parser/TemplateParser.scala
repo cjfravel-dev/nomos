@@ -239,7 +239,14 @@ class TemplateParser {
         fieldType <- parseType(innerType, path)
       } yield FieldDef(fieldType, optional = true, nullable = extractOptionalBoolean(json, "nullable").getOrElse(false))
     } else {
-      parseType(json, path).map(FieldDef(_, optional = false, default = renderDefault(json), adapter = extractOptionalString(json, "adapter")))
+      parseType(json, path).flatMap { tpe =>
+        extractOptionalString(json, "adapter") match {
+          case Some(_) if !tpe.isInstanceOf[StringType] =>
+            Left(ParseError.InvalidFieldValue("adapter", "a string-typed field", "adapter is only supported on string fields", path))
+          case adapter =>
+            Right(FieldDef(tpe, optional = false, default = renderDefault(json), adapter = adapter))
+        }
+      }
     }
   }
 

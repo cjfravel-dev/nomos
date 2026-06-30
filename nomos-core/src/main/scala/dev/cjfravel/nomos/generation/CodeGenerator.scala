@@ -184,17 +184,23 @@ class CodeGenerator(config: GeneratorConfig) {
   private def fieldDecodeBinding(fieldName: String, fieldDef: FieldDef): String = {
     val valName = ScalaCodeBuilder.escapeKeyword(fieldName)
     val keyLit = ScalaCodeBuilder.escapeStringLiteral(fieldName)
+    // A field adapter maps the wire string through the named registry adapter; it only attaches to
+    // required string fields (enforced by the parser), so it replaces the plain string decoder.
+    val decoder = fieldDef.adapter match {
+      case Some(name) => s"""Codecs.adapted("${ScalaCodeBuilder.escapeStringLiteral(name)}")"""
+      case None => decoderExpr(fieldDef.fieldType)
+    }
     // Order mirrors renderFieldType: a nullable field is a raw (boxed) type, not an Option,
     // even when also marked optional, so the nullable codec must take precedence.
     val rhs =
       if (fieldDef.nullable) {
         s"""Codecs.nullable(o, "$keyLit", ${boxedDecoderExpr(fieldDef.fieldType)})"""
       } else if (fieldDef.optional) {
-        s"""Codecs.optional(o, "$keyLit", ${decoderExpr(fieldDef.fieldType)})"""
+        s"""Codecs.optional(o, "$keyLit", $decoder)"""
       } else if (fieldDef.default.isDefined) {
-        s"""Codecs.optional(o, "$keyLit", ${decoderExpr(fieldDef.fieldType)}).right.map(_.getOrElse(${fieldDef.default.get}))"""
+        s"""Codecs.optional(o, "$keyLit", $decoder).right.map(_.getOrElse(${fieldDef.default.get}))"""
       } else {
-        s"""Codecs.required(o, "$keyLit", ${decoderExpr(fieldDef.fieldType)})"""
+        s"""Codecs.required(o, "$keyLit", $decoder)"""
       }
     s"$valName <- $rhs"
   }
@@ -203,12 +209,16 @@ class CodeGenerator(config: GeneratorConfig) {
   private def fieldEncodeEntry(fieldName: String, fieldDef: FieldDef, accessorPrefix: String): String = {
     val accessor = s"$accessorPrefix.${ScalaCodeBuilder.escapeKeyword(fieldName)}"
     val keyLit = ScalaCodeBuilder.escapeStringLiteral(fieldName)
+    def encode(v: String): String = fieldDef.adapter match {
+      case Some(name) => s"""Codecs.adaptedEncode("${ScalaCodeBuilder.escapeStringLiteral(name)}", $v)"""
+      case None => encodeValueExpr(fieldDef.fieldType, v)
+    }
     if (fieldDef.nullable) {
       s"""Option($accessor).map(v => "$keyLit" -> ${encodeNullableValueExpr(fieldDef.fieldType, "v")})"""
     } else if (fieldDef.optional) {
-      s"""$accessor.map(v => "$keyLit" -> ${encodeValueExpr(fieldDef.fieldType, "v")})"""
+      s"""$accessor.map(v => "$keyLit" -> ${encode("v")})"""
     } else {
-      s"""Some("$keyLit" -> ${encodeValueExpr(fieldDef.fieldType, accessor)})"""
+      s"""Some("$keyLit" -> ${encode(accessor)})"""
     }
   }
 
