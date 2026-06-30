@@ -174,11 +174,6 @@ object TemplateSerializer {
   /**
    * Escapes special characters in strings for Scala source code
    */
-  private def escapeString(s: String): String = {
-    s.replace("\\", "\\\\")
-     .replace("\"", "\\\"")
-     .replace("\n", "\\n")
-     .replace("\r", "\\r")
-     .replace("\t", "\\t")
-  }
+  private def escapeString(s: String): String =
+    ScalaCodeBuilder.escapeStringLiteral(s)
 }

@@ -34,6 +34,10 @@ All Nomos templates use a multi-definition format that allows you to define mult
 - **`definitions`** (required): Array of type definitions
 - **`useOptionTypes`** (optional): Use `Option[T]` for optional fields (default: true)
 - **`listType`** (optional): Collection type for arrays, "List" or "Array" (default: "List")
+- **`fromJsonStyle`** (optional): `"either"` (default) makes generated `fromJson` return `Either[String, T]`; `"throwing"` makes it return `T` and throw on failure
+- **`dateType`** (optional): Scala type generated for `date` fields (default: `java.time.LocalDate`)
+- **`dateTimeType`** (optional): Scala type generated for `datetime` fields (default: `java.time.LocalDateTime`)
+- **`mapType`** (optional): Collection type generated for maps (default: `Map`)
 
 The base package is derived from the template path; there is no `basePackage`, `outputDir`, or `mainClass` field.
 
@@ -45,6 +49,8 @@ Each definition in the `definitions` array has:
 - **`template`** (required): The type structure definition
 - **`subPackage`** (optional): Additional package path (e.g., "models" → "com.example.models")
 - **`description`** (optional): Human-readable description of the type
+- **`validators`** (optional): Names of registered cross-field validators to run after schema validation (see `Nomos.validators`)
+- **`methods`** (optional): Raw Scala member declarations emitted into the generated case class body
 
 ## Basic Types
 
@@ -491,6 +497,9 @@ case class Owner(
 
 - All field names must be valid Scala identifiers
 - Type names must start with an uppercase letter
-- References must use the exact name of another definition in the same template
+- A `$ref` must use the exact name of another definition. When the Maven plugin generates a
+  whole project, all template files under the template directory share one definition space, so
+  a `$ref` may point to a definition declared in another file. A direct `Nomos.parseTemplate`
+  call resolves references only within the single template string passed to it.
 - Circular references are supported (e.g., TreeNode can reference itself)
 - Validation targets a definition by its fully-qualified name (e.g., `com.example.models.User`)

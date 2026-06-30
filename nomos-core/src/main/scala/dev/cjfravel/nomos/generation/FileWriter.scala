@@ -18,7 +18,17 @@ class FileWriter {
   def writeFile(file: GeneratedFile, outputDir: File): Either[WriteError, File] = {
     Try {
       val targetFile = new File(outputDir, file.relativePath)
-      
+
+      // Defense in depth: never write outside the output directory, even if a template-derived
+      // path slips a traversal segment past name validation.
+      val canonicalDir = outputDir.getCanonicalFile
+      val canonicalTarget = targetFile.getCanonicalFile
+      if (canonicalTarget != canonicalDir &&
+          !canonicalTarget.getPath.startsWith(canonicalDir.getPath + File.separator)) {
+        throw new SecurityException(
+          s"Refusing to write outside output directory: ${file.relativePath}")
+      }
+
       // Create parent directories if they don't exist
       targetFile.getParentFile.mkdirs()
       

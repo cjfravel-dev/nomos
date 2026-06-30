@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode
  * errors carry the validator name.
  */
 object ValidatorRegistry {
-  private val validators = scala.collection.mutable.Map.empty[String, JsonNode => List[ValidationError]]
+  private val validators = scala.collection.concurrent.TrieMap.empty[String, JsonNode => List[ValidationError]]
 
   def register(name: String)(fn: JsonNode => List[ValidationError]): Unit =
     validators(name) = fn

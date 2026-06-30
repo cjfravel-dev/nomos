@@ -62,6 +62,7 @@ A Scala library for generating case classes and JSON validators from declarative
   "definitions": [
     {
       "name": "User",
+      "subPackage": "user",
       "template": {
         "id": "string",
         "username": "string",
@@ -100,16 +101,14 @@ object User {
 
 ```scala
 import com.example.models.user.User
-import dev.cjfravel.nomos.Nomos
 
-// Parse JSON
-val user = User.fromJson("""{"id":"123","username":"john",...}""")
+// Parse JSON (returns Either[String, User] by default)
+val parsed = User.fromJson("""{"id":"123","username":"john","email":"j@x.com","roles":[]}""")
 
-// Validate before parsing
-val template = Nomos.parseTemplate(templateJson, "com.example").right.get
-Nomos.validate(template, jsonData, "User") match {
-  case Right(_) => User.fromJson(jsonData)
-  case Left(errors) => // Handle validation errors
+// Or validate against the embedded template and parse in one step
+User.validate("""{"id":"123","username":"john","email":"j@x.com","roles":[]}""") match {
+  case Right(user)  => println(user)
+  case Left(errors) => errors.foreach(println) // Handle validation errors
 }
 ```
 
@@ -118,7 +117,7 @@ Nomos.validate(template, jsonData, "User") match {
 - [Template Format](docs/TEMPLATE_FORMAT.md) - JSON template syntax
 - [Multi-Module Design](docs/MULTI_MODULE_DESIGN.md) - Project architecture
 - [Examples](docs/EXAMPLES.md) - Usage examples
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Design decisions
+- [Template Embedding](docs/TEMPLATE_EMBEDDING.md) - Runtime validation from the embedded template
 
 ## Project Structure
 

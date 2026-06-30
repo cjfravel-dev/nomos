@@ -1,68 +1,73 @@
 # Shape Type Discriminator Example
 
-This example demonstrates type discriminators with common fields and variants.
+This example demonstrates discriminated unions with common fields and variants.
 
 ## Template
 
-We'll create a Shape type with different variants (Circle, Rectangle, Triangle) that have common fields and variant-specific fields.
+Place the template at `src/main/resources/nomos/templates/com/example/examples/shapes/shape.json`. The Maven plugin derives the base package `com.example.examples.shapes` from that path.
+
+```json
+{
+  "useOptionTypes": true,
+  "listType": "List",
+  "definitions": [
+    {
+      "name": "Shape",
+      "description": "Shape variants with a discriminator",
+      "template": {
+        "$type": {
+          "discriminator": "shapeType",
+          "includeDiscriminator": true,
+          "commonFields": {
+            "color": "string",
+            "id": "string"
+          },
+          "variants": {
+            "circle": {
+              "radius": "number"
+            },
+            "rectangle": {
+              "width": "number",
+              "height": "number"
+            },
+            "triangle": {
+              "base": "number",
+              "height": "number"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
 
 ## Running the Example
 
+With the Maven plugin configured, generate sources with:
+
+```bash
+mvn generate-sources
+```
+
+Or use the public API directly:
+
 ```scala
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.generation._
+import dev.cjfravel.nomos.Nomos
+import scala.io.Source
 
-// Define the template
-val shapeTemplate = Template(
-  name = "Shape",
-  subPackage = Some("examples.shapes"),
-  templateType = TypeDiscriminator(
-    fieldName = "shapeType",
-    variants = Map(
-      "circle" -> ObjectType(Map(
-        "radius" -> FieldDef(NumberType(), optional = false)
-      )),
-      "rectangle" -> ObjectType(Map(
-        "width" -> FieldDef(NumberType(), optional = false),
-        "height" -> FieldDef(NumberType(), optional = false)
-      )),
-      "triangle" -> ObjectType(Map(
-        "base" -> FieldDef(NumberType(), optional = false),
-        "height" -> FieldDef(NumberType(), optional = false)
-      ))
-    ),
-    commonFields = Map(
-      "color" -> FieldDef(StringType(), optional = false),
-      "id" -> FieldDef(StringType(), optional = false)
-    ),
-    includeInOutput = true
-  )
-)
+val source = Source.fromFile("src/main/resources/nomos/templates/com/example/examples/shapes/shape.json")
+val templateJson = try source.mkString finally source.close()
 
-// Configure the generator
-val config = GeneratorConfig(
-  basePackage = "com.example",
-  outputDir = "target/generated-sources"
-)
-
-// Generate code
-val generator = new CodeGenerator(config)
-val result = generator.generate(shapeTemplate)
-
-result match {
-  case Right(files) =>
-    files.foreach { file =>
-      println(s"Generated: ${file.relativePath}")
-      file.writeTo(config.outputDirectory)
-    }
-  case Left(error) =>
-    println(s"Error: ${error.message}")
-}
+val generated = for {
+  template <- Nomos.parseTemplate(templateJson, "com.example.examples.shapes")
+  report <- Nomos.generateCode(template, "target/generated-sources")
+} yield report
 ```
 
 ## Generated Code
 
-The above will generate `target/generated-sources/com/example/examples/shapes/Shape.scala`:
+The template generates `target/generated-sources/com/example/examples/shapes/Shape.scala` plus `NomosFormats` in the same base package:
 
 ```scala
 package com.example.examples.shapes
@@ -91,11 +96,42 @@ case class Triangle(
   base: Double,
   height: Double
 ) extends Shape
+
+object Shape {
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+  import com.fasterxml.jackson.databind.JsonNode
+
+  def fromJson(json: String): Either[String, Shape] = {
+    try {
+      val jsonNode = mapper.readTree(json)
+      val discriminatorValue = jsonNode.get("shapeType").asText()
+      discriminatorValue match {
+        case "circle" => Right(mapper.treeToValue(jsonNode, classOf[Circle]))
+        case "rectangle" => Right(mapper.treeToValue(jsonNode, classOf[Rectangle]))
+        case "triangle" => Right(mapper.treeToValue(jsonNode, classOf[Triangle]))
+        case other => Left(s"Unknown shapeType value: $other")
+      }
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: Shape): String = mapper.writeValueAsString(obj)
+
+  def validate(json: String): Either[List[ValidationError], Shape] = {
+    validator.validate(json, "com.example.examples.shapes.Shape") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}
 ```
 
 ## Example JSON
 
 Valid JSON for a circle:
+
 ```json
 {
   "shapeType": "circle",
@@ -106,6 +142,7 @@ Valid JSON for a circle:
 ```
 
 Valid JSON for a rectangle:
+
 ```json
 {
   "shapeType": "rectangle",
@@ -118,28 +155,38 @@ Valid JSON for a rectangle:
 
 ## Without Discriminator Field
 
-If you set `includeInOutput = false`, the discriminator field won't be in the case classes, but the variants must have different field structures to be distinguishable:
+Set `includeDiscriminator` to `false` in JSON when you do not want the discriminator field emitted in variant case class constructors. Variants must still have distinguishable field structures.
 
-```scala
-TypeDiscriminator(
-  fieldName = "shapeType",
-  variants = Map(
-    "circle" -> ObjectType(Map(
-      "radius" -> FieldDef(NumberType(), optional = false)
-    )),
-    "rectangle" -> ObjectType(Map(
-      "width" -> FieldDef(NumberType(), optional = false),
-      "height" -> FieldDef(NumberType(), optional = false)
-    ))
-  ),
-  commonFields = Map(
-    "color" -> FieldDef(StringType(), optional = false)
-  ),
-  includeInOutput = false
-)
+```json
+{
+  "definitions": [
+    {
+      "name": "Shape",
+      "template": {
+        "$type": {
+          "discriminator": "shapeType",
+          "includeDiscriminator": false,
+          "commonFields": {
+            "color": "string"
+          },
+          "variants": {
+            "circle": {
+              "radius": "number"
+            },
+            "rectangle": {
+              "width": "number",
+              "height": "number"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
 ```
 
-This generates:
+This generates variant case classes without `shapeType` constructor fields:
+
 ```scala
 sealed trait Shape
 
@@ -153,3 +200,4 @@ case class Rectangle(
   width: Double,
   height: Double
 ) extends Shape
+```

@@ -25,14 +25,9 @@ This directory contains comprehensive documentation for the Nomos project.
   - Validation examples
   - Maven plugin configuration
 
-- **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)** - Design decisions and architecture
-  - Component design
-  - Feature specifications
-  - Design patterns and principles
-
-- **[ROADMAP.md](ROADMAP.md)** - Prioritized feature hit list
-  - P0 blockers: typed scalars, enums, maps, defaults, named custom validators
-  - P1/P2: variant unions, additionalProperties, pluggable formats/adapters
+- **[TEMPLATE_EMBEDDING.md](TEMPLATE_EMBEDDING.md)** - Runtime validation from the embedded template
+  - How `NomosFormats` embeds the template
+  - Validating without the original template file
 
 ## Quick Navigation
 
@@ -42,8 +37,8 @@ This directory contains comprehensive documentation for the Nomos project.
 3. Check [MULTI_MODULE_DESIGN.md](MULTI_MODULE_DESIGN.md) for project structure
 
 **For Contributors:**
-- [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Understanding the codebase
 - [MULTI_MODULE_DESIGN.md](MULTI_MODULE_DESIGN.md) - Module responsibilities
+- [ROADMAP.md](ROADMAP.md) - Planned work and known gaps (internal)
 
 ## Key Concepts
 

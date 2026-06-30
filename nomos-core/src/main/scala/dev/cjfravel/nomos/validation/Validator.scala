@@ -137,7 +137,16 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     } else if (json.asDouble() % 1 != 0) {
       List(ValidationError.typeMismatch(path, expected, "fractional number"))
     } else {
-      validateNumberConstraints(json.asDouble(), path, constraints)
+      val inRange = expected match {
+        case "int" => json.canConvertToInt
+        case "long" => json.canConvertToLong
+        case _ => true
+      }
+      if (!inRange) {
+        List(ValidationError.constraintViolation(path, s"$expected range", json.asText()))
+      } else {
+        validateNumberConstraints(json.asDouble(), path, constraints)
+      }
     }
   }
   

@@ -1,122 +1,109 @@
 # End-to-End Example
 
-This example demonstrates the complete workflow: parsing a JSON template and generating Scala code.
+This example demonstrates the complete workflow: defining a JSON template, generating Scala code, and using the generated companion objects.
 
 ## Step 1: Define JSON Template
 
-Create a file `user-template.json`:
+Create `src/main/resources/nomos/templates/com/myapp/models/user/user.json`. The Maven plugin derives the base package `com.myapp.models.user` from the template path.
 
 ```json
 {
-  "name": "User",
-  "subPackage": "models.user",
-  "description": "User account with profile information",
-  "version": "1.0.0",
-  "template": {
-    "id": "string",
-    "username": {
-      "type": "string",
-      "minLength": 3,
-      "maxLength": 20,
-      "pattern": "^[a-zA-Z0-9_]+$"
-    },
-    "email": {
-      "type": "string",
-      "format": "email"
-    },
-    "profile": {
-      "firstName": "string",
-      "lastName": "string",
-      "age": {
-        "type": "number",
-        "min": 0,
-        "max": 150
-      },
-      "bio": {
-        "$optional": "string"
+  "useOptionTypes": true,
+  "listType": "List",
+  "definitions": [
+    {
+      "name": "Profile",
+      "template": {
+        "firstName": "string",
+        "lastName": "string",
+        "age": {
+          "type": "number",
+          "min": 0,
+          "max": 150
+        },
+        "bio": { "$optional": "string" }
       }
     },
-    "role": {
-      "$type": {
-        "discriminator": "roleType",
-        "includeDiscriminator": true,
-        "commonFields": {
-          "createdAt": "string"
-        },
-        "variants": {
-          "admin": {
-            "permissions": ["string"],
-            "department": "string"
+    {
+      "name": "Role",
+      "template": {
+        "$type": {
+          "discriminator": "roleType",
+          "includeDiscriminator": true,
+          "commonFields": {
+            "createdAt": "string"
           },
-          "user": {
-            "subscriptionLevel": "string",
-            "subscriptionExpiry": {
-              "$optional": "string"
-            }
-          },
-          "guest": {}
+          "variants": {
+            "admin": {
+              "permissions": ["string"],
+              "department": "string"
+            },
+            "member": {
+              "subscriptionLevel": "string",
+              "subscriptionExpiry": { "$optional": "string" }
+            },
+            "guest": {}
+          }
         }
       }
+    },
+    {
+      "name": "User",
+      "template": {
+        "id": "string",
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 20,
+          "pattern": "^[a-zA-Z0-9_]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "profile": "$ref:Profile",
+        "role": "$ref:Role"
+      }
     }
-  }
+  ]
 }
 ```
 
 ## Step 2: Parse and Generate
 
+### Maven plugin flow
+
+The plugin scans `src/main/resources/nomos/templates` for `**/*.json`, derives each base package from the file path, and generates during `generate-sources`.
+
+```bash
+mvn generate-sources
+```
+
+The plugin can be configured with `nomos.templateDirectory`, `nomos.includes`, `nomos.excludes`, and `nomos.outputDirectory`.
+
+### Programmatic flow
+
 ```scala
-import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, FileWriter}
+import dev.cjfravel.nomos.Nomos
 import scala.io.Source
 
 object UserModelGenerator {
   def main(args: Array[String]): Unit = {
-    // Read template file
-    val templateJson = Source.fromFile("user-template.json").mkString
-    
-    // Parse template
-    val parser = new TemplateParser()
-    val templateResult = parser.parseTemplate(templateJson)
-    
-    templateResult match {
-      case Right(template) =>
-        println(s"✓ Parsed template: ${template.name}")
-        template.description.foreach(d => println(s"  Description: $d"))
-        
-        // Configure generator
-        val config = GeneratorConfig(
-          basePackage = "com.myapp",
-          outputDir = "src/main/scala"
-        )
-        
-        // Generate code
-        val generator = new CodeGenerator(config)
-        generator.generate(template) match {
-          case Right(files) =>
-            println(s"✓ Generated ${files.length} file(s)")
-            
-            // Write files
-            val writer = new FileWriter()
-            val report = writer.writeFilesWithReport(files, config.outputDirectory)
-            
-            println(s"\n${report.summary}")
-            report.successPaths.foreach { path =>
-              println(s"  ✓ $path")
-            }
-            
-            if (report.isFailure) {
-              println("\nErrors:")
-              report.failureMessages.foreach { msg =>
-                println(s"  ✗ $msg")
-              }
-            }
-            
-          case Left(error) =>
-            println(s"✗ Generation error: ${error.message}")
-        }
-        
+    val path = "src/main/resources/nomos/templates/com/myapp/models/user/user.json"
+    val source = Source.fromFile(path)
+    val templateJson = try source.mkString finally source.close()
+
+    val result = for {
+      template <- Nomos.parseTemplate(templateJson, "com.myapp.models.user")
+      report <- Nomos.generateCode(template, "src/main/scala")
+    } yield report
+
+    result match {
+      case Right(report) =>
+        println(report.summary)
+        report.successPaths.foreach(path => println(s"  ✓ $path"))
       case Left(error) =>
-        println(s"✗ Parse error: ${error.message}")
+        println(s"✗ ${error.message}")
     }
   }
 }
@@ -124,7 +111,7 @@ object UserModelGenerator {
 
 ## Step 3: Generated Output
 
-The code will generate `src/main/scala/com/myapp/models/user/User.scala`:
+The template generates `Profile.scala`, `Role.scala`, `User.scala`, and a shared `NomosFormats.scala` under `src/main/scala/com/myapp/models/user`.
 
 ```scala
 package com.myapp.models.user
@@ -136,6 +123,28 @@ case class Profile(
   bio: Option[String]
 )
 
+object Profile {
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+
+  def fromJson(json: String): Either[String, Profile] = {
+    try {
+      Right(mapper.readValue(json, classOf[Profile]))
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: Profile): String = mapper.writeValueAsString(obj)
+
+  def validate(json: String): Either[List[ValidationError], Profile] = {
+    validator.validate(json, "com.myapp.models.user.Profile") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}
+
 sealed trait Role
 
 case class Admin(
@@ -145,7 +154,7 @@ case class Admin(
   department: String
 ) extends Role
 
-case class User(
+case class Member(
   roleType: String,
   createdAt: String,
   subscriptionLevel: String,
@@ -157,6 +166,36 @@ case class Guest(
   createdAt: String
 ) extends Role
 
+object Role {
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+  import com.fasterxml.jackson.databind.JsonNode
+
+  def fromJson(json: String): Either[String, Role] = {
+    try {
+      val jsonNode = mapper.readTree(json)
+      val discriminatorValue = jsonNode.get("roleType").asText()
+      discriminatorValue match {
+        case "admin" => Right(mapper.treeToValue(jsonNode, classOf[Admin]))
+        case "member" => Right(mapper.treeToValue(jsonNode, classOf[Member]))
+        case "guest" => Right(mapper.treeToValue(jsonNode, classOf[Guest]))
+        case other => Left(s"Unknown roleType value: $other")
+      }
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: Role): String = mapper.writeValueAsString(obj)
+
+  def validate(json: String): Either[List[ValidationError], Role] = {
+    validator.validate(json, "com.myapp.models.user.Role") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}
+
 case class User(
   id: String,
   username: String,
@@ -164,14 +203,37 @@ case class User(
   profile: Profile,
   role: Role
 )
+
+object User {
+  import NomosFormats._
+  import dev.cjfravel.nomos.validation.ValidationError
+
+  def fromJson(json: String): Either[String, User] = {
+    try {
+      Right(mapper.readValue(json, classOf[User]))
+    } catch {
+      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
+    }
+  }
+
+  def toJson(obj: User): String = mapper.writeValueAsString(obj)
+
+  def validate(json: String): Either[List[ValidationError], User] = {
+    validator.validate(json, "com.myapp.models.user.User") match {
+      case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))
+      case Left(errors) => Left(errors)
+    }
+  }
+}
 ```
+
+Each generated companion contains concrete `fromJson`, `toJson`, and `validate` methods. `fromJson` returns `Either[String, T]` by default; set top-level `"fromJsonStyle": "throwing"` to generate throwing parsers instead.
 
 ## Step 4: Use Generated Code
 
 ```scala
 import com.myapp.models.user._
 
-// Create an admin user
 val adminRole = Admin(
   roleType = "admin",
   createdAt = "2024-01-01T00:00:00Z",
@@ -192,55 +254,30 @@ val adminUser = User(
   role = adminRole
 )
 
-// Create a regular user
-val userRole = User(
-  roleType = "user",
-  createdAt = "2024-01-15T00:00:00Z",
-  subscriptionLevel = "premium",
-  subscriptionExpiry = Some("2025-01-15")
-)
-
-val regularUser = User(
-  id = "usr_002",
-  username = "john_doe",
-  email = "john@example.com",
-  profile = Profile(
-    firstName = "John",
-    lastName = "Doe",
-    age = 25,
-    bio = None
-  ),
-  role = userRole
-)
-
-println(s"Admin: ${adminUser.username}")
-println(s"User: ${regularUser.username}")
+val json = User.toJson(adminUser)
+val parsed = User.fromJson(json)
+val validated = User.validate(json)
 ```
 
 ## Running the Example
 
 ```bash
-# Compile the generator
-mvn compile
+# Generate sources and compile
+mvn clean compile
 
-# Run code generation
-scala -cp target/classes UserModelGenerator
-
-# Compile generated code
-mvn compile
-
-# Use in your application
+# Or only run generation
+mvn generate-sources
 ```
 
 ## Key Features Demonstrated
 
-1. ✅ **JSON Template Parsing** - Parse complex template with metadata
-2. ✅ **Nested Objects** - Profile object nested within User
-3. ✅ **Type Discriminator** - Role as sealed trait with variants
-4. ✅ **Common Fields** - createdAt shared across all roles
-5. ✅ **Optional Fields** - bio and subscriptionExpiry
+1. ✅ **JSON Template Parsing** - Parse multi-definition templates with `definitions`
+2. ✅ **References** - Use `$ref:Profile` and `$ref:Role` between definitions
+3. ✅ **Type Discriminator** - `Role` as sealed trait with variants
+4. ✅ **Common Fields** - `createdAt` shared across all roles
+5. ✅ **Optional Fields** - `bio` and `subscriptionExpiry`
 6. ✅ **Constraints** - Username pattern, age range, email format
 7. ✅ **Arrays** - List of permissions
-8. ✅ **Package Structure** - Organized under com.myapp.models.user
-9. ✅ **File Writing** - Automatic directory creation and file output
-10. ✅ **Error Reporting** - Comprehensive error messages
+8. ✅ **Package Structure** - Base package derived from template path
+9. ✅ **File Writing** - `Nomos.generateCode(template, outputDir)` writes generated files
+10. ✅ **Error Reporting** - `Either` results for parsing, generation, and validation

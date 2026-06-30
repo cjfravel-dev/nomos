@@ -182,24 +182,26 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     prefixMatch: Boolean = false,
     throwing: Boolean = false
   ): ScalaCodeBuilder = {
+    val fieldLit = ScalaCodeBuilder.escapeStringLiteral(discriminatorField)
     line("import com.fasterxml.jackson.databind.JsonNode")
     emptyLine()
     def caseLine(discriminatorValue: String, className: String, wrap: String => String): Unit = {
+      val valueLit = ScalaCodeBuilder.escapeStringLiteral(discriminatorValue)
       if (prefixMatch) {
-        line(s"""case d if d.startsWith("$discriminatorValue") => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
+        line(s"""case d if d.startsWith("$valueLit") => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
       } else {
-        line(s"""case "$discriminatorValue" => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
+        line(s"""case "$valueLit" => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
       }
     }
     if (throwing) {
       line(s"def fromJson(json: String): $traitName = {")
       indent()
       line("val jsonNode = mapper.readTree(json)")
-      line(s"""val discriminatorValue = jsonNode.get("$discriminatorField").asText()""")
+      line(s"""val discriminatorValue = jsonNode.get("$fieldLit").asText()""")
       line("discriminatorValue match {")
       indent()
       variants.foreach { case (dv, cn) => caseLine(dv, cn, identity) }
-      line(s"""case other => throw new IllegalArgumentException(s"Unknown $discriminatorField value: $$other")""")
+      line(s"""case other => throw new IllegalArgumentException(s"Unknown $fieldLit value: $$other")""")
       outdent()
       line("}")
       outdent()
@@ -210,11 +212,11 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
       line("try {")
       indent()
       line("val jsonNode = mapper.readTree(json)")
-      line(s"""val discriminatorValue = jsonNode.get("$discriminatorField").asText()""")
+      line(s"""val discriminatorValue = jsonNode.get("$fieldLit").asText()""")
       line("discriminatorValue match {")
       indent()
       variants.foreach { case (dv, cn) => caseLine(dv, cn, e => s"Right($e)") }
-      line(s"""case other => Left(s"Unknown $discriminatorField value: $$other")""")
+      line(s"""case other => Left(s"Unknown $fieldLit value: $$other")""")
       outdent()
       line("}")
       outdent()
@@ -253,24 +255,53 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
 object ScalaCodeBuilder {
   def apply(): ScalaCodeBuilder = new ScalaCodeBuilder()
   
+  /** Reserved Scala 2 keywords that must be backtick-escaped when used as identifiers. */
+  val scalaKeywords: Set[String] = Set(
+    "abstract", "case", "catch", "class", "def", "do", "else", "extends",
+    "false", "final", "finally", "for", "forSome", "if", "implicit", "import",
+    "lazy", "macro", "match", "new", "null", "object", "override", "package",
+    "private", "protected", "return", "sealed", "super", "this", "throw", "trait",
+    "true", "try", "type", "val", "var", "while", "with", "yield"
+  )
+
   /**
    * Escapes a field name if it's a Scala keyword
    */
   def escapeKeyword(name: String): String = {
-    val keywords = Set(
-      "abstract", "case", "catch", "class", "def", "do", "else", "extends",
-      "false", "final", "finally", "for", "forSome", "if", "implicit", "import",
-      "lazy", "match", "new", "null", "object", "override", "package", "private",
-      "protected", "return", "sealed", "super", "this", "throw", "trait", "true",
-      "try", "type", "val", "var", "while", "with", "yield"
-    )
-    
-    if (keywords.contains(name)) {
+    if (scalaKeywords.contains(name)) {
       s"`$name`"
     } else {
       name
     }
   }
+
+  /**
+   * Escapes a string so it is safe to embed inside a Scala double-quoted string literal.
+   * Handles backslash, double quote, and the CR/LF/tab control characters. Backslash is
+   * escaped first so the other replacements are not double-escaped.
+   */
+  def escapeStringLiteral(s: String): String =
+    s.replace("\\", "\\\\")
+     .replace("\"", "\\\"")
+     .replace("\n", "\\n")
+     .replace("\r", "\\r")
+     .replace("\t", "\\t")
+
+  /**
+   * True when the name is a plain Scala identifier: a letter or underscore followed by
+   * letters, digits, or underscores. Keyword-ness is handled separately by escapeKeyword.
+   */
+  def isSimpleIdentifier(name: String): Boolean =
+    name.nonEmpty &&
+      (name.head.isLetter || name.head == '_') &&
+      name.forall(c => c.isLetterOrDigit || c == '_')
+
+  /**
+   * True when the name is a dot-separated sequence of simple identifiers (e.g. a package
+   * or fully-qualified type name). Empty segments are rejected.
+   */
+  def isQualifiedName(name: String): Boolean =
+    name.nonEmpty && name.split("\\.", -1).forall(isSimpleIdentifier)
 
   /**
    * Converts a name to camelCase

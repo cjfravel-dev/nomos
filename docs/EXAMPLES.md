@@ -2,20 +2,26 @@
 
 This document provides practical examples of using Nomos for various use cases.
 
+Templates live under `src/main/resources/nomos/templates/<package path>/`, and the base package is derived from that path (there is no `basePackage`, `outputDir`, or `mainClass` field in the template JSON).
+
 ## Example 1: Simple User Profile
 
 ### Template Definition
 
 ```json
 {
-  "name": "UserProfile",
-  "template": {
-    "userId": "string",
-    "username": "string",
-    "email": "string",
-    "age": "number",
-    "isActive": "boolean"
-  }
+  "definitions": [
+    {
+      "name": "UserProfile",
+      "template": {
+        "userId": "string",
+        "username": "string",
+        "email": "string",
+        "age": "number",
+        "isActive": "boolean"
+      }
+    }
+  ]
 }
 ```
 
@@ -49,28 +55,34 @@ case class UserProfile(
 
 ```json
 {
-  "name": "Shape",
-  "template": {
-    "$type": {
-      "discriminator": "shapeType",
-      "variants": {
-        "circle": {
-          "radius": "number"
-        },
-        "rectangle": {
-          "width": "number",
-          "height": "number"
-        },
-        "polygon": {
-          "sides": "number",
-          "vertices": [{
-            "x": "number",
-            "y": "number"
-          }]
+  "definitions": [
+    {
+      "name": "Shape",
+      "template": {
+        "$type": {
+          "discriminator": "shapeType",
+          "variants": {
+            "circle": {
+              "radius": "number"
+            },
+            "rectangle": {
+              "width": "number",
+              "height": "number"
+            },
+            "polygon": {
+              "sides": "number",
+              "vertices": [
+                {
+                  "x": "number",
+                  "y": "number"
+                }
+              ]
+            }
+          }
         }
       }
     }
-  }
+  ]
 }
 ```
 
@@ -129,12 +141,18 @@ case class Vertex(x: Double, y: Double)
 
 ```json
 {
-  "name": "TreeNode",
-  "template": {
-    "id": "string",
-    "value": "string",
-    "children": ["$ref:TreeNode"]
-  }
+  "definitions": [
+    {
+      "name": "TreeNode",
+      "template": {
+        "id": "string",
+        "value": "string",
+        "children": [
+          "$ref:TreeNode"
+        ]
+      }
+    }
+  ]
 }
 ```
 
@@ -181,24 +199,28 @@ case class TreeNode(
 
 ```json
 {
-  "name": "ApiResponse",
-  "template": {
-    "status": "number",
-    "message": "string",
-    "data": {
-      "$optional": {
-        "id": "string",
-        "timestamp": "string",
-        "payload": "string"
-      }
-    },
-    "error": {
-      "$optional": {
-        "code": "string",
-        "details": "string"
+  "definitions": [
+    {
+      "name": "ApiResponse",
+      "template": {
+        "status": "number",
+        "message": "string",
+        "data": {
+          "$optional": {
+            "id": "string",
+            "timestamp": "string",
+            "payload": "string"
+          }
+        },
+        "error": {
+          "$optional": {
+            "code": "string",
+            "details": "string"
+          }
+        }
       }
     }
-  }
+  ]
 }
 ```
 
@@ -257,46 +279,52 @@ case class ResponseError(
 
 ```json
 {
-  "name": "Order",
-  "template": {
-    "orderId": "string",
-    "customerId": "string",
-    "orderDate": "string",
-    "status": "string",
-    "items": [{
-      "productId": "string",
-      "quantity": "number",
-      "price": "number"
-    }],
-    "shipping": {
-      "address": {
-        "street": "string",
-        "city": "string",
-        "state": "string",
-        "zipCode": "string"
-      },
-      "method": "string"
-    },
-    "payment": {
-      "$type": {
-        "discriminator": "method",
-        "variants": {
-          "creditCard": {
-            "cardLast4": "string",
-            "cardType": "string"
-          },
-          "paypal": {
-            "email": "string"
-          },
-          "bankTransfer": {
-            "accountNumber": "string",
-            "bankName": "string"
+  "definitions": [
+    {
+      "name": "Order",
+      "template": {
+        "orderId": "string",
+        "customerId": "string",
+        "orderDate": "string",
+        "status": "string",
+        "items": [
+          {
+            "productId": "string",
+            "quantity": "number",
+            "price": "number"
           }
-        }
+        ],
+        "shipping": {
+          "address": {
+            "street": "string",
+            "city": "string",
+            "state": "string",
+            "zipCode": "string"
+          },
+          "method": "string"
+        },
+        "payment": {
+          "$type": {
+            "discriminator": "method",
+            "variants": {
+              "creditCard": {
+                "cardLast4": "string",
+                "cardType": "string"
+              },
+              "paypal": {
+                "email": "string"
+              },
+              "bankTransfer": {
+                "accountNumber": "string",
+                "bankName": "string"
+              }
+            }
+          }
+        },
+        "total": "number"
       }
-    },
-    "total": "number"
-  }
+    }
+  ]
 }
 ```
 
@@ -344,29 +372,33 @@ case class ResponseError(
 
 ```json
 {
-  "name": "Expression",
-  "template": {
-    "$type": {
-      "discriminator": "type",
-      "variants": {
-        "literal": {
-          "value": "number"
-        },
-        "variable": {
-          "name": "string"
-        },
-        "binaryOp": {
-          "operator": "string",
-          "left": "$ref:Expression",
-          "right": "$ref:Expression"
-        },
-        "unaryOp": {
-          "operator": "string",
-          "operand": "$ref:Expression"
+  "definitions": [
+    {
+      "name": "Expression",
+      "template": {
+        "$type": {
+          "discriminator": "type",
+          "variants": {
+            "literal": {
+              "value": "number"
+            },
+            "variable": {
+              "name": "string"
+            },
+            "binaryOp": {
+              "operator": "string",
+              "left": "$ref:Expression",
+              "right": "$ref:Expression"
+            },
+            "unaryOp": {
+              "operator": "string",
+              "operand": "$ref:Expression"
+            }
+          }
         }
       }
     }
-  }
+  ]
 }
 ```
 
@@ -419,24 +451,77 @@ case class UnaryOp(
 ## Usage in Scala
 
 ```scala
-import dev.cjfravel.nomos._
+import dev.cjfravel.nomos.Nomos
+import scala.io.Source
 
-// Load template from file or string
-val template = NomosTemplate.fromFile("templates/order.json")
+val templateJson = Source.fromResource(
+  "nomos/templates/com/example/models/order.json"
+).mkString
 
-// Create validator
-val validator = NomosValidator.fromTemplate(template)
+val jsonString =
+  """{
+    |  "orderId": "ORD-2024-001",
+    |  "customerId": "CUST-12345",
+    |  "orderDate": "2024-01-15T10:30:00Z",
+    |  "status": "processing",
+    |  "items": [
+    |    {
+    |      "productId": "PROD-001",
+    |      "quantity": 2,
+    |      "price": 29.99
+    |    }
+    |  ],
+    |  "shipping": {
+    |    "address": {
+    |      "street": "123 Main St",
+    |      "city": "Springfield",
+    |      "state": "IL",
+    |      "zipCode": "62701"
+    |    },
+    |    "method": "standard"
+    |  },
+    |  "payment": {
+    |    "method": "creditCard",
+    |    "cardLast4": "1234",
+    |    "cardType": "Visa"
+    |  },
+    |  "total": 79.98
+    |}""".stripMargin
 
-// Validate JSON string
-val jsonString = """{"orderId": "ORD-001", ...}"""
+Nomos.parseTemplate(templateJson, "com.example.models") match {
+  case Right(template) =>
+    Nomos.validate(template, jsonString, "Order") match {
+      case Right(json) =>
+        println(s"Order JSON is valid: $json")
+      case Left(errors) =>
+        errors.foreach(error => println(s"Validation error: ${error.message}"))
+    }
 
-validator.validate(jsonString) match {
-  case Right(order) =>
-    println(s"Order validated: ${order.orderId}")
-  case Left(errors) =>
-    errors.foreach(err => println(s"Validation error: $err"))
+    Nomos.generateCode(template) match {
+      case Right(report) =>
+        println(s"Generated files: ${report.successPaths.mkString(", ")}")
+      case Left(error) =>
+        println(s"Generation failed: ${error.message}")
+    }
+
+  case Left(error) =>
+    println(s"Template parse failed: ${error.message}")
 }
 
-// Generate case class code
-val generatedCode = NomosGenerator.generateCaseClasses(template)
-println(generatedCode)
+// After code generation, use the generated companion object.
+import com.example.models.Order
+
+Order.fromJson(jsonString) match {
+  case Right(order) =>
+    println(Order.toJson(order))
+  case Left(error) =>
+    println(s"Parse error: $error")
+}
+
+Order.validate(jsonString) match {
+  case Right(order) =>
+    println(s"Valid order: $order")
+  case Left(errors) =>
+    errors.foreach(error => println(s"Validation error: $error"))
+}
+```

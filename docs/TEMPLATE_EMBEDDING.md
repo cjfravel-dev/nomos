@@ -140,8 +140,8 @@ A validator instance initialized with the embedded template.
 
 **Usage:**
 ```scala
-// Validate against a specific definition
-NomosFormats.validator.validate(json, "com.example.models.User") match {
+// Validate against a specific definition (fully-qualified name includes the subPackage)
+NomosFormats.validator.validate(json, "com.example.models.user.User") match {
   case Right(jsonNode) => // Valid JSON structure
   case Left(errors) => // Validation errors
 }

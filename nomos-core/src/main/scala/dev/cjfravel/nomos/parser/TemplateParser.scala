@@ -1,6 +1,7 @@
 package dev.cjfravel.nomos.parser
 
 import dev.cjfravel.nomos.model._
+import dev.cjfravel.nomos.generation.ScalaCodeBuilder
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.ListMap
@@ -194,8 +195,10 @@ class TemplateParser {
       if (errors.nonEmpty) {
         Left(ParseError.MultipleErrors(errors))
       } else {
-        val fieldMap = ListMap(fieldResults.collect { case Right(pair) => pair }: _*)
-        Right(ObjectType(fieldMap, parseAdditional(json, path)))
+        parseAdditional(json, path).map { additional =>
+          val fieldMap = ListMap(fieldResults.collect { case Right(pair) => pair }: _*)
+          ObjectType(fieldMap, additional)
+        }
       }
     } else {
       Left(ParseError.InvalidType("object", path, "Expected JSON object"))
@@ -209,14 +212,15 @@ class TemplateParser {
     if (key.length >= 2 && key.startsWith("`") && key.endsWith("`")) key.substring(1, key.length - 1) else key
 
   /**
-   * Parses the $additionalProperties policy: true allows extras, false forbids, a type validates extras.
+   * Parses the $additionalProperties policy: true allows extras, false forbids, a type validates
+   * extras. An invalid type value is reported as a parse error rather than silently forbidding.
    */
-  private def parseAdditional(json: JsonNode, path: String): AdditionalProperties = {
-    if (!json.has("$additionalProperties")) ForbidExtra
+  private def parseAdditional(json: JsonNode, path: String): Either[ParseError, AdditionalProperties] = {
+    if (!json.has("$additionalProperties")) Right(ForbidExtra)
     else {
       val node = json.get("$additionalProperties")
-      if (node.isBoolean) { if (node.asBoolean()) AllowExtra else ForbidExtra }
-      else parseType(node, s"$path.$$additionalProperties").map(TypedExtra).getOrElse(ForbidExtra)
+      if (node.isBoolean) Right(if (node.asBoolean()) AllowExtra else ForbidExtra)
+      else parseType(node, s"$path.$$additionalProperties").map(TypedExtra)
     }
   }
 
@@ -240,7 +244,7 @@ class TemplateParser {
   private def renderDefault(json: JsonNode): Option[String] = {
     if (json.isObject && json.has("default")) {
       val d = json.get("default")
-      if (d.isTextual) Some("\"" + d.asText() + "\"") else Some(d.toString)
+      if (d.isTextual) Some("\"" + ScalaCodeBuilder.escapeStringLiteral(d.asText()) + "\"") else Some(d.toString)
     } else None
   }
 

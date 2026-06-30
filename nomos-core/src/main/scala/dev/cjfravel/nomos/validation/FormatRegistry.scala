@@ -5,7 +5,7 @@ package dev.cjfravel.nomos.validation
  * register additional named formats. A format predicate returns true when the value is valid.
  */
 object FormatRegistry {
-  private val formats = scala.collection.mutable.Map.empty[String, String => Boolean]
+  private val formats = scala.collection.concurrent.TrieMap.empty[String, String => Boolean]
 
   def register(name: String)(predicate: String => Boolean): Unit = formats(name) = predicate
 
