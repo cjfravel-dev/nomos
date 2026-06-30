@@ -353,13 +353,14 @@ class CodeGenerator(config: GeneratorConfig) {
         ident(enumName, s"$ctx enum name") ++
           values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)"))
       case ExternalType(qn, _) => externalType(qn, s"$ctx external type")
-      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage, fallbackVariant) =>
         // The discriminator field becomes a generated Scala field only when it is included in the
         // output or when variantNames forces a trait val; otherwise it is purely a JSON key.
         val fieldErrs =
           if (includeInOutput || variantNames.nonEmpty) ident(fieldName, s"$ctx discriminator field") else Nil
         fieldErrs ++
           variantSubPackage.toList.flatMap(qualified(_, s"$ctx variantSubPackage")) ++
+          fallbackVariant.toList.flatMap(ident(_, s"$ctx fallbackVariant (class name)")) ++
           commonFields.toList.flatMap { case (n, fd) => ident(n, s"$ctx common field") ++ walk(fd.fieldType, s"$ctx.$n") } ++
           variants.toList.flatMap { case (key, obj) =>
             val className = variantNames.getOrElse(key, ScalaCodeBuilder.toPascalCase(key))
@@ -531,6 +532,16 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
 
+    // Catch-all variant: preserves the unrecognized discriminator value and the raw object so an
+    // unknown variant can be read and re-emitted verbatim (forward compatibility).
+    discriminator.fallbackVariant.foreach { fb =>
+      builder.caseClass(fb, List(
+        (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String"),
+        ("raw", "dev.cjfravel.nomos.json.JsonObject")
+      ), Some(name))
+      builder.emptyLine()
+    }
+
     variantPkg.foreach { _ =>
       builder.dedent()
       builder.line("}")
@@ -566,7 +577,12 @@ class CodeGenerator(config: GeneratorConfig) {
         emitVariantDecode(builder, className, discriminator, vt)
         builder.dedent()
       }
-      builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
+      discriminator.fallbackVariant match {
+        case Some(fb) =>
+          builder.line(s"""case other => Right($fb(other, o))""")
+        case None =>
+          builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
+      }
       builder.dedent()
       builder.line("}")
       builder.dedent()
@@ -586,6 +602,9 @@ class CodeGenerator(config: GeneratorConfig) {
       variantMap.foreach { case (_, className, vt) =>
         val entries = variantOrderedFields(vt).map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
+      }
+      discriminator.fallbackVariant.foreach { fb =>
+        builder.line(s"case v: $fb => v.raw")
       }
       builder.dedent()
       builder.line("}")
@@ -674,6 +693,17 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
 
+    // Catch-all variant: overrides the trait's discriminator (and any common fields, which every
+    // variant shares) and preserves the raw object so an unknown variant round-trips verbatim.
+    discriminator.fallbackVariant.foreach { fb =>
+      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), "String", true)
+      val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
+        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)
+      }.toList
+      val rawField = ("raw", "dev.cjfravel.nomos.json.JsonObject", false)
+      builder.caseClassWithOverride(fb, discriminatorField :: (commonFieldsList :+ rawField), Some(name))
+      builder.emptyLine()
+    }
     // Map each discriminator key to its mapped class name (order preserved)
     val variantMap = discriminator.variants.toList.map { case (variantKey, _) =>
       (variantKey, discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey)))
@@ -713,7 +743,25 @@ class CodeGenerator(config: GeneratorConfig) {
         }
         builder.dedent()
       }
-      builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
+      discriminator.fallbackVariant match {
+        case Some(fb) =>
+          val common = discriminator.commonFields.toList
+          if (common.isEmpty) {
+            builder.line(s"case _ => Right($fb(d, o))")
+          } else {
+            builder.line("case _ =>")
+            builder.indent()
+            builder.line("for {")
+            builder.indent()
+            common.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
+            builder.dedent()
+            val args = ("d" :: common.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) } ::: List("o")).mkString(", ")
+            builder.line(s"} yield $fb($args)")
+            builder.dedent()
+          }
+        case None =>
+          builder.line(s"""case other => Left("Unknown $fieldKeyLit value: " + other)""")
+      }
       builder.dedent()
       builder.line("}")
       builder.dedent()
@@ -736,6 +784,9 @@ class CodeGenerator(config: GeneratorConfig) {
         val variantEntries = variantFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         val entries = (discEntry :: commonEntries) ++ variantEntries
         builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
+      }
+      discriminator.fallbackVariant.foreach { fb =>
+        builder.line(s"case v: $fb => v.raw")
       }
       builder.dedent()
       builder.line("}")
@@ -779,7 +830,7 @@ class CodeGenerator(config: GeneratorConfig) {
         s"Map[String, ${scalaTypeForDefinition(vt, optional = false, definitionsMap)}]"
       case ObjectType(_, _) =>
         "???" // Inline objects not supported in multi-definition mode
-      case TypeDiscriminator(_, _, _, _, _, _, _) =>
+      case TypeDiscriminator(_, _, _, _, _, _, _, _) =>
         "???" // Inline discriminators not supported in multi-definition mode
     }
     
@@ -800,7 +851,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case MapType(valueType) => collectEnums(valueType)
       case UnionType(types) => types.flatMap(collectEnums)
       case ObjectType(fields, _) => fields.values.flatMap(f => collectEnums(f.fieldType)).toList
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
         val v = variants.values.flatMap(o => o.fields.values.flatMap(f => collectEnums(f.fieldType)))
         val c = commonFields.values.flatMap(f => collectEnums(f.fieldType))
         (v ++ c).toList
@@ -864,7 +915,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType, _) => collectReferences(elementType)
       case ObjectType(fields, _) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _) =>
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => collectReferences(f.fieldType)))
         val commonRefs = commonFields.values.flatMap(f => collectReferences(f.fieldType))
         variantRefs.toSet ++ commonRefs

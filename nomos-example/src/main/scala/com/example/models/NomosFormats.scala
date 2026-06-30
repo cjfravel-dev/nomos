@@ -31,7 +31,8 @@ object NomosFormats {
               includeInOutput = true,
               variantNames = Map.empty[String, String],
               variantMatch = "prefix",
-              variantSubPackage = None
+              variantSubPackage = None,
+              fallbackVariant = None
             ),
             subPackage = Some("column"),
             description = Some("Data contract column with parameterized type tags"),

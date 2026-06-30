@@ -269,7 +269,8 @@ class TemplateParser {
       variantNames = parseVariantNames(typeObj, s"$path.$$type")
       variantMatch = extractOptionalString(typeObj, "variantMatch").getOrElse("exact")
       variantSubPackage = extractOptionalString(typeObj, "variantSubPackage")
-    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage)
+      fallbackVariant = extractOptionalString(typeObj, "fallbackVariant")
+    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage, fallbackVariant)
   }
 
   /**

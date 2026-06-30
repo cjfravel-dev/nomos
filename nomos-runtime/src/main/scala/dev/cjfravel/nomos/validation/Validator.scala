@@ -69,8 +69,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         if (types.exists(t => validateTypeWithRefs(t, json, path, definitions).isEmpty)) List.empty
         else List(ValidationError.typeMismatch(path, "one of union types", jsonType(json)))
       case ObjectType(fields, additional) => validateObject(fields, json, path, definitions, additional)
-      case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch, _) =>
-        validateDiscriminator(fieldName, variants, commonFields, json, path, definitions, variantMatch)
+      case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch, _, fallbackVariant) =>
+        validateDiscriminator(fieldName, variants, commonFields, json, path, definitions, variantMatch, fallbackVariant.isDefined)
       case ReferenceType(typeName) =>
         // Resolve reference and validate
         definitions.get(typeName) match {
@@ -292,7 +292,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     json: JsonValue,
     path: String,
     definitions: Map[String, TemplateDefinition],
-    variantMatch: String = "exact"
+    variantMatch: String = "exact",
+    hasFallback: Boolean = false
   ): List[ValidationError] = {
     json.asObject match {
       case Some(obj) =>
@@ -346,7 +347,23 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                 commonErrors ++ variantErrors ++ extraFields
               
               case None =>
-                List(ValidationError.invalidDiscriminator(path, fieldName, variants.keySet, discriminatorValue))
+                if (hasFallback) {
+                  // Unrecognized variant decodes into the fallback case class (preserving the raw
+                  // payload). Common fields are shared by every variant, so still enforce them;
+                  // the unknown variant-specific shape is intentionally not validated.
+                  commonFields.flatMap { case (cfName, cfDef) =>
+                    jsonFieldMap.get(cfName) match {
+                      case Some(value) =>
+                        validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", definitions)
+                      case None if !cfDef.optional =>
+                        List(ValidationError.missingField(path, cfName))
+                      case None =>
+                        List.empty
+                    }
+                  }.toList
+                } else {
+                  List(ValidationError.invalidDiscriminator(path, fieldName, variants.keySet, discriminatorValue))
+                }
             }
           
           case Some(_) =>

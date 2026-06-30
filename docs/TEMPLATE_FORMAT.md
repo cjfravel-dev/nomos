@@ -386,8 +386,9 @@ case class Triangle(
 | `commonFields` | no | `{}` | Fields shared by every variant. |
 | `includeDiscriminator` | no | `true` | Emit the discriminator field on the generated case classes. |
 | `variantNames` | no | `{}` | Override the generated class name for a variant key (e.g. `"string"` → `"StringColumn"`). |
-| `variantMatch` | no | `"exact"` | How a discriminator value is matched to a variant. |
+| `variantMatch` | no | `"exact"` | How a discriminator value selects a variant: `"exact"` (equality) or `"prefix"` (the value *starts with* the variant key). |
 | `variantSubPackage` | no | — | Emit the variant case classes into a sub-package of the trait's package (see below). |
+| `fallbackVariant` | no | — | Name of a catch-all variant for unrecognized discriminator values (see below). |
 
 #### `variantSubPackage`: split the trait and its variants across packages
 
@@ -422,6 +423,41 @@ This is purely a code-layout control; it does not affect validation or serializa
 It is intended for porting an existing public API whose union trait lives in one package while
 its (often numerous) variant types live in a dedicated sibling package, so the generated layout
 can match the existing one without relocating public types.
+
+#### `fallbackVariant`: forward-compatible catch-all for unknown values
+
+By default a discriminator value that matches no variant fails to decode (and fails validation).
+Set `fallbackVariant` to a class name to instead capture unrecognized values in a generated
+catch-all case class, so older code can read — and faithfully re-emit — documents that use a
+discriminator value added later:
+
+```json
+{
+  "name": "Condition",
+  "template": {
+    "$type": {
+      "discriminator": "type",
+      "fallbackVariant": "UnknownCondition",
+      "commonFields": { "id": "string" },
+      "variants": {
+        "threshold": { "limit": "int" }
+      }
+    }
+  }
+}
+```
+
+Behavior when set:
+
+- An unrecognized discriminator value decodes into `UnknownCondition`, which carries the
+  discriminator value, every common field, and the **raw object**.
+- `encode` re-emits that preserved raw object **verbatim**, so an unknown variant round-trips
+  without loss.
+- Validation **accepts** an unrecognized value (common fields are still enforced, since every
+  variant shares them; the unknown variant-specific shape is not validated).
+
+When unset, behavior is unchanged: an unrecognized discriminator value is rejected (fail-closed).
+This keeps strict-by-default validation while allowing opt-in forward compatibility.
 
 ### 5. Constraints
 

@@ -92,6 +92,7 @@ case class ObjectType(
  * @param variantNames Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
  * @param variantMatch How a discriminator value is matched to a variant (default "exact")
  * @param variantSubPackage Optional sub-package (relative to the trait's package) for the generated variant case classes; the trait stays in its own package
+ * @param fallbackVariant Optional name for a catch-all variant: an unrecognized discriminator value decodes into this case class (carrying the value and the raw object) and re-emits the preserved payload on encode, instead of failing
  */
 case class TypeDiscriminator(
   fieldName: String,
@@ -100,7 +101,8 @@ case class TypeDiscriminator(
   includeInOutput: Boolean = true,
   variantNames: Map[String, String] = Map.empty,
   variantMatch: String = "exact",
-  variantSubPackage: Option[String] = None
+  variantSubPackage: Option[String] = None,
+  fallbackVariant: Option[String] = None
 ) extends TemplateType
 
 /**
