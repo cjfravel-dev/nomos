@@ -151,4 +151,11 @@ case class FieldDef(
   default: Option[String] = None,
   adapter: Option[String] = None,
   nullable: Boolean = false
-)
+) {
+  /**
+   * Whether the field must be present in the JSON. A field with a default is not required (it is
+   * defaulted when absent), matching the lenient decode; `optional` also relaxes it. This keeps
+   * validation consistent with (de)serialization.
+   */
+  def required: Boolean = !optional && default.isEmpty
+}

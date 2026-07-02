@@ -247,7 +247,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         
         // Check required fields
         val missingFields = fields.collect {
-          case (fieldName, fieldDef) if !fieldDef.optional && !jsonFieldMap.contains(fieldName) =>
+          case (fieldName, fieldDef) if fieldDef.required && !jsonFieldMap.contains(fieldName) =>
             ValidationError.missingField(path, fieldName)
         }.toList
         
@@ -314,7 +314,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                   jsonFieldMap.get(cfName) match {
                     case Some(value) =>
                       validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", definitions)
-                    case None if !cfDef.optional =>
+                    case None if cfDef.required =>
                       List(ValidationError.missingField(path, cfName))
                     case None =>
                       List.empty
@@ -326,7 +326,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                   jsonFieldMap.get(vfName) match {
                     case Some(value) =>
                       validateTypeWithRefs(vfDef.fieldType, value, s"$path.$vfName", definitions)
-                    case None if !vfDef.optional =>
+                    case None if vfDef.required =>
                       List(ValidationError.missingField(path, vfName))
                     case None =>
                       List.empty
@@ -355,7 +355,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                     jsonFieldMap.get(cfName) match {
                       case Some(value) =>
                         validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", definitions)
-                      case None if !cfDef.optional =>
+                      case None if cfDef.required =>
                         List(ValidationError.missingField(path, cfName))
                       case None =>
                         List.empty
