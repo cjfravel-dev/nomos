@@ -2,7 +2,9 @@
 // Source: com/example/models/column/column.json
 package com.example.models.column
 
-sealed trait Column
+sealed trait Column {
+  val `type`: String
+}
 
 case class Decimal(
   `type`: String,

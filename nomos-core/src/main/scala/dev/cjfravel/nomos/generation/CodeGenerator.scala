@@ -528,17 +528,6 @@ class CodeGenerator(config: GeneratorConfig) {
     }
   }
 
-  /**
-   * The discriminator field's `FieldDef`. When `discriminatorEnum` is set it is an enum over the
-   * variant values (so rendering, encoding, and enum-file generation reuse the EnumType path);
-   * otherwise it is a plain string.
-   */
-  private def discFieldDef(d: TypeDiscriminator): FieldDef =
-    d.discriminatorEnum match {
-      case Some(en) => FieldDef(EnumType(en, d.variants.keys.toList), optional = false)
-      case None => FieldDef(StringType(), optional = false)
-    }
-
   /** The discriminator field's rendered Scala type (the enum name, or `String`). */
   private def discScalaType(d: TypeDiscriminator): String = d.discriminatorEnum.getOrElse("String")
 
@@ -567,6 +556,21 @@ class CodeGenerator(config: GeneratorConfig) {
       case None => valueExpr
     }
 
+  /** The fixed discriminator value for a known variant key: an enum constant or a string literal. */
+  private def discFixedValue(d: TypeDiscriminator, variantKey: String): String =
+    d.discriminatorEnum match {
+      case Some(en) => s"$en.${ScalaCodeBuilder.toPascalCase(variantKey)}"
+      case None => "\"" + ScalaCodeBuilder.escapeStringLiteral(variantKey) + "\""
+    }
+
+  /**
+   * The fixed-override member for a known variant's discriminator: the value is determined by the
+   * variant, so it is a body `override val` rather than a primary-constructor parameter (kept out
+   * of the constructor and `unapply`, and preventing inconsistent construction).
+   */
+  private def discOverrideVal(d: TypeDiscriminator, variantKey: String): String =
+    s"override val ${ScalaCodeBuilder.escapeKeyword(d.fieldName)}: ${discScalaType(d)} = ${discFixedValue(d, variantKey)}"
+
   /**
    * Generates a sealed trait with one case class per variant.
    */
@@ -578,14 +582,22 @@ class CodeGenerator(config: GeneratorConfig) {
     basePackage: String,
     currentPackage: String
   ): Unit = {
-    // Ordered fields of a variant case class: discriminator (if emitted), then common, then variant.
-    def variantOrderedFields(variantType: ObjectType): List[(String, FieldDef)] = {
-      val disc = if (discriminator.includeInOutput) List(discriminator.fieldName -> discFieldDef(discriminator)) else Nil
-      disc ++ discriminator.commonFields.toList ++ variantType.fields.toList
-    }
+    // The discriminator is a fixed per-variant override only for exact matching. With "prefix"
+    // matching the on-the-wire value is parameterized (e.g. "Decimal(28,8)" matches key "Decimal"),
+    // so it must stay a constructor field to preserve the actual value on round-trip.
+    val discFixed = discriminator.includeInOutput && discriminator.variantMatch != "prefix"
+    val discAsCtor = discriminator.includeInOutput && !discFixed  // prefix: keep as ctor field
 
-    // Generate sealed trait
-    builder.sealedTrait(name)
+    // Non-discriminator ctor fields of a variant case class: common, then variant.
+    def variantCtorFields(variantType: ObjectType): List[(String, FieldDef)] =
+      discriminator.commonFields.toList ++ variantType.fields.toList
+
+    // Generate sealed trait. When the discriminator is emitted it is an abstract member here, so
+    // each variant's fixed override (or constructor value) satisfies one contract.
+    if (discriminator.includeInOutput)
+      builder.sealedTraitWithFields(name, List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator))))
+    else
+      builder.sealedTrait(name)
     builder.emptyLine()
 
     val variantPkg = discriminator.variantSubPackage.map(s => if (currentPackage.nonEmpty) s"$currentPackage.$s" else s)
@@ -596,13 +608,17 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
     }
 
-    // Generate case classes for each variant
+    // Generate case classes for each variant. For exact matching the discriminator is a fixed
+    // `override val` in the body (out of the constructor / unapply); for prefix matching it is a
+    // leading constructor field (the value is parameterized, so it must be preserved).
     discriminator.variants.foreach { case (variantName, variantType) =>
       val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
-      val fieldList = variantOrderedFields(variantType).map { case (fieldName, fieldDef) =>
+      val discCtor = if (discAsCtor) List(discriminator.fieldName -> FieldDef(StringType(), optional = false)) else Nil
+      val fieldList = (discCtor ++ variantCtorFields(variantType)).map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
       }
-      builder.caseClass(caseClassName, fieldList, Some(name))
+      val body = if (discFixed) List(discOverrideVal(discriminator, variantName)) else Nil
+      builder.caseClass(caseClassName, fieldList, Some(name), body)
       builder.emptyLine()
     }
 
@@ -649,7 +665,10 @@ class CodeGenerator(config: GeneratorConfig) {
         val matchPat = if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>""" else s"""case "$keyLit" =>"""
         builder.line(matchPat)
         builder.indent()
-        emitVariantDecode(builder, className, discriminator, variantKey, vt)
+        // Prefix variants keep the (parameterized) matched value as a constructor arg; exact
+        // variants fix it via an override, so no arg is passed.
+        val discCtorArg = if (discAsCtor) Some("d") else None
+        emitVariantDecode(builder, className, discriminator, vt, discCtorArg)
         builder.dedent()
       }
       discriminator.fallbackVariant match {
@@ -671,11 +690,15 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line("}")
       builder.emptyLine()
 
-      // encode: pattern-match the trait value to its variant and build the JSON object
+      // encode: pattern-match the trait value to its variant and build the JSON object. The
+      // discriminator is a fixed member, read back off the value (`v.<field>`).
       builder.line(s"def encode(obj: $name): JsonValue = obj match {")
       builder.indent()
       variantMap.foreach { case (_, className, vt) =>
-        val entries = variantOrderedFields(vt).map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
+        val discEntry = if (discriminator.includeInOutput)
+          List(s"""Some("$fieldKeyLit" -> ${discEncodeExpr(discriminator, "v." + ScalaCodeBuilder.escapeKeyword(discriminator.fieldName))})""")
+          else Nil
+        val entries = discEntry ++ variantCtorFields(vt).map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
       }
       discriminator.fallbackVariant.foreach { fb =>
@@ -693,27 +716,28 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Emits the body of a variant's decode branch: binds non-discriminator fields and constructs
-   * the variant case class (passing the matched discriminator value when it is emitted — the
-   * enum constant for `variantKey` when a discriminatorEnum is configured, else the raw string).
+   * Emits the body of a variant's decode branch: binds the non-discriminator fields and constructs
+   * the variant case class. `discCtorArg` is the discriminator constructor argument for prefix
+   * variants (the matched value); for exact variants the discriminator is a fixed override, so it
+   * is not a constructor argument.
    */
   private def emitVariantDecode(
     builder: ScalaCodeBuilder,
     className: String,
     discriminator: TypeDiscriminator,
-    variantKey: String,
-    variantType: ObjectType
+    variantType: ObjectType,
+    discCtorArg: Option[String]
   ): Unit = {
     val nonDisc = discriminator.commonFields.toList ++ variantType.fields.toList
-    val discArg = if (discriminator.includeInOutput) List(discDecodeArg(discriminator, variantKey)) else Nil
+    val discArgs = discCtorArg.toList
     if (nonDisc.isEmpty) {
-      builder.line(s"Right($className(${discArg.mkString(", ")}))")
+      builder.line(s"Right($className(${discArgs.mkString(", ")}))")
     } else {
       builder.line("for {")
       builder.indent()
       nonDisc.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
       builder.dedent()
-      val args = (discArg ++ nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
+      val args = (discArgs ++ nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
       builder.line(s"} yield $className($args)")
     }
   }
@@ -748,11 +772,18 @@ class CodeGenerator(config: GeneratorConfig) {
     // Group variants by their mapped class names, preserving first-appearance order and merging
     // each class's variant fields in order (so generated case classes, decode, and encode agree).
     var classFields = scala.collection.immutable.ListMap.empty[String, scala.collection.immutable.ListMap[String, FieldDef]]
+    var classKeys = scala.collection.immutable.ListMap.empty[String, List[String]]
     discriminator.variants.foreach { case (variantKey, vt) =>
       val cn = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
       val merged = classFields.getOrElse(cn, scala.collection.immutable.ListMap.empty[String, FieldDef]) ++ vt.fields
       classFields = classFields.updated(cn, merged)
+      classKeys = classKeys.updated(cn, classKeys.getOrElse(cn, Nil) :+ variantKey)
     }
+    // A class discriminated by exactly one value gets a fixed override; a class grouping several
+    // discriminator values must keep the value as a constructor field to round-trip which it was.
+    // Prefix matching also keeps a constructor field (the on-the-wire value is parameterized).
+    def classIsFixed(className: String): Boolean =
+      discriminator.variantMatch != "prefix" && classKeys.getOrElse(className, Nil).size == 1
 
     // Variant case classes (and the fallback) may be relocated into a sub-package while the trait
     // stays put; mirror the inline-variants path so variantSubPackage works here too.
@@ -762,9 +793,10 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
     }
 
-    // Generate one case class per unique mapped name
+    // Generate one case class per unique mapped name. A single-value class carries the
+    // discriminator as a fixed `override val` (out of the constructor / unapply); a grouped class
+    // keeps it as an override constructor field.
     classFields.foreach { case (caseClassName, variantFields) =>
-      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)  // override = true
       val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)  // override = true
       }.toList
@@ -772,9 +804,13 @@ class CodeGenerator(config: GeneratorConfig) {
         (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), false)  // override = false
       }.toList
 
-      val allFields = discriminatorField :: (commonFieldsList ++ variantFieldsList)
-
-      builder.caseClassWithOverride(caseClassName, allFields, Some(name))
+      if (classIsFixed(caseClassName)) {
+        val body = List(discOverrideVal(discriminator, classKeys(caseClassName).head))
+        builder.caseClassWithOverride(caseClassName, commonFieldsList ++ variantFieldsList, Some(name), body)
+      } else {
+        val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)
+        builder.caseClassWithOverride(caseClassName, discriminatorField :: (commonFieldsList ++ variantFieldsList), Some(name))
+      }
       builder.emptyLine()
     }
 
@@ -823,15 +859,17 @@ class CodeGenerator(config: GeneratorConfig) {
         builder.line(matchPat)
         builder.indent()
         val nonDisc = discriminator.commonFields.toList ++ classFields.getOrElse(className, scala.collection.immutable.ListMap.empty[String, FieldDef]).toList
-        val discArg = discDecodeArg(discriminator, variantKey)
+        // A grouped class carries the discriminator as a constructor field, so pass the matched
+        // value; a single-value class fixes it via an override, so it is not a constructor arg.
+        val discArgs = if (classIsFixed(className)) Nil else List(discDecodeArg(discriminator, variantKey))
         if (nonDisc.isEmpty) {
-          builder.line(s"Right($className($discArg))")
+          builder.line(s"Right($className(${discArgs.mkString(", ")}))")
         } else {
           builder.line("for {")
           builder.indent()
           nonDisc.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
           builder.dedent()
-          val args = (discArg :: nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
+          val args = (discArgs ++ nonDisc.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) }).mkString(", ")
           builder.line(s"} yield $className($args)")
         }
         builder.dedent()

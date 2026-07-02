@@ -435,29 +435,49 @@ Use the `$type` field to define a discriminator that determines which properties
 ```
 
 **Generated Case Classes:**
+
+The discriminator value is determined by the variant, so (for the default exact matching) it is
+emitted as a fixed `override val` — not a constructor parameter — keeping it out of the
+constructor and `unapply`, and preventing inconsistent construction:
+
 ```scala
-sealed trait Shape
+sealed trait Shape {
+  val shapeType: String
+}
 
 case class Circle(
-  shapeType: String,
   color: String,
   radius: Double
-) extends Shape
+) extends Shape {
+  override val shapeType: String = "circle"
+}
 
 case class Rectangle(
-  shapeType: String,
   color: String,
   width: Double,
   height: Double
-) extends Shape
+) extends Shape {
+  override val shapeType: String = "rectangle"
+}
 
 case class Triangle(
-  shapeType: String,
   color: String,
   base: Double,
   height: Double
-) extends Shape
+) extends Shape {
+  override val shapeType: String = "triangle"
+}
 ```
+
+So you construct `Circle(color, radius)` and match `case Circle(color, radius) =>` — the
+discriminator is read off the value (`c.shapeType`) but never passed in. Three cases keep the
+discriminator as a **constructor field** instead, because the value is not fixed by the class:
+
+- **prefix matching** (`variantMatch: "prefix"`) — the on-the-wire value is parameterized
+  (e.g. `"Decimal(28,8)"`), so it is preserved as a field;
+- a **grouped `variantNames` class** that several discriminator values map to (it must record which
+  value it was);
+- the **`fallbackVariant`** (it carries the unrecognized value and the raw payload).
 
 **Discriminator options:**
 
@@ -466,7 +486,7 @@ case class Triangle(
 | `discriminator` | yes | — | Name of the field whose value selects the variant. |
 | `variants` | yes | — | Map of discriminator value → that variant's object structure. |
 | `commonFields` | no | `{}` | Fields shared by every variant. |
-| `includeDiscriminator` | no | `true` | Emit the discriminator field on the generated case classes. |
+| `includeDiscriminator` | no | `true` | Emit the discriminator on the generated case classes (as a fixed `override val` for exact matching — see above). |
 | `variantNames` | no | `{}` | Override the generated class name for a variant key (e.g. `"string"` → `"StringColumn"`). |
 | `variantMatch` | no | `"exact"` | How a discriminator value selects a variant: `"exact"` (equality) or `"prefix"` (the value *starts with* the variant key). |
 | `variantSubPackage` | no | — | Emit the variant case classes into a sub-package of the trait's package (see below). |
