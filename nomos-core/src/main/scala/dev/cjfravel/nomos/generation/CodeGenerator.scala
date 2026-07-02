@@ -38,10 +38,13 @@ class CodeGenerator(config: GeneratorConfig) {
     
     // Get definitions map for reference resolution
     val definitionsMap = multiTemplate.definitionsMap
+
+    // Access modifier prepended to every generated top-level definition (validated safe above).
+    val visibility = multiTemplate.visibility.map(_ + " ").getOrElse("")
     
     // Generate a file for each definition
     val fileResults = multiTemplate.definitions.map { definition =>
-      generateFromDefinition(definition, multiTemplate.basePackage, definitionsMap, multiTemplate.definitions)
+      generateFromDefinition(definition, multiTemplate.basePackage, definitionsMap, multiTemplate.definitions, visibility)
     }
     
     // Check for errors
@@ -55,12 +58,12 @@ class CodeGenerator(config: GeneratorConfig) {
       val enumFiles = multiTemplate.definitions.flatMap { definition =>
         val pkg = definition.fullPackage(multiTemplate.basePackage)
         collectEnums(definition.templateType).map { case (enumName, values, withUnknown) =>
-          generateEnum(pkg, enumName, values, withUnknown, definition.sourcePath)
+          generateEnum(pkg, enumName, values, withUnknown, definition.sourcePath, visibility)
         }
       }.groupBy(_.relativePath).values.map(_.head).toList
       
       // NomosFormats holds the embedded template and a validator for runtime validation.
-      val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate)
+      val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate, visibility)
       Right(nomosFormatsFile :: generatedFiles ::: enumFiles)
     }
   }
@@ -408,7 +411,8 @@ class CodeGenerator(config: GeneratorConfig) {
     definition: TemplateDefinition,
     basePackage: String,
     definitionsMap: Map[String, TemplateDefinition],
-    allDefinitions: List[TemplateDefinition]
+    allDefinitions: List[TemplateDefinition],
+    visibility: String
   ): Either[GeneratorError, GeneratedFile] = {
     
     // Validate definition name
@@ -434,7 +438,7 @@ class CodeGenerator(config: GeneratorConfig) {
     }
     val imports = generateImports(packageName, basePackage, referencedTypes -- variantSubExcluded, allDefinitions)
     
-    val builder = ScalaCodeBuilder()
+    val builder = ScalaCodeBuilder(visibility)
     
     // Generated-file header with optional source pointer
     headerLines(definition.sourcePath).foreach(builder.line)
@@ -1032,8 +1036,8 @@ class CodeGenerator(config: GeneratorConfig) {
    * open-ended: it also gets a `case class Unknown(value: String)` member so an unrecognized
    * string can be represented (used by a union's `fallbackVariant`), and `fromString` is total.
    */
-  private def generateEnum(packageName: String, enumName: String, values: List[String], withUnknown: Boolean = false, sourcePath: Option[String] = None): GeneratedFile = {
-    val builder = ScalaCodeBuilder()
+  private def generateEnum(packageName: String, enumName: String, values: List[String], withUnknown: Boolean = false, sourcePath: Option[String] = None, visibility: String = ""): GeneratedFile = {
+    val builder = ScalaCodeBuilder(visibility)
     val cases = values.map(v => (v, ScalaCodeBuilder.toPascalCase(v)))
     
     headerLines(sourcePath).foreach(builder.line)
@@ -1041,9 +1045,9 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.emptyLine()
     builder.line("import dev.cjfravel.nomos.json.{JsonValue, JsonString}")
     builder.emptyLine()
-    builder.line(s"sealed trait $enumName")
+    builder.line(s"${visibility}sealed trait $enumName")
     builder.emptyLine()
-    builder.line(s"object $enumName {")
+    builder.line(s"${visibility}object $enumName {")
     builder.indent()
     cases.foreach { case (_, obj) => builder.line(s"case object $obj extends $enumName") }
     if (withUnknown) builder.line(s"final case class Unknown(value: String) extends $enumName")
@@ -1173,8 +1177,8 @@ class CodeGenerator(config: GeneratorConfig) {
    * Generates the NomosFormats object: the embedded MultiTemplate and a MultiValidator built from
    * it for runtime validation.
    */
-  private def generateNomosFormats(basePackage: String, multiTemplate: MultiTemplate): GeneratedFile = {
-    val builder = ScalaCodeBuilder()
+  private def generateNomosFormats(basePackage: String, multiTemplate: MultiTemplate, visibility: String): GeneratedFile = {
+    val builder = ScalaCodeBuilder(visibility)
     
     headerLines(None).foreach(builder.line)
     builder.line(s"package $basePackage")
@@ -1187,7 +1191,7 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(" * Holds the embedded template and a validator for runtime validation.")
     builder.line(" * Generated companions import this to validate without the original template file.")
     builder.line(" */")
-    builder.line("object NomosFormats {")
+    builder.line(s"${visibility}object NomosFormats {")
     builder.indent()
     builder.line("// Embedded template for runtime validation")
     builder.line("lazy val embeddedTemplate: MultiTemplate = {")

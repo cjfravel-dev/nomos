@@ -52,6 +52,8 @@ case class TemplateDefinition(
  * @param definitions List of type definitions
  * @param useOptionTypes Whether to use Option[T] for optional fields (default: true)
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
+ * @param visibility Optional access modifier (e.g. "private[incentives]") prepended to every
+ *   generated top-level definition; absent means public
  */
 case class MultiTemplate(
   basePackage: String,
@@ -61,7 +63,8 @@ case class MultiTemplate(
   fromJsonStyle: String = "either",
   dateType: String = "java.time.LocalDate",
   dateTimeType: String = "java.time.LocalDateTime",
-  mapType: String = "Map"
+  mapType: String = "Map",
+  visibility: Option[String] = None
 ) {
   /**
    * Fully-qualified name of a definition (basePackage + subPackage + name)
@@ -148,6 +151,13 @@ case class MultiTemplate(
       }
     }
     
+    // Validate the optional visibility modifier is a safe Scala access modifier (it is emitted
+    // verbatim into generated source, so it must not be able to break out of that position).
+    visibility.foreach { v =>
+      if (MultiTemplate.ValidVisibility.findFirstIn(v).isEmpty)
+        errors = s"Invalid visibility modifier: '$v' (expected e.g. private, protected, private[pkg])" :: errors
+    }
+    
     errors.reverse
   }
 
@@ -171,6 +181,13 @@ case class MultiTemplate(
 }
 
 object MultiTemplate {
+  /**
+   * A safe Scala access modifier: `private` / `protected`, optionally qualified with `[this]` or a
+   * (dotted) enclosing package/type name. Restricts what may be emitted verbatim as a definition
+   * prefix so a template cannot inject arbitrary source.
+   */
+  val ValidVisibility = "^(private|protected)(\\[(this|[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*)\\])?$".r
+
   /**
    * Creates a simple multi-template with a single definition
    */

@@ -38,8 +38,34 @@ All Nomos templates use a multi-definition format that allows you to define mult
 - **`dateType`** (optional): Scala type generated for `date` fields (default: `java.time.LocalDate`)
 - **`dateTimeType`** (optional): Scala type generated for `datetime` fields (default: `java.time.LocalDateTime`)
 - **`mapType`** (optional): Collection type generated for maps (default: `Map`)
+- **`visibility`** (optional): Scala access modifier prepended to every generated top-level definition, to lock a module's surface to an enclosing package (see below). Absent = public.
 
 The base package is derived from the template path; there is no `basePackage`, `outputDir`, or `mainClass` field.
+
+#### `visibility`: restrict the generated surface
+
+Set `visibility` to a Scala access modifier and nomos emits it on **every** generated top-level
+definition — variant/record case classes, the sealed union trait, generated enums, and the
+companion / `NomosFormats` objects — so nothing outside the given package can bind to them:
+
+```json
+{
+  "visibility": "private[incentives]",
+  "definitions": [ /* ... */ ]
+}
+```
+
+```scala
+private[incentives] sealed trait PackageStep { /* ... */ }
+private[incentives] case class AddNullsPackageStep(properties: AddNullsPackageStepProperties) extends PackageStep { /* ... */ }
+private[incentives] object PackageStep { def decode(...); def encode(...) }
+```
+
+Cross-module codecs (`X.decode` / `X.encode`, e.g. via `$gen:`) keep working as long as the
+callers are within the same enclosing package. The value must be a plain access modifier —
+`private`, `protected`, optionally qualified with `[this]` or a (dotted) package/type name (e.g.
+`private[incentives]`, `protected[com.example]`); anything else is rejected (the modifier is
+emitted into generated source, so it is validated rather than trusted verbatim).
 
 ### Definition Fields
 

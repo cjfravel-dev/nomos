@@ -3,7 +3,7 @@ package dev.cjfravel.nomos.generation
 /**
  * Helper class for building Scala source code with proper indentation
  */
-class ScalaCodeBuilder(indentSize: Int = 2) {
+class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
   private val buffer = new StringBuilder()
   private var currentIndent = 0
 
@@ -78,12 +78,12 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     val open = if (body.nonEmpty) " {" else ""
     
     if (fields.isEmpty) {
-      line(s"case class $name()$extendsClause$open")
+      line(s"${visibility}case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
       val (fieldName, fieldType) = fields.head
-      line(s"case class $name($fieldName: $fieldType)$extendsClause$open")
+      line(s"${visibility}case class $name($fieldName: $fieldType)$extendsClause$open")
     } else {
-      line(s"case class $name(")
+      line(s"${visibility}case class $name(")
       indented {
         fields.zipWithIndex.foreach { case ((fieldName, fieldType), idx) =>
           val comma = if (idx < fields.length - 1) "," else ""
@@ -110,13 +110,13 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     val open = if (body.nonEmpty) " {" else ""
     
     if (fields.isEmpty) {
-      line(s"case class $name()$extendsClause$open")
+      line(s"${visibility}case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
       val (fieldName, fieldType, isOverride) = fields.head
       val overrideKeyword = if (isOverride) "override " else ""
-      line(s"case class $name(${overrideKeyword}val $fieldName: $fieldType)$extendsClause$open")
+      line(s"${visibility}case class $name(${overrideKeyword}val $fieldName: $fieldType)$extendsClause$open")
     } else {
-      line(s"case class $name(")
+      line(s"${visibility}case class $name(")
       indented {
         fields.zipWithIndex.foreach { case ((fieldName, fieldType, isOverride), idx) =>
           val comma = if (idx < fields.length - 1) "," else ""
@@ -139,7 +139,7 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
    * Appends a sealed trait definition
    */
   def sealedTrait(name: String): ScalaCodeBuilder = {
-    line(s"sealed trait $name")
+    line(s"${visibility}sealed trait $name")
     this
   }
 
@@ -148,9 +148,9 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
    */
   def sealedTraitWithFields(name: String, fields: List[(String, String)]): ScalaCodeBuilder = {
     if (fields.isEmpty) {
-      line(s"sealed trait $name")
+      line(s"${visibility}sealed trait $name")
     } else {
-      line(s"sealed trait $name {")
+      line(s"${visibility}sealed trait $name {")
       indented {
         fields.foreach { case (fieldName, fieldType) =>
           line(s"val $fieldName: $fieldType")
@@ -162,10 +162,10 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
   }
 
   /**
-   * Appends a companion object with json4s formats
+   * Appends a companion object with the given body.
    */
   def companionObject(name: String)(body: => Unit): ScalaCodeBuilder = {
-    line(s"object $name {")
+    line(s"${visibility}object $name {")
     indented(body)
     line("}")
     this
@@ -196,6 +196,7 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
 
 object ScalaCodeBuilder {
   def apply(): ScalaCodeBuilder = new ScalaCodeBuilder()
+  def apply(visibility: String): ScalaCodeBuilder = new ScalaCodeBuilder(visibility = visibility)
   
   /** Reserved Scala 2 keywords that must be backtick-escaped when used as identifiers. */
   val scalaKeywords: Set[String] = Set(
