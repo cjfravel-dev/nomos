@@ -33,4 +33,18 @@ class FromJsonStylePluginPathSpec extends AnyFlatSpec with Matchers with EitherV
     content should include("def fromJson(json: String): U =")
     content should not include "def fromJson(json: String): Either"
   }
+
+  it should "carry visibility through generateAll (combine) even when a non-visibility template is first" in {
+    val plain = Nomos.parseTemplateDeferred("""{"definitions":[{"name":"A","template":{"id":"string"}}]}""", "com.example").value
+    val vis = Nomos.parseTemplateDeferred(
+      """{"visibility":"private[example]","definitions":[{"name":"V","template":{"id":"string"}}]}""", "com.example").value
+    val templates = new java.util.ArrayList[dev.cjfravel.nomos.model.MultiTemplate]()
+    templates.add(plain)
+    templates.add(vis)
+    val dir = new File(System.getProperty("java.io.tmpdir"), "nomos-vis-" + System.nanoTime())
+    Nomos.generateAll(templates, dir.getAbsolutePath).value
+    val content = scala.io.Source.fromFile(new File(dir, "com/example/V.scala")).mkString
+    content should include("private[example] case class V(")
+    content should include("private[example] object V {")
+  }
 }

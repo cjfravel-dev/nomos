@@ -158,4 +158,11 @@ case class FieldDef(
    * validation consistent with (de)serialization.
    */
   def required: Boolean = !optional && default.isEmpty
+
+  /**
+   * Whether a present JSON `null` is acceptable for this field. Decode treats null the same as
+   * absent for optional/defaulted fields (yielding None / the default) and as `null` for nullable
+   * fields, so validation must not reject a present null in those cases.
+   */
+  def acceptsNull: Boolean = optional || nullable || default.isDefined
 }

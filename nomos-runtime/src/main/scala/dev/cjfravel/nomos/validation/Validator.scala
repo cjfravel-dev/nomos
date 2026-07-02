@@ -1,7 +1,7 @@
 package dev.cjfravel.nomos.validation
 
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.json.{Json, JsonValue}
+import dev.cjfravel.nomos.json.{Json, JsonValue, JsonNull}
 
 /**
  * Validates JSON data against multi-template definitions with reference resolution
@@ -254,6 +254,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         // Validate present fields
         val fieldErrors = fields.flatMap { case (fieldName, fieldDef) =>
           jsonFieldMap.get(fieldName) match {
+            case Some(JsonNull) if fieldDef.acceptsNull =>
+              List.empty // present null is accepted for optional/nullable/defaulted fields
             case Some(value) =>
               validateTypeWithRefs(fieldDef.fieldType, value, s"$path.$fieldName", definitions)
             case None if fieldDef.optional =>
@@ -312,6 +314,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                 // Validate common fields
                 val commonErrors = commonFields.flatMap { case (cfName, cfDef) =>
                   jsonFieldMap.get(cfName) match {
+                    case Some(JsonNull) if cfDef.acceptsNull =>
+                      List.empty
                     case Some(value) =>
                       validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", definitions)
                     case None if cfDef.required =>
@@ -324,6 +328,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                 // Validate variant-specific fields
                 val variantErrors = variantType.fields.flatMap { case (vfName, vfDef) =>
                   jsonFieldMap.get(vfName) match {
+                    case Some(JsonNull) if vfDef.acceptsNull =>
+                      List.empty
                     case Some(value) =>
                       validateTypeWithRefs(vfDef.fieldType, value, s"$path.$vfName", definitions)
                     case None if vfDef.required =>
@@ -353,6 +359,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                   // the unknown variant-specific shape is intentionally not validated.
                   commonFields.flatMap { case (cfName, cfDef) =>
                     jsonFieldMap.get(cfName) match {
+                      case Some(JsonNull) if cfDef.acceptsNull =>
+                        List.empty
                       case Some(value) =>
                         validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", definitions)
                       case None if cfDef.required =>

@@ -221,7 +221,8 @@ object MultiTemplate {
     val dateType = firstNonDefault(templates.map(_.dateType), "java.time.LocalDate")
     val dateTimeType = firstNonDefault(templates.map(_.dateTimeType), "java.time.LocalDateTime")
     val mapType = firstNonDefault(templates.map(_.mapType), "Map")
-    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType)
+    val visibility = firstNonDefault(templates.map(_.visibility), None)
+    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
   }
 
   private def commonPrefix(pkgs: List[String]): String = {
