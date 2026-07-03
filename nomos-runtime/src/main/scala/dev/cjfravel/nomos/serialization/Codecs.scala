@@ -17,7 +17,9 @@ object Codecs {
   }
 
   val double: Decoder[Double] = {
-    case n: JsonNumber => Right(n.asDouble)
+    case n: JsonNumber =>
+      val d = n.asDouble
+      if (d.isNaN || d.isInfinite) Left(s"number out of Double range: ${n.raw}") else Right(d)
     case other => Left(s"expected number, got ${other.typeName}")
   }
 
@@ -32,7 +34,7 @@ object Codecs {
   }
 
   val bigDecimal: Decoder[BigDecimal] = {
-    case n: JsonNumber => Right(n.asBigDecimal)
+    case n: JsonNumber => n.asBigDecimalOption.toRight(s"number out of range: ${n.raw}")
     case other => Left(s"expected number, got ${other.typeName}")
   }
 
