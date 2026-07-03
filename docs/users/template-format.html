@@ -60,7 +60,6 @@
     <h2 id="structure">File structure</h2>
     <p>A template has a top-level <code>definitions</code> array, plus optional project-wide settings. The base package comes from the file's path under <code>src/main/resources/nomos/templates/</code>.</p>
 <pre><code class="language-json">{
-  "useOptionTypes": true,
   "listType": "List",
   "definitions": [
     {
@@ -74,14 +73,12 @@
     <table>
       <tr><th>Top-level field</th><th>Default</th><th>Meaning</th></tr>
       <tr><td><code>definitions</code></td><td>—</td><td>Array of type definitions (required)</td></tr>
-      <tr><td><code>useOptionTypes</code></td><td><code>true</code></td><td>Must be <code>true</code>; optional fields become <code>Option[T]</code>. <code>false</code> is not supported; use per-field <code>nullable: true</code> for null-based optional fields.</td></tr>
       <tr><td><code>listType</code></td><td><code>"List"</code></td><td>Collection type for arrays (<code>List</code> or <code>Array</code>)</td></tr>
-      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Only <code>"Map"</code> is supported for <code>$map</code>.</td></tr>
       <tr><td><code>dateType</code> / <code>dateTimeType</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td><td>Generated temporal types</td></tr>
       <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td>Only <code>"throwing"</code> is special (<code>fromJson</code> throws on failure); any other value, including the default, yields the <code>Either</code>-returning <code>fromJson</code>. See <a href="code-generation.html#fromjson">Code Generation</a>.</td></tr>
       <tr><td><code>visibility</code></td><td>—</td><td>Access prefix applied to every generated top-level definition (e.g. <code>private</code>, <code>private[models]</code>) for package-private models.</td></tr>
     </table>
-    <div class="callout note"><p>These settings are project-wide. In a multi-file project, set a value in one template and it applies everywhere — you don't repeat it in every file. If two files set the <em>same</em> setting to different values, generation fails with an error naming the setting, so the result is never ambiguous.</p></div>
+    <div class="callout note"><p>These settings are project-wide. In a multi-file project, set a value in one template and it applies everywhere — you don't repeat it in every file. If two files set the <em>same</em> setting to different values, generation fails with an error naming the setting, so the result is never ambiguous. Any unrecognized top-level key is rejected, so a typo or removed setting fails loudly instead of being silently ignored.</p></div>
 
     <h2 id="scalars">Scalar types</h2>
     <table>
@@ -147,7 +144,7 @@
   "retries":  { "$optional": "int", "nullable": true },
   "verbose":  { "type": "boolean", "default": false }
 }</code></pre>
-    <div class="callout tip"><p><code>nickname</code> becomes <code>Option[String]</code>. <code>nullable: true</code> generates a raw nullable type instead of <code>Option</code>; value types are boxed (e.g. <code>java.lang.Integer</code>) so <code>null</code> compiles. <code>verbose</code> becomes <code>verbose: Boolean = false</code>.</p></div>
+    <div class="callout tip"><p><code>nickname</code> becomes <code>Option[String]</code>. <code>nullable: true</code> generates a raw nullable type instead of <code>Option</code>. Because a Scala value type like <code>Int</code> can't hold <code>null</code>, a nullable <code>int</code> is generated as its <em>boxed</em> Java wrapper — e.g. <code>retries: java.lang.Integer</code> (a reference type, so it can be <code>null</code>) rather than <code>retries: Int</code> (which can't). <code>verbose</code> becomes <code>verbose: Boolean = false</code>.</p></div>
 
     <h2 id="refs">References</h2>
 <pre><code class="language-json">{

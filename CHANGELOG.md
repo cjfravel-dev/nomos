@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** removed the single-valued `useOptionTypes` and `mapType` template settings. Optional
+  fields are always `Option[T]` (use per-field `nullable: true` for null-based optional fields) and
+  maps are always `Map[String, T]`. `listType` (`List`/`Array`) is unchanged.
+- The template parser now rejects unknown top-level keys, so a typo or a removed setting fails with a
+  clear error instead of being silently ignored.
+
 ## [0.0.1-alpha3]
 
 A broad correctness, robustness, and documentation pass over the initial alpha.

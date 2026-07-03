@@ -7,19 +7,15 @@ import java.io.File
  *
  * @param basePackage The base package for generated code (e.g., "com.myapp")
  * @param outputDir The directory where generated code will be written
- * @param useOptionTypes Must be true: optional fields are Option[T]. false is rejected at
- *   generation; use per-field "nullable": true for null-based optional fields.
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  */
 case class GeneratorConfig(
   basePackage: String,
   outputDir: String,
-  useOptionTypes: Boolean = true,
   listType: String = "List",
   throwingFromJson: Boolean = false,
   dateType: String = "java.time.LocalDate",
-  dateTimeType: String = "java.time.LocalDateTime",
-  mapType: String = "Map"
+  dateTimeType: String = "java.time.LocalDateTime"
 ) {
   /**
    * Validates the configuration
@@ -63,7 +59,7 @@ object GeneratorConfig {
    * Creates a default configuration with standard Maven structure
    */
   def default(basePackage: String): GeneratorConfig = {
-    GeneratorConfig(basePackage, "src/main/scala", useOptionTypes = true)
+    GeneratorConfig(basePackage, "src/main/scala")
   }
   
   /**
