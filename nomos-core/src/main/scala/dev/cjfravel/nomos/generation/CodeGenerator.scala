@@ -478,13 +478,14 @@ class CodeGenerator(config: GeneratorConfig) {
         generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName)
       
       case disc: TypeDiscriminator =>
-        // Reject ambiguous variants up front so the failure surfaces through the Either API
-        // rather than as an uncaught exception thrown from deep in generation.
+        // includeDiscriminator=false drops the discriminator from the model and from encode output
+        // while decode still requires it, so such a union cannot decode its own output. Reject it
+        // with a clear message rather than emitting a type that fails to round-trip.
         if (!disc.includeInOutput) {
-          detectAmbiguity(disc) match {
-            case Some(error) => return Left(GeneratorError.AmbiguityError(error))
-            case None =>
-          }
+          return Left(GeneratorError.TemplateError(
+            s"Definition '${definition.name}': includeDiscriminator=false is not supported. " +
+            "The discriminator is omitted from the model and from encode output but is required to " +
+            "decode, so the type cannot decode its own output. Set includeDiscriminator to true."))
         }
         generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap, basePackage, packageName)
       
@@ -1147,50 +1148,6 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Detects if variants are ambiguous when discriminator is not included
-   */
-  private def detectAmbiguity(discriminator: TypeDiscriminator): Option[String] = {
-    val variants = discriminator.variants.values.toList
-    
-    // Check if any two variants have the same field structure
-    for {
-      i <- variants.indices
-      j <- (i + 1) until variants.length
-    } {
-      val variant1 = variants(i)
-      val variant2 = variants(j)
-      
-      // Combine with common fields
-      val fields1 = discriminator.commonFields ++ variant1.fields
-      val fields2 = discriminator.commonFields ++ variant2.fields
-      
-      if (fields1.keySet == fields2.keySet) {
-        // Same field names - check if types are the same
-        val sameTypes = fields1.keySet.forall { key =>
-          (fields1.get(key), fields2.get(key)) match {
-            case (Some(f1), Some(f2)) => 
-              f1.fieldType.getClass == f2.fieldType.getClass && f1.optional == f2.optional
-            case _ => false
-          }
-        }
-        
-        if (sameTypes) {
-          val variantNames = discriminator.variants.filter { case (_, obj) =>
-            obj == variant1 || obj == variant2
-          }.keys.mkString(", ")
-          
-          return Some(
-            s"Variants [$variantNames] are indistinguishable without the discriminator field '${discriminator.fieldName}'. " +
-            s"Either include the discriminator field or make the variants have different field structures."
-          )
-        }
-      }
-    }
-    
-    None
-  }
-  
-  /**
    * Generates the NomosFormats object: the embedded MultiTemplate and a MultiValidator built from
    * it for runtime validation.
    */
@@ -1237,6 +1194,5 @@ sealed trait GeneratorError {
 object GeneratorError {
   case class ConfigError(message: String) extends GeneratorError
   case class TemplateError(message: String) extends GeneratorError
-  case class AmbiguityError(message: String) extends GeneratorError
   case class IOError(message: String) extends GeneratorError
 }

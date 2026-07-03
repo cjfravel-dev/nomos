@@ -32,13 +32,15 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
     ScalaCodeBuilder.isSimpleIdentifier("") shouldBe false
   }
 
-  "generateMulti" should "return Left(AmbiguityError) instead of throwing for ambiguous variants" in {
+  "generateMulti" should "reject includeDiscriminator=false instead of emitting a non-round-tripping union" in {
     val disc = TypeDiscriminator("kind",
       ListMap(
         "a" -> ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false))),
-        "b" -> ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false)))
+        "b" -> ObjectType(ListMap("y" -> FieldDef(StringType(), optional = false)))
       ), ListMap.empty, includeInOutput = false)
-    gen.generateMulti(multi(TemplateDefinition("Thing", disc))).left.value shouldBe a[GeneratorError.AmbiguityError]
+    val err = gen.generateMulti(multi(TemplateDefinition("Thing", disc))).left.value
+    err shouldBe a[GeneratorError.TemplateError]
+    err.message should include("includeDiscriminator")
   }
 
   it should "reject an enum name that is not a valid identifier (closes path traversal)" in {
@@ -100,26 +102,6 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   // Regression guards: collectNameErrors must not reject templates that generated valid code before.
-
-  it should "accept a non-identifier discriminator field that is only a JSON key" in {
-    val disc = TypeDiscriminator("@type",
-      ListMap(
-        "a" -> ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false))),
-        "b" -> ObjectType(ListMap("y" -> FieldDef(StringType(), optional = false)))
-      ), ListMap.empty, includeInOutput = false)
-    val content = gen.generateMulti(multi(TemplateDefinition("Entity", disc))).value.find(_.fileName == "Entity.scala").get.content
-    content should include("""o.field("@type")""")
-  }
-
-  it should "escape a discriminator field name that is only a JSON key" in {
-    val disc = TypeDiscriminator("a\"b",
-      ListMap(
-        "c" -> ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false))),
-        "d" -> ObjectType(ListMap("y" -> FieldDef(StringType(), optional = false)))
-      ), ListMap.empty, includeInOutput = false)
-    val content = gen.generateMulti(multi(TemplateDefinition("E", disc))).value.find(_.fileName == "E.scala").get.content
-    content should include("""field("a\"b")""")
-  }
 
   it should "accept an external type with generic parameters" in {
     val d = TemplateDefinition("N",
