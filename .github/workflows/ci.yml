@@ -33,6 +33,17 @@ jobs:
       - name: Build, test and install (bom, runtime, core, plugin)
         run: mvn clean install -Dgpg.skip=true -B
 
+      - name: Verify release artifacts (sources/javadoc jars, plugin descriptor)
+        run: |
+          set -euo pipefail
+          for m in nomos-runtime nomos-core nomos-maven-plugin; do
+            ls "$m"/target/"$m"-*-sources.jar
+            ls "$m"/target/"$m"-*-javadoc.jar
+          done
+          plugin_jar=$(ls nomos-maven-plugin/target/nomos-maven-plugin-*.jar | grep -Ev 'sources|javadoc')
+          jar tf "$plugin_jar" | grep -q '^META-INF/maven/plugin.xml$'
+          echo "Release artifacts present: sources + javadoc jars for each module and the plugin descriptor."
+
       - name: Build and test the example (regenerates via the installed plugin)
         run: mvn -f nomos-example/pom.xml clean test -B
 

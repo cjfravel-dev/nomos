@@ -237,7 +237,10 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
-                    <autoPublish>true</autoPublish>
+                    <!-- Upload to the Central portal but require an explicit "Publish" there, so an
+                         accidental `mvn deploy` stages a (droppable) deployment instead of an
+                         irreversible release. -->
+                    <autoPublish>false</autoPublish>
                 </configuration>
             </plugin>
         </plugins>
