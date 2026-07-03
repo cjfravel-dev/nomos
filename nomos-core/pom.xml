@@ -71,6 +71,10 @@
                 <version>2.0.0</version>
                 <configuration>
                     <scalacPluginVersion>2.5.2</scalacPluginVersion>
+                    <!-- Enforce a coverage floor (well below current ~93%) so coverage can't
+                         silently erode; ratchet up over time. -->
+                    <minimumCoverage>80</minimumCoverage>
+                    <failOnMinimumCoverage>true</failOnMinimumCoverage>
                 </configuration>
             </plugin>
 
