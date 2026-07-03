@@ -16,6 +16,7 @@ import scala.collection.JavaConverters;
 import scala.util.Either;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,6 +31,8 @@ import java.util.List;
 @Mojo(name = "generate", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class GenerateMojo extends AbstractMojo {
 
+    private static final String DEFAULT_TEMPLATE_DIRECTORY = "src/main/resources/nomos/templates";
+
     /**
      * The Maven project.
      */
@@ -40,8 +43,16 @@ public class GenerateMojo extends AbstractMojo {
      * Directory containing template files.
      * All paths are resolved relative to ${project.basedir}.
      */
-    @Parameter(property = "nomos.templateDirectory", defaultValue = "src/main/resources/nomos/templates")
+    @Parameter(property = "nomos.templateDirectory", defaultValue = DEFAULT_TEMPLATE_DIRECTORY)
     private String templateDirectory;
+
+    /**
+     * Fail the build when the template directory is missing or contains no templates. A template
+     * directory configured to a non-default location that does not exist always fails, since that
+     * is a misconfiguration rather than "nothing to do".
+     */
+    @Parameter(property = "nomos.failOnMissingTemplates", defaultValue = "false")
+    private boolean failOnMissingTemplates;
 
     /**
      * File patterns to include (Ant-style).
@@ -73,6 +84,10 @@ public class GenerateMojo extends AbstractMojo {
         getLog().info("Template directory: " + templateDir.getAbsolutePath());
         
         if (!templateDir.exists()) {
+            boolean configured = !DEFAULT_TEMPLATE_DIRECTORY.equals(templateDirectory);
+            if (configured || failOnMissingTemplates) {
+                throw new MojoFailureException("Template directory does not exist: " + templateDir.getAbsolutePath());
+            }
             getLog().warn("Template directory does not exist: " + templateDir.getAbsolutePath());
             getLog().warn("Skipping code generation");
             return;
@@ -82,6 +97,9 @@ public class GenerateMojo extends AbstractMojo {
         List<File> templateFiles = findTemplateFiles(templateDir);
         
         if (templateFiles.isEmpty()) {
+            if (failOnMissingTemplates) {
+                throw new MojoFailureException("No template files found in: " + templateDir.getAbsolutePath());
+            }
             getLog().warn("No template files found in: " + templateDir.getAbsolutePath());
             return;
         }
@@ -98,7 +116,7 @@ public class GenerateMojo extends AbstractMojo {
             getLog().info("Processing: " + relativePath);
 
             try {
-                String templateContent = new String(Files.readAllBytes(templateFile.toPath()));
+                String templateContent = new String(Files.readAllBytes(templateFile.toPath()), StandardCharsets.UTF_8);
                 String basePackage = packageFromPath(templateDir.toPath(), templateFile.toPath());
                 getLog().info("  Base package: " + basePackage);
 

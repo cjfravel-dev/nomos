@@ -1,6 +1,6 @@
 package dev.cjfravel.nomos.generation
 
-import java.io.{File, PrintWriter}
+import java.io.File
 import scala.util.{Try, Success, Failure}
 
 /**
@@ -31,15 +31,10 @@ class FileWriter {
 
       // Create parent directories if they don't exist
       targetFile.getParentFile.mkdirs()
-      
-      // Write the content
-      val writer = new PrintWriter(targetFile)
-      try {
-        writer.write(file.content)
-        targetFile
-      } finally {
-        writer.close()
-      }
+
+      // Write as UTF-8 so output is reproducible across platforms and non-ASCII content is intact.
+      java.nio.file.Files.write(targetFile.toPath, file.content.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+      targetFile
     } match {
       case Success(f) => Right(f)
       case Failure(e) => Left(WriteError.IOError(file.relativePath, e.getMessage))

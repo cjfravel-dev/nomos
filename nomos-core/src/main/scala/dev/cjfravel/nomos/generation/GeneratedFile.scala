@@ -1,6 +1,6 @@
 package dev.cjfravel.nomos.generation
 
-import java.io.{File, PrintWriter}
+import java.io.File
 
 /**
  * Represents a generated Scala source file
@@ -18,18 +18,13 @@ case class GeneratedFile(
   def writeTo(outputDir: File): Either[String, File] = {
     try {
       val file = new File(outputDir, relativePath)
-      
+
       // Create parent directories if they don't exist
       file.getParentFile.mkdirs()
-      
-      // Write the content
-      val writer = new PrintWriter(file)
-      try {
-        writer.write(content)
-        Right(file)
-      } finally {
-        writer.close()
-      }
+
+      // Write as UTF-8 so output is reproducible and non-ASCII content is not corrupted.
+      java.nio.file.Files.write(file.toPath, content.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+      Right(file)
     } catch {
       case e: Exception => Left(s"Failed to write file $relativePath: ${e.getMessage}")
     }
