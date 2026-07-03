@@ -56,7 +56,11 @@ object NomosFormats {
           ),
           useOptionTypes = true,
           listType = "List",
-          fromJsonStyle = "either"
+          fromJsonStyle = "either",
+          dateType = "java.time.LocalDate",
+          dateTimeType = "java.time.LocalDateTime",
+          mapType = "Map",
+          visibility = None
         )
   }
 
