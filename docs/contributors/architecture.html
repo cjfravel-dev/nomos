@@ -70,10 +70,13 @@
       <span class="flow-step">CodeGenerator</span>
       <span class="flow-arrow">→</span>
       <span class="flow-step">GeneratedFile(s)</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">FileWriter</span>
     </div>
     <ul>
       <li><b>TemplateParser</b> reads JSON into the type model, resolving <code>$ref</code> variants, and validating and rendering default literals. Missing-field defaults are applied by the generated <code>decode</code>.</li>
       <li><b>CodeGenerator</b> walks the model to emit case classes, companions, enum files, and <code>NomosFormats</code>.</li>
+      <li><b>FileWriter</b> writes the generated files, skipping any whose contents are byte-identical (so unchanged files keep their timestamps), and prunes orphaned generated files left behind by removed definitions.</li>
       <li><b>TemplateSerializer</b> renders the model back into Scala source — this is what gets embedded for runtime validation.</li>
       <li><b>MultiValidator</b> validates JSON against a <code>MultiTemplate</code>, resolving references across definitions.</li>
     </ul>

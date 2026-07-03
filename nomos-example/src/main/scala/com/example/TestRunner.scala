@@ -4,7 +4,7 @@ import com.example.models.user.User
 
 object TestRunner {
   def main(args: Array[String]): Unit = {
-    println("=== Testing Jackson Serialization/Deserialization ===\n")
+    println("=== Testing Serialization/Deserialization ===\n")
     
     // Test 1: Create a User instance
     val user = User(

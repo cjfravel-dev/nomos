@@ -13,7 +13,8 @@ mvn clean test
 mvn -f nomos-example/pom.xml test
 ```
 
-CI runs the same on Java 11 and Java 17.
+CI runs the reactor and the example on both Java 11 and Java 17, and additionally verifies
+coverage, the release artifacts, and the end-to-end example build.
 
 ## Pull requests
 

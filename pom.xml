@@ -211,6 +211,19 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>docs-no-stale-refs</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <arguments>
+                                <argument>dev/scripts/docs-no-stale-refs.sh</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 

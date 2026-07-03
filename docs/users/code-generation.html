@@ -51,7 +51,7 @@
     <div class="page-header">
       <span class="eyebrow">User Guide</span>
       <h1>Code Generation</h1>
-      <p class="lede">For each definition Nomos emits a case class and a companion with parse/serialize/validate, plus a shared <code>NomosFormats</code> carrying the embedded template.</p>
+      <p class="lede">For each object definition Nomos emits a case class, and for each discriminator a <code>sealed trait</code> plus variant case classes — each with a companion for parse/serialize/validate, plus a shared <code>NomosFormats</code> carrying the embedded template.</p>
     </div>
 
     <h2 id="files">What gets generated</h2>
@@ -78,7 +78,7 @@ object User {
   def toJson(obj: User): String = Json.write(encode(obj))
   def validate(json: String): Either[List[ValidationError], User] = { ... }
 }</code></pre>
-    <p>Discriminated unions instead generate a <code>sealed trait</code>, a case class per variant, and a companion whose <code>fromJson</code> dispatches on the discriminator value (using <code>startsWith</code> when <code>variantMatch: prefix</code>).</p>
+    <p>Discriminated unions instead generate a <code>sealed trait</code>, a case class per variant, and a companion whose <code>fromJson</code> dispatches on the discriminator value (using <code>startsWith</code> when <code>variantMatch: prefix</code>). A <code>fallbackVariant</code> adds a catch-all case that preserves an unknown discriminator value and its raw payload, so unrecognized types round-trip rather than fail.</p>
 
     <h2 id="formats">NomosFormats</h2>
     <p>A single <code>NomosFormats</code> per base package holds the reconstructed <code>MultiTemplate</code> and a <code>MultiValidator</code> built from it. Generated companions import it to validate without the original template file.</p>
@@ -99,6 +99,7 @@ object Priority {
   def decode(json: JsonValue): Either[String, Priority] = ...
   def encode(v: Priority): JsonValue = ...
 }</code></pre>
+    <p>A discriminator with <code>discriminatorEnum</code> renders its discriminator values as the same enum shape. When that union also sets <code>fallbackVariant</code>, the enum is <em>open</em>: it gains an <code>Unknown(value)</code> member and a total <code>fromString</code>, so an unrecognized discriminator value decodes to <code>Unknown</code> and encodes back to its original string.</p>
 
     <h2 id="options">Generation options</h2>
     <p>Set these at the top level of a template (project-wide in multi-file builds):</p>
@@ -109,9 +110,10 @@ object Priority {
       <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Must be <code>"Map"</code>; this is the only supported value for <code>$map</code>.</td></tr>
       <tr><td><code>dateType</code></td><td><code>java.time.LocalDate</code></td><td>e.g. <code>java.util.Date</code></td></tr>
       <tr><td><code>dateTimeType</code></td><td><code>java.time.LocalDateTime</code></td><td>Target for <code>datetime</code></td></tr>
-      <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td><code>either</code> or <code>throwing</code></td></tr>
+      <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td>Only <code>"throwing"</code> is special (throwing <code>fromJson</code>); any other value yields the <code>Either</code>-returning <code>fromJson</code>.</td></tr>
+      <tr><td><code>visibility</code></td><td>—</td><td>Access prefix on every generated top-level definition (e.g. <code>private</code>, <code>private[models]</code>).</td></tr>
     </table>
-    <p>Per-field, <code>nullable: true</code> yields a raw nullable type (value types boxed as <code>java.lang.Integer</code>/<code>Long</code>/<code>Double</code>/<code>Boolean</code>). <code>default</code> is accepted only on non-optional string, numeric, boolean, and enum fields; date, datetime, reference, collection, and object defaults are rejected at parse time. Enum defaults render as <code>EnumName.Value</code>.</p>
+    <p>Per-field, <code>nullable: true</code> yields a raw nullable type (value types boxed as <code>java.lang.Integer</code>/<code>Long</code>/<code>Double</code>/<code>Boolean</code>). <code>default</code> is accepted only on non-optional string, numeric, boolean, and enum fields; date, datetime, reference, collection, and object defaults — and an <code>int</code>/<code>long</code> default outside the target range — are rejected at parse time. Defaults render per type: enum → <code>EnumName.Value</code>, <code>long</code> → <code>123L</code>, a whole-number <code>number</code>/<code>double</code> → <code>1.0</code>, and <code>decimal</code> → <code>BigDecimal("…")</code>.</p>
 
     <h2 id="fromjson">fromJson style</h2>
 <pre><code class="language-json">{ "fromJsonStyle": "throwing", "definitions": [ ... ] }</code></pre>

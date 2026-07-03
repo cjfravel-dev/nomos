@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>Nomos Core 0.1.0-SNAPSHOT API  - dev.cjfravel.nomos.Nomos</title>
-          <meta name="description" content="Nomos Core 0.1.0 - SNAPSHOT API - dev.cjfravel.nomos.Nomos" />
-          <meta name="keywords" content="Nomos Core 0.1.0 SNAPSHOT API dev.cjfravel.nomos.Nomos" />
+          <title>Nomos Core 0.0.1-alpha2 API  - dev.cjfravel.nomos.Nomos</title>
+          <meta name="description" content="Nomos Core 0.0.1 - alpha2 API - dev.cjfravel.nomos.Nomos" />
+          <meta name="keywords" content="Nomos Core 0.0.1 alpha2 API dev.cjfravel.nomos.Nomos" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">Nomos Core 0.1.0-SNAPSHOT API<span id="doc-version"></span></span>
+        <span id="doc-title">Nomos Core 0.0.1-alpha2 API<span id="doc-version"></span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -133,22 +133,6 @@
       </span>
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="index.html" class="extype" name="dev.cjfravel.nomos">nomos</a></dd></dl></div>
-    </li><li name="dev.cjfravel.nomos.model" visbl="pub" class="indented4 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="model"></a><a id="model:model"></a>
-      <span class="permalink">
-      <a href="../../../dev/cjfravel/nomos/model/index.html" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier"></span>
-        <span class="kind">package</span>
-      </span>
-      <span class="symbol">
-        <a title="" href="model/index.html"><span class="name">model</span></a>
-      </span>
-      
-      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="index.html" class="extype" name="dev.cjfravel.nomos">nomos</a></dd></dl></div>
     </li><li name="dev.cjfravel.nomos.parser" visbl="pub" class="indented4 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="parser"></a><a id="parser:parser"></a>
       <span class="permalink">
@@ -162,38 +146,6 @@
       </span>
       <span class="symbol">
         <a title="" href="parser/index.html"><span class="name">parser</span></a>
-      </span>
-      
-      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="index.html" class="extype" name="dev.cjfravel.nomos">nomos</a></dd></dl></div>
-    </li><li name="dev.cjfravel.nomos.serialization" visbl="pub" class="indented4 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="serialization"></a><a id="serialization:serialization"></a>
-      <span class="permalink">
-      <a href="../../../dev/cjfravel/nomos/serialization/index.html" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier"></span>
-        <span class="kind">package</span>
-      </span>
-      <span class="symbol">
-        <a title="" href="serialization/index.html"><span class="name">serialization</span></a>
-      </span>
-      
-      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="index.html" class="extype" name="dev.cjfravel.nomos">nomos</a></dd></dl></div>
-    </li><li name="dev.cjfravel.nomos.validation" visbl="pub" class="indented4 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="validation"></a><a id="validation:validation"></a>
-      <span class="permalink">
-      <a href="../../../dev/cjfravel/nomos/validation/index.html" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier"></span>
-        <span class="kind">package</span>
-      </span>
-      <span class="symbol">
-        <a title="" href="validation/index.html"><span class="name">validation</span></a>
       </span>
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="index.html" class="extype" name="dev.cjfravel.nomos">nomos</a></dd></dl></div>
@@ -366,7 +318,7 @@
         <span class="kind">val</span>
       </span>
       <span class="symbol">
-        <span class="name">adapters</span><span class="result">: <a href="serialization/AdapterRegistry$.html" class="extype" name="dev.cjfravel.nomos.serialization.AdapterRegistry">AdapterRegistry</a>.type</span>
+        <span class="name">adapters</span><span class="result">: <span class="extype" name="dev.cjfravel.nomos.serialization.AdapterRegistry">AdapterRegistry</span>.type</span>
       </span>
       
       <p class="shortcomment cmt">Registry of named (de)serialization adapters.</p>
@@ -409,8 +361,6 @@
               
                 <span class="name">@native</span><span class="args">()</span>
               
-                <span class="name">@HotSpotIntrinsicCandidate</span><span class="args">()</span>
-              
         </dd></dl></div>
     </li><li name="dev.cjfravel.nomos.Nomos#createValidator" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="createValidator(templateJson:String,basePackage:String):Either[dev.cjfravel.nomos.parser.ParseError,dev.cjfravel.nomos.validation.MultiValidator]"></a><a id="createValidator(String,String):Either[ParseError,MultiValidator]"></a>
@@ -424,7 +374,7 @@
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">createValidator</span><span class="params">(<span name="templateJson">templateJson: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <a href="validation/MultiValidator.html" class="extype" name="dev.cjfravel.nomos.validation.MultiValidator">MultiValidator</a>]</span>
+        <span class="name">createValidator</span><span class="params">(<span name="templateJson">templateJson: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <span class="extype" name="dev.cjfravel.nomos.validation.MultiValidator">MultiValidator</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Parse template and create a validator for it.</p><div class="fullcomment"><div class="comment cmt"><p>Parse template and create a validator for it.
@@ -461,6 +411,28 @@
       </span>
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="scala.AnyRef#finalize" visbl="prt" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="finalize():Unit"></a>
+      <span class="permalink">
+      <a href="../../../dev/cjfravel/nomos/Nomos$.html#finalize():Unit" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">finalize</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<span class="extype" name="java.lang">lang</span>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="symbol">classOf[java.lang.Throwable]</span>
+    </span>)</span>
+              
+        </dd></dl></div>
     </li><li name="dev.cjfravel.nomos.Nomos#formats" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="formats:dev.cjfravel.nomos.validation.FormatRegistry.type"></a><a id="formats:FormatRegistry.type"></a>
       <span class="permalink">
@@ -473,7 +445,7 @@
         <span class="kind">val</span>
       </span>
       <span class="symbol">
-        <span class="name">formats</span><span class="result">: <a href="validation/FormatRegistry$.html" class="extype" name="dev.cjfravel.nomos.validation.FormatRegistry">FormatRegistry</a>.type</span>
+        <span class="name">formats</span><span class="result">: <span class="extype" name="dev.cjfravel.nomos.validation.FormatRegistry">FormatRegistry</span>.type</span>
       </span>
       
       <p class="shortcomment cmt">Registry of named string formats.</p>
@@ -489,7 +461,7 @@
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">generateAll</span><span class="params">(<span name="templates">templates: <span class="extype" name="java.util.List">List</span>[<a href="model/MultiTemplate.html" class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</a>]</span>, <span name="outputDir">outputDir: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="generation/GeneratorError.html" class="extype" name="dev.cjfravel.nomos.generation.GeneratorError">GeneratorError</a>, <a href="generation/WriteReport.html" class="extype" name="dev.cjfravel.nomos.generation.WriteReport">WriteReport</a>]</span>
+        <span class="name">generateAll</span><span class="params">(<span name="templates">templates: <span class="extype" name="java.util.List">List</span>[<span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span>]</span>, <span name="outputDir">outputDir: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="generation/GeneratorError.html" class="extype" name="dev.cjfravel.nomos.generation.GeneratorError">GeneratorError</a>, <a href="generation/WriteReport.html" class="extype" name="dev.cjfravel.nomos.generation.WriteReport">WriteReport</a>]</span>
       </span>
       
       <p class="shortcomment cmt">Generate code from many templates sharing one definition space so $ref resolves across files.</p>
@@ -505,7 +477,7 @@
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">generateCode</span><span class="params">(<span name="template">template: <a href="model/MultiTemplate.html" class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</a></span>, <span name="outputDir">outputDir: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;src/main/scala&quot;</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="generation/GeneratorError.html" class="extype" name="dev.cjfravel.nomos.generation.GeneratorError">GeneratorError</a>, <a href="generation/WriteReport.html" class="extype" name="dev.cjfravel.nomos.generation.WriteReport">WriteReport</a>]</span>
+        <span class="name">generateCode</span><span class="params">(<span name="template">template: <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span></span>, <span name="outputDir">outputDir: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;src/main/scala&quot;</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="generation/GeneratorError.html" class="extype" name="dev.cjfravel.nomos.generation.GeneratorError">GeneratorError</a>, <a href="generation/WriteReport.html" class="extype" name="dev.cjfravel.nomos.generation.WriteReport">WriteReport</a>]</span>
       </span>
       
       <p class="shortcomment cmt">Generate Scala case classes from a template.</p><div class="fullcomment"><div class="comment cmt"><p>Generate Scala case classes from a template.
@@ -530,8 +502,6 @@ to the standard Maven source root.
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd><dt>Annotations</dt><dd>
                 <span class="name">@native</span><span class="args">()</span>
               
-                <span class="name">@HotSpotIntrinsicCandidate</span><span class="args">()</span>
-              
         </dd></dl></div>
     </li><li name="scala.AnyRef#hashCode" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="hashCode():Int"></a>
@@ -550,8 +520,6 @@ to the standard Maven source root.
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd><dt>Annotations</dt><dd>
                 <span class="name">@native</span><span class="args">()</span>
-              
-                <span class="name">@HotSpotIntrinsicCandidate</span><span class="args">()</span>
               
         </dd></dl></div>
     </li><li name="scala.Any#isInstanceOf" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
@@ -604,8 +572,6 @@ to the standard Maven source root.
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
                 <span class="name">@native</span><span class="args">()</span>
               
-                <span class="name">@HotSpotIntrinsicCandidate</span><span class="args">()</span>
-              
         </dd></dl></div>
     </li><li name="scala.AnyRef#notifyAll" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="notifyAll():Unit"></a>
@@ -625,8 +591,6 @@ to the standard Maven source root.
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
                 <span class="name">@native</span><span class="args">()</span>
               
-                <span class="name">@HotSpotIntrinsicCandidate</span><span class="args">()</span>
-              
         </dd></dl></div>
     </li><li name="dev.cjfravel.nomos.Nomos#parseTemplate" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="parseTemplate(json:String,basePackage:String):Either[dev.cjfravel.nomos.parser.ParseError,dev.cjfravel.nomos.model.MultiTemplate]"></a><a id="parseTemplate(String,String):Either[ParseError,MultiTemplate]"></a>
@@ -640,7 +604,7 @@ to the standard Maven source root.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">parseTemplate</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <a href="model/MultiTemplate.html" class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</a>]</span>
+        <span class="name">parseTemplate</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Parse a template from JSON string.</p><div class="fullcomment"><div class="comment cmt"><p>Parse a template from JSON string.
@@ -657,7 +621,7 @@ to the standard Maven source root.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">parseTemplateDeferred</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="sourcePath">sourcePath: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <a href="model/MultiTemplate.html" class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</a>]</span>
+        <span class="name">parseTemplateDeferred</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="sourcePath">sourcePath: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Parse a deferred template and tag every definition with the template's source file path,
@@ -674,7 +638,7 @@ which the generator emits as a Source pointer in the generated header.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">parseTemplateDeferred</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <a href="model/MultiTemplate.html" class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</a>]</span>
+        <span class="name">parseTemplateDeferred</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Parse a template without resolving cross-file references, for later merging via generateAll.</p>
@@ -728,9 +692,9 @@ which the generator emits as a Source pointer in the generated header.</p>
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
     </li><li name="dev.cjfravel.nomos.Nomos#validate" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="validate(template:dev.cjfravel.nomos.model.MultiTemplate,json:String,definitionName:String):Either[List[dev.cjfravel.nomos.validation.ValidationError],com.fasterxml.jackson.databind.JsonNode]"></a><a id="validate(MultiTemplate,String,String):Either[List[ValidationError],JsonNode]"></a>
+      <a id="validate(template:dev.cjfravel.nomos.model.MultiTemplate,json:String,definitionName:String):Either[List[dev.cjfravel.nomos.validation.ValidationError],dev.cjfravel.nomos.json.JsonValue]"></a><a id="validate(MultiTemplate,String,String):Either[List[ValidationError],JsonValue]"></a>
       <span class="permalink">
-      <a href="../../../dev/cjfravel/nomos/Nomos$.html#validate(template:dev.cjfravel.nomos.model.MultiTemplate,json:String,definitionName:String):Either[List[dev.cjfravel.nomos.validation.ValidationError],com.fasterxml.jackson.databind.JsonNode]" title="Permalink">
+      <a href="../../../dev/cjfravel/nomos/Nomos$.html#validate(template:dev.cjfravel.nomos.model.MultiTemplate,json:String,definitionName:String):Either[List[dev.cjfravel.nomos.validation.ValidationError],dev.cjfravel.nomos.json.JsonValue]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -739,7 +703,7 @@ which the generator emits as a Source pointer in the generated header.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">validate</span><span class="params">(<span name="template">template: <a href="model/MultiTemplate.html" class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</a></span>, <span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="definitionName">definitionName: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<span class="extype" name="scala.List">List</span>[<a href="validation/ValidationError.html" class="extype" name="dev.cjfravel.nomos.validation.ValidationError">ValidationError</a>], <span class="extype" name="com.fasterxml.jackson.databind.JsonNode">JsonNode</span>]</span>
+        <span class="name">validate</span><span class="params">(<span name="template">template: <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span></span>, <span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="definitionName">definitionName: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<span class="extype" name="scala.List">List</span>[<span class="extype" name="dev.cjfravel.nomos.validation.ValidationError">ValidationError</span>], <span class="extype" name="dev.cjfravel.nomos.json.JsonValue">JsonValue</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Validate a JSON string against a template.</p><div class="fullcomment"><div class="comment cmt"><p>Validate a JSON string against a template.
@@ -756,10 +720,32 @@ which the generator emits as a Source pointer in the generated header.</p>
         <span class="kind">val</span>
       </span>
       <span class="symbol">
-        <span class="name">validators</span><span class="result">: <a href="validation/ValidatorRegistry$.html" class="extype" name="dev.cjfravel.nomos.validation.ValidatorRegistry">ValidatorRegistry</a>.type</span>
+        <span class="name">validators</span><span class="result">: <span class="extype" name="dev.cjfravel.nomos.validation.ValidatorRegistry">ValidatorRegistry</span>.type</span>
       </span>
       
       <p class="shortcomment cmt">Registry of named custom validators referenced by templates.</p>
+    </li><li name="scala.AnyRef#wait" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="wait():Unit"></a>
+      <span class="permalink">
+      <a href="../../../dev/cjfravel/nomos/Nomos$.html#wait():Unit" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">wait</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="defval" name="classOf[java.lang.InterruptedException]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
     </li><li name="scala.AnyRef#wait" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="wait(x$1:Long,x$2:Int):Unit"></a><a id="wait(Long,Int):Unit"></a>
       <span class="permalink">
@@ -806,62 +792,13 @@ which the generator emits as a Source pointer in the generated header.</p>
                 <span class="name">@native</span><span class="args">()</span>
               
         </dd></dl></div>
-    </li><li name="scala.AnyRef#wait" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="wait():Unit"></a>
-      <span class="permalink">
-      <a href="../../../dev/cjfravel/nomos/Nomos$.html#wait():Unit" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">final </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">wait</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
-      </span>
-      
-      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
-                <span class="name">@throws</span><span class="args">(<span>
-      
-      <span class="defval" name="classOf[java.lang.InterruptedException]">...</span>
-    </span>)</span>
-              
-        </dd></dl></div>
     </li>
               </ol>
             </div>
 
         
 
-        <div class="values members">
-              <h3>Deprecated Value Members</h3>
-              <ol><li name="scala.AnyRef#finalize" visbl="prt" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="finalize():Unit"></a>
-      <span class="permalink">
-      <a href="../../../dev/cjfravel/nomos/Nomos$.html#finalize():Unit" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier"></span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name deprecated" title="Deprecated: ">finalize</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
-      </span>
-      
-      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<span class="extype" name="java.lang">lang</span>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
-                <span class="name">@throws</span><span class="args">(<span>
-      
-      <span class="symbol">classOf[java.lang.Throwable]</span>
-    </span>)</span>
-              
-                <span class="name">@Deprecated</span>
-              
-        </dd><dt>Deprecated</dt><dd class="cmt"></dd></dl></div>
-    </li></ol>
-            </div>
+        
         </div>
 
         <div id="inheritedMembers">

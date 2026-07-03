@@ -22,13 +22,17 @@ nomos-example/
 │       └── limits/limits.json           # Generates com.example.models.limits.Limits
 └── src/main/scala/com/example/
     ├── ExampleApp.scala                 # Demo application
-    └── models/                          # Generated code (auto-generated)
-        ├── NomosFormats.scala
-        ├── user/User.scala
-        ├── account/Account.scala
-        ├── account/Tier.scala
-        ├── column/Column.scala
-        └── limits/Limits.scala
+    ├── TestRunner.scala                 # Serialization/validation checks (run via mvn test)
+    └── ops/AccountOps.scala             # Hand-written accessors over generated models
+
+# Generated code is written to target/ (not checked in):
+target/generated-sources/nomos/com/example/models/
+    ├── NomosFormats.scala
+    ├── user/User.scala
+    ├── account/Account.scala
+    ├── account/Tier.scala
+    ├── column/Column.scala
+    └── limits/Limits.scala
 ```
 
 ## Running the Example
@@ -38,14 +42,14 @@ nomos-example/
 From `nomos-example/`:
 
 ```bash
-mvn clean compile
+mvn clean test
 ```
 
 This will:
 1. Scan `src/main/resources/nomos/templates` for `**/*.json`
 2. Derive base packages from template paths, such as `com.example.models` for `com/example/models/user.json`
-3. Generate case classes, companion methods (`fromJson`, `toJson`, `validate`), and `NomosFormats`
-4. Compile all code
+3. Generate case classes, companion methods (`fromJson`, `toJson`, `validate`), and `NomosFormats` into `target/generated-sources/nomos`
+4. Compile all code and run the example's serialization and validation checks
 
 ### Run the Application
 

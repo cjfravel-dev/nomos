@@ -42,6 +42,7 @@
       <li><a href="#constraints">Constraints</a></li>
       <li><a href="#enums">Enums</a></li>
       <li><a href="#containers">Arrays &amp; maps</a></li>
+      <li><a href="#extras">Extra properties</a></li>
       <li><a href="#optional">Optional, nullable, defaults</a></li>
       <li><a href="#refs">References</a></li>
       <li><a href="#discriminators">Discriminators</a></li>
@@ -53,7 +54,7 @@
     <div class="page-header">
       <span class="eyebrow">User Guide</span>
       <h1>Template Format</h1>
-      <p class="lede">A template is a JSON file describing one or more named type definitions. Its location sets the base package; its contents drive the generated case classes and validators.</p>
+      <p class="lede">A template is a JSON file describing one or more named type definitions. Its location sets the base package; its contents drive the generated types — a case class per object definition, or a <code>sealed trait</code> plus variant case classes per discriminator — and their validators.</p>
     </div>
 
     <h2 id="structure">File structure</h2>
@@ -77,7 +78,8 @@
       <tr><td><code>listType</code></td><td><code>"List"</code></td><td>Collection type for arrays (<code>List</code> or <code>Array</code>)</td></tr>
       <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Only <code>"Map"</code> is supported for <code>$map</code>.</td></tr>
       <tr><td><code>dateType</code> / <code>dateTimeType</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td><td>Generated temporal types</td></tr>
-      <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td><code>either</code> or <code>throwing</code> (see Code Generation)</td></tr>
+      <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td>Only <code>"throwing"</code> is special (<code>fromJson</code> throws on failure); any other value, including the default, yields the <code>Either</code>-returning <code>fromJson</code>. See <a href="code-generation.html#fromjson">Code Generation</a>.</td></tr>
+      <tr><td><code>visibility</code></td><td>—</td><td>Access prefix applied to every generated top-level definition (e.g. <code>private</code>, <code>private[models]</code>) for package-private models.</td></tr>
     </table>
     <div class="callout note"><p>These settings are project-wide. In a multi-file project, set a value in one template and it applies everywhere — you don't repeat it in every file. If two files set the <em>same</em> setting to different values, generation fails with an error naming the setting, so the result is never ambiguous.</p></div>
 
@@ -108,6 +110,7 @@
       <tr><td>array</td><td><code>minItems</code>, <code>maxItems</code>, <code>uniqueItems</code></td></tr>
     </table>
     <p>Built-in <code>format</code> values: <code>email</code>, <code>url</code>, <code>uuid</code>, <code>iso8601</code>, <code>alphaNoWhitespace</code>, <code>majorAndMinor</code>. You can register more — see <a href="validation.html#formats">Validation</a>.</p>
+    <p>A required <code>string</code> field may also declare an <code>adapter</code> to map between its on-the-wire form and the model value, e.g. <code>{ "type": "string", "adapter": "epochMillis" }</code>. Adapters are accepted <strong>only</strong> on required string fields — see <a href="validation.html#adapters">Validation</a>.</p>
 
     <h2 id="enums">Enums</h2>
     <p>A closed value set either validates a <code>String</code>, or generates a dedicated enum type.</p>
@@ -124,6 +127,18 @@
   "settings": { "$map": "string" }
 }</code></pre>
     <p><code>$map</code> generates a <code>Map[String, T]</code> with unrestricted keys and validated values.</p>
+    <p>A JSON array with <strong>more than one</strong> element type is a <em>union</em>. It generates an <code>Any</code>-typed field whose value round-trips as-is (the codec passes the raw JSON through, so branches aren't validated individually):</p>
+<pre><code class="language-json">{ "value": ["string", "number"] }</code></pre>
+
+    <h2 id="extras">Extra object properties</h2>
+    <p>By default an object rejects any property not named in its template. <code>$additionalProperties</code> relaxes that:</p>
+<pre><code class="language-json">{ "id": "string", "$additionalProperties": "string" }</code></pre>
+    <table>
+      <tr><th>Value</th><th>Effect</th></tr>
+      <tr><td>absent or <code>false</code></td><td>Reject any property not in the template (the default)</td></tr>
+      <tr><td><code>true</code></td><td>Allow any extras, collected as <code>Map[String, Any]</code> (kept but unvalidated)</td></tr>
+      <tr><td>a type (e.g. <code>"string"</code>)</td><td>Allow extras typed as <code>Map[String, T]</code>; each extra value is validated against that type</td></tr>
+    </table>
 
     <h2 id="optional">Optional, nullable &amp; defaults</h2>
 <pre><code class="language-json">{
@@ -136,10 +151,17 @@
 
     <h2 id="refs">References</h2>
 <pre><code class="language-json">{
-  "address": "$ref:Address",
-  "rule":    "$extern:com.example.legacy.Rule"
+  "address":  "$ref:Address",
+  "shipping": "$gen:com.example.other.Address",
+  "rule":     "$extern:com.example.legacy.Rule"
 }</code></pre>
-    <p><code>$ref</code> points at another definition in any template in the project. <code>$extern</code> names a hand-written type Nomos won't generate or validate. Self-references (recursive types) work too: a <code>TreeNode</code> may contain <code>["$ref:TreeNode"]</code>.</p>
+    <p>Self-references (recursive types) work too: a <code>TreeNode</code> may contain <code>["$ref:TreeNode"]</code>.</p>
+    <table>
+      <tr><th>Reference</th><th>Meaning</th></tr>
+      <tr><td><code>$ref:Name</code></td><td>Another definition anywhere in the project. A simple name resolves to a same-package definition first, otherwise to the unique definition with that name. An ambiguous simple name (several definitions share it, none in the referrer's package) is an error — disambiguate with <code>$gen:</code>.</td></tr>
+      <tr><td><code>$gen:fully.qualified.Name</code></td><td>Another Nomos-generated type by fully-qualified name. Emits a direct <code>Name.decode</code>/<code>Name.encode</code> (no registry), and is how you disambiguate an otherwise-ambiguous simple <code>$ref</code>.</td></tr>
+      <tr><td><code>$extern:fully.qualified.Name</code></td><td>An opaque, hand-written type Nomos neither generates nor schema-validates. (De)serialization goes through the runtime <code>CodecRegistry</code> and fails closed if no codec is registered for the type.</td></tr>
+    </table>
 
     <h2 id="discriminators">Type discriminators</h2>
     <p>A discriminator becomes a <code>sealed trait</code> with a case-class variant per value.</p>
@@ -161,8 +183,10 @@
       <tr><td><code>variants</code></td><td>Map of discriminator value → variant body (inline object or <code>$ref</code>)</td></tr>
       <tr><td><code>commonFields</code></td><td>Fields shared by every variant</td></tr>
       <tr><td><code>variantNames</code></td><td>Map several values to one class to collapse identical variants</td></tr>
-      <tr><td><code>variantMatch</code></td><td><code>exact</code> (default) or <code>prefix</code> — match parameterized tags like <code>Decimal(28,8)</code></td></tr>
+      <tr><td><code>variantMatch</code></td><td>Only <code>prefix</code> is special — it matches parameterized tags like <code>Decimal(28,8)</code> by prefix. Any other value, including the default, matches the discriminator value exactly.</td></tr>
       <tr><td><code>variantSubPackage</code></td><td>Place variant case classes in a sub-package</td></tr>
+      <tr><td><code>fallbackVariant</code></td><td>Name of a catch-all variant that captures any unmatched discriminator value, preserving the raw value and payload so unknown types round-trip instead of failing.</td></tr>
+      <tr><td><code>discriminatorEnum</code></td><td>Render the discriminator field as a generated enum type instead of a raw <code>String</code>. Combined with <code>fallbackVariant</code>, the enum is <em>open</em> — it gains an <code>Unknown(value)</code> member so unrecognized values round-trip. See <a href="code-generation.html#enums">Code Generation</a>.</td></tr>
       <tr><td><code>includeDiscriminator</code></td><td>Must be <code>true</code> (the default); <code>false</code> is rejected at generation because such a union cannot decode its own output.</td></tr>
     </table>
 

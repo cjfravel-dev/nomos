@@ -190,7 +190,7 @@ val back = User.fromJson(json)   // Either[String, User]</code></pre>
       </div>
       <div class="card">
         <h3>Build-time generation</h3>
-        <p>A Maven plugin scans your templates and generates sources during <code>generate-sources</code>. Output to <code>src/main/scala</code> or a gitignored folder.</p>
+        <p>A Maven plugin scans your templates and generates sources during <code>generate-sources</code>, into <code>target/generated-sources/nomos</code> (added as a compile root) by default.</p>
       </div>
       <div class="card">
         <h3>Multi-file projects</h3>

@@ -16,15 +16,21 @@
 
 ## Install
 
-Manage versions with the BOM, depend on the runtime, and add the plugin to generate at build time:
+Nomos targets Java 8 bytecode (build with **JDK 9+**; CI verifies Java 11 and 17). Manage versions
+with the BOM, depend on the runtime, and add the plugin to generate at build time. Centralize the
+version in a property so a bump is a single edit:
 
 ```xml
+<properties>
+    <nomos.version>0.0.1-alpha2</nomos.version>
+</properties>
+
 <dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.0.1-alpha2</version>
+            <version>${nomos.version}</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -41,7 +47,7 @@ Manage versions with the BOM, depend on the runtime, and add the plugin to gener
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.0.1-alpha2</version>
+    <version>${nomos.version}</version>
     <executions>
         <execution>
             <phase>generate-sources</phase>
