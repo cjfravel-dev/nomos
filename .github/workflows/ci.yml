@@ -40,6 +40,10 @@ jobs:
         if: always() && matrix.java == 11
         run: mvn -pl nomos-core scoverage:report -Dgpg.skip=true -B
 
+      - name: Enforce coverage floor (nomos-core)
+        if: matrix.java == 11
+        run: mvn -pl nomos-core scoverage:check -Dgpg.skip=true -B
+
       - name: Upload coverage report
         if: always() && matrix.java == 11
         uses: actions/upload-artifact@v4
