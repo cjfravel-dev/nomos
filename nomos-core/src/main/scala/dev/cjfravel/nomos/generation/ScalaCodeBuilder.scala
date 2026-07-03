@@ -3,7 +3,7 @@ package dev.cjfravel.nomos.generation
 /**
  * Helper class for building Scala source code with proper indentation
  */
-class ScalaCodeBuilder(indentSize: Int = 2) {
+class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
   private val buffer = new StringBuilder()
   private var currentIndent = 0
 
@@ -78,12 +78,12 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     val open = if (body.nonEmpty) " {" else ""
     
     if (fields.isEmpty) {
-      line(s"case class $name()$extendsClause$open")
+      line(s"${visibility}case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
       val (fieldName, fieldType) = fields.head
-      line(s"case class $name($fieldName: $fieldType)$extendsClause$open")
+      line(s"${visibility}case class $name($fieldName: $fieldType)$extendsClause$open")
     } else {
-      line(s"case class $name(")
+      line(s"${visibility}case class $name(")
       indented {
         fields.zipWithIndex.foreach { case ((fieldName, fieldType), idx) =>
           val comma = if (idx < fields.length - 1) "," else ""
@@ -105,17 +105,18 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
    * Appends a case class definition with override support
    * Fields are (name, type, isOverride)
    */
-  def caseClassWithOverride(name: String, fields: List[(String, String, Boolean)], parent: Option[String] = None): ScalaCodeBuilder = {
+  def caseClassWithOverride(name: String, fields: List[(String, String, Boolean)], parent: Option[String] = None, body: List[String] = Nil): ScalaCodeBuilder = {
     val extendsClause = parent.map(p => s" extends $p").getOrElse("")
+    val open = if (body.nonEmpty) " {" else ""
     
     if (fields.isEmpty) {
-      line(s"case class $name()$extendsClause")
+      line(s"${visibility}case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
       val (fieldName, fieldType, isOverride) = fields.head
       val overrideKeyword = if (isOverride) "override " else ""
-      line(s"case class $name(${overrideKeyword}val $fieldName: $fieldType)$extendsClause")
+      line(s"${visibility}case class $name(${overrideKeyword}val $fieldName: $fieldType)$extendsClause$open")
     } else {
-      line(s"case class $name(")
+      line(s"${visibility}case class $name(")
       indented {
         fields.zipWithIndex.foreach { case ((fieldName, fieldType, isOverride), idx) =>
           val comma = if (idx < fields.length - 1) "," else ""
@@ -123,7 +124,13 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
           line(s"${overrideKeyword}val $fieldName: $fieldType$comma")
         }
       }
-      line(s")$extendsClause")
+      line(s")$extendsClause$open")
+    }
+    if (body.nonEmpty) {
+      indented {
+        body.foreach(m => m.split("\n").foreach(line))
+      }
+      line("}")
     }
     this
   }
@@ -132,7 +139,7 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
    * Appends a sealed trait definition
    */
   def sealedTrait(name: String): ScalaCodeBuilder = {
-    line(s"sealed trait $name")
+    line(s"${visibility}sealed trait $name")
     this
   }
 
@@ -141,9 +148,9 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
    */
   def sealedTraitWithFields(name: String, fields: List[(String, String)]): ScalaCodeBuilder = {
     if (fields.isEmpty) {
-      line(s"sealed trait $name")
+      line(s"${visibility}sealed trait $name")
     } else {
-      line(s"sealed trait $name {")
+      line(s"${visibility}sealed trait $name {")
       indented {
         fields.foreach { case (fieldName, fieldType) =>
           line(s"val $fieldName: $fieldType")
@@ -155,10 +162,10 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
   }
 
   /**
-   * Appends a companion object with json4s formats
+   * Appends a companion object with the given body.
    */
   def companionObject(name: String)(body: => Unit): ScalaCodeBuilder = {
-    line(s"object $name {")
+    line(s"${visibility}object $name {")
     indented(body)
     line("}")
     this
@@ -172,71 +179,6 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
     this
   }
   
-  /**
-   * Adds custom Jackson-based serialization methods for a discriminated type
-   */
-  def customSerializer(
-    traitName: String,
-    discriminatorField: String,
-    variants: Map[String, String], // discriminator value -> class name
-    prefixMatch: Boolean = false,
-    throwing: Boolean = false
-  ): ScalaCodeBuilder = {
-    val fieldLit = ScalaCodeBuilder.escapeStringLiteral(discriminatorField)
-    line("import com.fasterxml.jackson.databind.JsonNode")
-    emptyLine()
-    def caseLine(discriminatorValue: String, className: String, wrap: String => String): Unit = {
-      val valueLit = ScalaCodeBuilder.escapeStringLiteral(discriminatorValue)
-      if (prefixMatch) {
-        line(s"""case d if d.startsWith("$valueLit") => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
-      } else {
-        line(s"""case "$valueLit" => ${wrap(s"mapper.treeToValue(jsonNode, classOf[$className])")}""")
-      }
-    }
-    if (throwing) {
-      line(s"def fromJson(json: String): $traitName = {")
-      indent()
-      line("val jsonNode = mapper.readTree(json)")
-      line(s"""val discriminatorValue = jsonNode.get("$fieldLit").asText()""")
-      line("discriminatorValue match {")
-      indent()
-      variants.foreach { case (dv, cn) => caseLine(dv, cn, identity) }
-      line(s"""case other => throw new IllegalArgumentException(s"Unknown $fieldLit value: $$other")""")
-      outdent()
-      line("}")
-      outdent()
-      line("}")
-    } else {
-      line(s"def fromJson(json: String): Either[String, $traitName] = {")
-      indent()
-      line("try {")
-      indent()
-      line("val jsonNode = mapper.readTree(json)")
-      line(s"""val discriminatorValue = jsonNode.get("$fieldLit").asText()""")
-      line("discriminatorValue match {")
-      indent()
-      variants.foreach { case (dv, cn) => caseLine(dv, cn, e => s"Right($e)") }
-      line(s"""case other => Left(s"Unknown $fieldLit value: $$other")""")
-      outdent()
-      line("}")
-      outdent()
-      line("} catch {")
-      indent()
-      line(s"""case e: Exception => Left(s"Failed to parse JSON: $${e.getMessage}")""")
-      outdent()
-      line("}")
-      outdent()
-      line("}")
-    }
-    emptyLine()
-    line(s"def toJson(obj: $traitName): String = {")
-    indent()
-    line("mapper.writeValueAsString(obj)")
-    outdent()
-    line("}")
-    this
-  }
-
   /**
    * Returns the built code as a string
    */
@@ -254,6 +196,7 @@ class ScalaCodeBuilder(indentSize: Int = 2) {
 
 object ScalaCodeBuilder {
   def apply(): ScalaCodeBuilder = new ScalaCodeBuilder()
+  def apply(visibility: String): ScalaCodeBuilder = new ScalaCodeBuilder(visibility = visibility)
   
   /** Reserved Scala 2 keywords that must be backtick-escaped when used as identifiers. */
   val scalaKeywords: Set[String] = Set(

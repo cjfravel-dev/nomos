@@ -16,7 +16,6 @@ The generated `NomosFormats` object contains:
 
 - **`embeddedTemplate`**: A lazy val containing the reconstructed `MultiTemplate`
 - **`validator`**: A lazy val containing a `MultiValidator` instance initialized with the embedded template
-- **`mapper`**: The Jackson `ObjectMapper` (existing functionality)
 
 ### 3. Validation Methods
 
@@ -34,15 +33,10 @@ Each generated companion object now includes a `validate()` method that:
 package com.example.models
 
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError}
+import dev.cjfravel.nomos.validation.MultiValidator
+import scala.collection.immutable.ListMap
 
 object NomosFormats {
-  val mapper: ObjectMapper = {
-    val m = new ObjectMapper()
-    m.registerModule(DefaultScalaModule)
-    m
-  }
-
   lazy val embeddedTemplate: MultiTemplate = {
     MultiTemplate(
       basePackage = "com.example.models",
@@ -52,13 +46,16 @@ object NomosFormats {
           templateType = ObjectType(ListMap(
             "id" -> FieldDef(StringType(List()), optional = false),
             "email" -> FieldDef(StringType(List()), optional = false)
-          )),
+          ), ForbidExtra),
           subPackage = Some("user"),
-          description = Some("User model")
+          description = Some("User model"),
+          validators = List(),
+          methods = List()
         )
       ),
       useOptionTypes = true,
-      listType = "List"
+      listType = "List",
+      fromJsonStyle = "either"
     )
   }
 
@@ -77,7 +74,7 @@ val json = """{"id": "123", "email": "test@example.com"}"""
 User.validate(json) match {
   case Right(user) =>
     println(s"Valid user: $user")
-  
+
   case Left(errors) =>
     errors.foreach { error =>
       println(s"Validation error at ${error.path}: ${error.message}")
@@ -142,7 +139,7 @@ A validator instance initialized with the embedded template.
 ```scala
 // Validate against a specific definition (fully-qualified name includes the subPackage)
 NomosFormats.validator.validate(json, "com.example.models.user.User") match {
-  case Right(jsonNode) => // Valid JSON structure
+  case Right(jsonValue) => // Valid JSON structure
   case Left(errors) => // Validation errors
 }
 ```
@@ -186,7 +183,7 @@ The `CodeGenerator` class:
 Existing code continues to work without changes. The new `validate()` method is additive and doesn't affect:
 
 - Existing `fromJson()` / `toJson()` methods
-- Direct JSON parsing with Jackson
+- Direct JSON parsing with the first-party `dev.cjfravel.nomos.json` parser
 - Any existing validation logic
 
 To adopt the new feature, simply replace manual validation with calls to the generated `validate()` method.

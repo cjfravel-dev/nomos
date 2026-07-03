@@ -64,17 +64,31 @@ case class TreeNode(
 
 object TreeNode {
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, TreeNode] = {
-    try {
-      Right(mapper.readValue(json, classOf[TreeNode]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, TreeNode] = json match {
+    case o: JsonObject =>
+      for {
+        id <- Codecs.required(o, "id", Codecs.string)
+        value <- Codecs.required(o, "value", Codecs.double)
+        label <- Codecs.optional(o, "label", Codecs.string)
+        children <- Codecs.required(o, "children", Codecs.list(TreeNode.decode))
+      } yield TreeNode(id, value, label, children)
+    case other => Left("TreeNode: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: TreeNode): String = mapper.writeValueAsString(obj)
+  def encode(obj: TreeNode): JsonValue = JsonObject.fromFields(List(
+    Some("id" -> JsonString(obj.id)),
+    Some("value" -> JsonNumber.fromDouble(obj.value)),
+    obj.label.map(v => "label" -> JsonString(v)),
+    Some("children" -> JsonArray(obj.children.iterator.map(x => TreeNode.encode(x)).toVector))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, TreeNode] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: TreeNode): String = Json.write(encode(obj))
 
   def validate(json: String): Either[List[ValidationError], TreeNode] = {
     validator.validate(json, "com.example.examples.tree.TreeNode") match {

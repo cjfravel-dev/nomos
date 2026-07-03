@@ -4,7 +4,7 @@ import dev.cjfravel.nomos.model.MultiTemplate
 import dev.cjfravel.nomos.parser.{TemplateParser, ParseError}
 import dev.cjfravel.nomos.generation.{CodeGenerator, FileWriter, GeneratorConfig, GeneratorError, WriteReport}
 import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError, ValidatorRegistry, FormatRegistry}
-import com.fasterxml.jackson.databind.JsonNode
+import dev.cjfravel.nomos.json.JsonValue
 
 /**
  * Main entry point for the Nomos library.
@@ -112,7 +112,7 @@ object Nomos {
     template: MultiTemplate,
     json: String,
     definitionName: String
-  ): Either[List[ValidationError], JsonNode] = {
+  ): Either[List[ValidationError], JsonValue] = {
     val validator = new MultiValidator(template)
     validator.validate(json, definitionName)
   }

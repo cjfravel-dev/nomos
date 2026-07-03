@@ -40,26 +40,11 @@
             <artifactId>scala-library</artifactId>
         </dependency>
 
-        <!-- Jackson - version managed by BOM -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-scala_${scala.binary.version}</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
-
-        <!-- Nomos Core - for validation API -->
+        <!-- Nomos Runtime - zero-dependency JSON model, validation, and codecs used by
+             the generated code. No third-party JSON library is required. -->
         <dependency>
             <groupId>dev.cjfravel</groupId>
-            <artifactId>nomos-core</artifactId>
+            <artifactId>nomos-runtime</artifactId>
             <version>0.1.0-SNAPSHOT</version>
         </dependency>
 

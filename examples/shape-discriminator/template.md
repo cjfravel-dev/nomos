@@ -99,25 +99,52 @@ case class Triangle(
 
 object Shape {
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
-  import com.fasterxml.jackson.databind.JsonNode
 
-  def fromJson(json: String): Either[String, Shape] = {
-    try {
-      val jsonNode = mapper.readTree(json)
-      val discriminatorValue = jsonNode.get("shapeType").asText()
-      discriminatorValue match {
-        case "circle" => Right(mapper.treeToValue(jsonNode, classOf[Circle]))
-        case "rectangle" => Right(mapper.treeToValue(jsonNode, classOf[Rectangle]))
-        case "triangle" => Right(mapper.treeToValue(jsonNode, classOf[Triangle]))
-        case other => Left(s"Unknown shapeType value: $other")
+  def decode(json: JsonValue): Either[String, Shape] = json match {
+    case o: JsonObject =>
+      o.field("shapeType") match {
+        case Some(JsonString(d)) =>
+          d match {
+            case "circle" =>
+              for {
+                color <- Codecs.required(o, "color", Codecs.string)
+                id <- Codecs.required(o, "id", Codecs.string)
+                radius <- Codecs.required(o, "radius", Codecs.double)
+              } yield Circle(d, color, id, radius)
+            case "rectangle" =>
+              for {
+                color <- Codecs.required(o, "color", Codecs.string)
+                id <- Codecs.required(o, "id", Codecs.string)
+                width <- Codecs.required(o, "width", Codecs.double)
+                height <- Codecs.required(o, "height", Codecs.double)
+              } yield Rectangle(d, color, id, width, height)
+            case "triangle" =>
+              for {
+                color <- Codecs.required(o, "color", Codecs.string)
+                id <- Codecs.required(o, "id", Codecs.string)
+                base <- Codecs.required(o, "base", Codecs.double)
+                height <- Codecs.required(o, "height", Codecs.double)
+              } yield Triangle(d, color, id, base, height)
+            case other => Left("Unknown shapeType value: " + other)
+          }
+        case Some(_) => Left("shapeType: expected string")
+        case None => Left("missing required field 'shapeType'")
       }
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+    case other => Left("Shape: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Shape): String = mapper.writeValueAsString(obj)
+  def encode(obj: Shape): JsonValue = obj match {
+    case v: Circle => JsonObject.fromFields(List(Some("shapeType" -> JsonString(v.shapeType)), Some("color" -> JsonString(v.color)), Some("id" -> JsonString(v.id)), Some("radius" -> JsonNumber.fromDouble(v.radius))).flatten)
+    case v: Rectangle => JsonObject.fromFields(List(Some("shapeType" -> JsonString(v.shapeType)), Some("color" -> JsonString(v.color)), Some("id" -> JsonString(v.id)), Some("width" -> JsonNumber.fromDouble(v.width)), Some("height" -> JsonNumber.fromDouble(v.height))).flatten)
+    case v: Triangle => JsonObject.fromFields(List(Some("shapeType" -> JsonString(v.shapeType)), Some("color" -> JsonString(v.color)), Some("id" -> JsonString(v.id)), Some("base" -> JsonNumber.fromDouble(v.base)), Some("height" -> JsonNumber.fromDouble(v.height))).flatten)
+  }
+
+  def fromJson(json: String): Either[String, Shape] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Shape): String = Json.write(encode(obj))
 
   def validate(json: String): Either[List[ValidationError], Shape] = {
     validator.validate(json, "com.example.examples.shapes.Shape") match {

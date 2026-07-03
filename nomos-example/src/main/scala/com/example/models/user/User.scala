@@ -13,19 +13,33 @@ case class User(
 object User {
   import com.example.models.NomosFormats
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, User] = {
-    try {
-      Right(mapper.readValue(json, classOf[User]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, User] = json match {
+    case o: JsonObject =>
+      for {
+        id <- Codecs.required(o, "id", Codecs.string)
+        username <- Codecs.required(o, "username", Codecs.string)
+        email <- Codecs.required(o, "email", Codecs.string)
+        age <- Codecs.optional(o, "age", Codecs.double)
+        roles <- Codecs.required(o, "roles", Codecs.list(Codecs.string))
+      } yield User(id, username, email, age, roles)
+    case other => Left("User: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: User): String = {
-    mapper.writeValueAsString(obj)
-  }
+  def encode(obj: User): JsonValue = JsonObject.fromFields(List(
+    Some("id" -> JsonString(obj.id)),
+    Some("username" -> JsonString(obj.username)),
+    Some("email" -> JsonString(obj.email)),
+    obj.age.map(v => "age" -> JsonNumber.fromDouble(v)),
+    Some("roles" -> JsonArray(obj.roles.iterator.map(x => JsonString(x)).toVector))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, User] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: User): String = Json.write(encode(obj))
 
   /**
    * Validates JSON against the embedded template and returns a parsed instance.

@@ -7,26 +7,36 @@ case class Account(
   active: Boolean,
   openedOn: java.time.LocalDate,
   tier: Tier
-) {
-  def label: String = accountId + "/" + active
-}
+)
 
 object Account {
   import com.example.models.NomosFormats
   import NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.{Codecs, CodecRegistry}
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, Account] = {
-    try {
-      Right(mapper.readValue(json, classOf[Account]))
-    } catch {
-      case e: Exception => Left(s"Failed to parse JSON: ${e.getMessage}")
-    }
+  def decode(json: JsonValue): Either[String, Account] = json match {
+    case o: JsonObject =>
+      for {
+        accountId <- Codecs.required(o, "accountId", Codecs.string)
+        active <- Codecs.required(o, "active", Codecs.boolean)
+        openedOn <- Codecs.required(o, "openedOn", Codecs.temporal[java.time.LocalDate]("date", s => java.time.LocalDate.parse(s)))
+        tier <- Codecs.required(o, "tier", Tier.decode)
+      } yield Account(accountId, active, openedOn, tier)
+    case other => Left("Account: expected object, got " + other.typeName)
   }
 
-  def toJson(obj: Account): String = {
-    mapper.writeValueAsString(obj)
-  }
+  def encode(obj: Account): JsonValue = JsonObject.fromFields(List(
+    Some("accountId" -> JsonString(obj.accountId)),
+    Some("active" -> JsonBoolean(obj.active)),
+    Some("openedOn" -> JsonString(obj.openedOn.toString)),
+    Some("tier" -> Tier.encode(obj.tier))
+  ).flatten)
+
+  def fromJson(json: String): Either[String, Account] = Json.parse(json).right.flatMap(decode)
+
+  def toJson(obj: Account): String = Json.write(encode(obj))
 
   /**
    * Validates JSON against the embedded template and returns a parsed instance.

@@ -49,13 +49,13 @@ class P7Spec extends AnyFlatSpec with Matchers with EitherValues {
   "a throwing union" should "generate a throwing fromJson" in {
     val c = file(parse(unionTmpl), "Shape.scala", GeneratorConfig("com.example", "target/test-gen", throwingFromJson = true))
     c should include("def fromJson(json: String): Shape =")
-    c should not include "Either[String, Shape]"
+    c should not include "def fromJson(json: String): Either"
   }
 
   "a throwing variantNames union" should "generate a throwing fromJson" in {
     val c = file(parse(unionNamesTmpl), "Shape.scala", GeneratorConfig("com.example", "target/test-gen", throwingFromJson = true))
     c should include("def fromJson(json: String): Shape =")
-    c should not include "Either[String, Shape]"
+    c should not include "def fromJson(json: String): Either"
   }
 
   "a default union" should "still return Either" in {

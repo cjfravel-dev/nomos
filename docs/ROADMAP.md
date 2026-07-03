@@ -6,7 +6,7 @@ P0-1..5, P1-1..4, P2, P3-1..4, P4-1..4, and P5-1..7 are implemented. Adapters (P
 template wiring; generated (de)serialization hooks consume them via `Nomos.adapters`.
 P3 parity gaps and P4 multi-template adoption gaps (cross-template refs, open-map objects, variant sub-packages,
 prefix dispatch) are closed. P5 exact-parity gaps (nullable-raw fields, external-type refs, native date/datetime,
-generated enum types, helper methods, selectable fromJson style, source field order) are closed.
+generated enum types, selectable fromJson style, source field order) are closed.
 
 Goal: grow Nomos so it can model rich, real-world JSON schemas (typed scalars, closed
 value sets, maps, defaults, polymorphic families, and custom validations) without losing
@@ -331,21 +331,18 @@ enum type and use it as the field type.
 ```
 *Effort: M.*
 
-### P5-5. Custom / helper methods on generated classes — **Medium**
-No way to attach derived helpers (e.g. a computed display name) to a generated class, so such
-methods are lost. Allow declaring derived members in the template (or a partial/companion mixin
-the generator preserves).
-*Effort: M.*
+### P5-5. Custom / helper methods on generated classes — **Removed** (out of scope)
+The `methods` template feature (raw Scala member injection) was removed. It is language-specific
+(incompatible with non-Scala targets), encourages behavior on data objects, and never worked on
+discriminated-union definitions. Derived behavior belongs in ordinary hand-written code in the
+consuming language — e.g. a Scala extension object over the generated type (see
+`nomos-example` `AccountOps`). A future language-neutral *computed-field* concept could be
+considered if declarative derived members are ever wanted.
 
-> Follow-up (found on retest): declared `methods` emit into the **companion object only**, so an
-> instance method that references fields (e.g. `def displayName = name + version`) does not
-> compile. Support instance-level methods (emit into the case class body).
-
-### P5-6. Pluggable serializer + `fromJson` signature — **Medium**
-Generated ser/de is Jackson-only and `fromJson` returns `Either`. A legacy API may use a
-different library and a throwing `fromJson: T`. Make the serializer pluggable and the
-`fromJson` signature selectable (throwing vs `Either`).
-*Effort: M.*
+### P5-6. Pluggable serializer + `fromJson` signature — **Resolved**
+Generated serialization is now a first-party, dependency-free codec (no third-party JSON library),
+and `fromJson` is selectable between `Either`-returning (default) and throwing `T` via the
+template-level `"fromJsonStyle"`.
 
 > Follow-up (found on retest): the template-level `"fromJsonStyle": "throwing"` is not wired
 > through the maven plugin to the generator, so generated `fromJson` still returns `Either`.
@@ -419,22 +416,20 @@ Found taking real modules all the way: deleting the hand-rolled validation DSL a
 all validation/(de)serialization through generated `validate()`/`fromJson`/`toJson`. The model
 layer ports cleanly; these are the friction points at the validation + serde boundary.
 
-### P8-1. `datetime` rejects ISO-8601 instants with `Z` — **High**
-The generated `datetime` validator rejects values like `2024-01-02T09:57:26Z` (trailing `Z`
-UTC instant), which are extremely common in real payloads. Accept the `Z` (and offset) forms
-of ISO-8601. Today this forces suppressing datetime errors as a workaround.
+### P8-1. `datetime` rejects ISO-8601 instants with `Z` — **Resolved**
+Datetime validation now accepts the common ISO-8601 forms — UTC instants (trailing `Z`),
+explicit offsets, and naive local date-times, all with optional fractional seconds — via
+`OffsetDateTime.parse` with a `LocalDateTime.parse` fallback, so validation agrees with the
+generated codecs and with real payloads.
 ```json
-{ "effective_date": "datetime" }   // must accept "2024-01-02T09:57:26Z"
+{ "effective_date": "datetime" }   // accepts "2024-01-02T09:57:26Z" and "...645000Z"
 ```
-*Effort: S.*
 
-### P8-2. Jackson can't deserialize external Gson-polymorphic types / nested unions — **High**
-Generated `fromJson` uses Jackson. When a generated type references (a) an `$extern` type that
-deserializes via another library's polymorphism (e.g. a runtime type-adapter factory), or (b) a
-nested discriminated union field, Jackson can't construct it without a hand-written deserializer.
-Generate Jackson deserializers for nested unions, and provide a documented hook to plug an
-external type's deserializer.
-*Effort: M.*
+### P8-2. Nested unions / external-type deserialization — **Resolved** (dependency-free migration)
+Generated `fromJson`/`toJson` are now explicit, reflection-free first-party codecs (no Jackson).
+Nested discriminated unions decode directly via each type's generated `decode`, and `$extern`
+types are decoded/encoded through a registered codec (`dev.cjfravel.nomos.serialization.CodecRegistry`,
+keyed by fully-qualified name). Applications register an external codec at startup.
 
 ### P8-3. `validate()` does not recurse into `$extern` types — **Medium**
 Fields typed as `$extern` are treated opaquely by the generated validator (presence/array shape
@@ -442,16 +437,14 @@ only), so their internals aren't schema-checked. Allow an external type to suppl
 nomos can call, or document that externs are unvalidated.
 *Effort: M.*
 
-### P8-4. `toJson` parity with legacy serializers — **Medium**
-Generated Jackson `toJson` differs from a legacy serializer in null-field emission, date string
-shape, and key ordering, so output isn't byte-compatible. Offer emission options (omit/keep
-nulls, date format, key order) for drop-in replacement.
-*Effort: M.*
+### P8-4. `toJson` parity (null emission, key order, dates) — **Resolved** (dependency-free migration)
+Generated encoders now emit object keys in template field order, omit absent `Option` fields,
+and format dates via `toString` (ISO-8601). Numbers preserve their lexeme, so round-trips are
+byte-stable. Further emission knobs (keep-null, custom date format) can be added if needed.
 
-### P8-5. Companion (de)serialization hook — **Low**
-No first-class way to inject custom companion serialization (e.g. a post-process step, legacy
-quote handling). Add a generator hook for custom companion `fromJson`/`toJson` wrapping.
-*Effort: S.*
+### P8-5. Companion (de)serialization hook — **Resolved** (dependency-free migration)
+Each generated companion exposes public `decode`/`encode` (and `fromJson`/`toJson`) so consumers
+can compose custom wrapping without editing generated code, with no global mutable state.
 
 ---
 

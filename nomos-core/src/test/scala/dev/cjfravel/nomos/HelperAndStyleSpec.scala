@@ -1,36 +1,10 @@
 package dev.cjfravel.nomos
 
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.EitherValues
-
-class HelperMethodsSpec extends AnyFlatSpec with Matchers with EitherValues {
-
-  val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
-
-  val tmpl = """{"name":"User","methods":["def label: String = id + \"-\" + email"],
-    "template":{"id":"string","email":"string"}}"""
-
-  "parser" should "read a definition's methods list" in {
-    parse(tmpl).value.definitions.head.methods shouldBe List("def label: String = id + \"-\" + email")
-  }
-
-  "generator" should "emit declared methods as instance members in the case class body" in {
-    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(parse(tmpl).value).value.find(_.fileName == "User.scala").get.content
-    content should include("def label: String = id + \"-\" + email")
-    // instance method lives in the case class body, before the companion object
-    content.indexOf("def label") should be < content.indexOf("object User")
-  }
-
-  "serializer" should "round-trip methods" in {
-    val d = parse(tmpl).value.definitions.head
-    TemplateSerializer.serializeDefinition(d) should include("methods = List(")
-  }
-}
 
 class FromJsonStyleSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -49,6 +23,6 @@ class FromJsonStyleSpec extends AnyFlatSpec with Matchers with EitherValues {
     val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen", throwingFromJson = true))
       .generateMulti(t).value.find(_.fileName == "U.scala").get.content
     content should include("def fromJson(json: String): U =")
-    content should not include "Either[String, U]"
+    content should not include "def fromJson(json: String): Either"
   }
 }

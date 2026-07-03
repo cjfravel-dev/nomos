@@ -38,8 +38,34 @@ All Nomos templates use a multi-definition format that allows you to define mult
 - **`dateType`** (optional): Scala type generated for `date` fields (default: `java.time.LocalDate`)
 - **`dateTimeType`** (optional): Scala type generated for `datetime` fields (default: `java.time.LocalDateTime`)
 - **`mapType`** (optional): Collection type generated for maps (default: `Map`)
+- **`visibility`** (optional): Scala access modifier prepended to every generated top-level definition, to lock a module's surface to an enclosing package (see below). Absent = public.
 
 The base package is derived from the template path; there is no `basePackage`, `outputDir`, or `mainClass` field.
+
+#### `visibility`: restrict the generated surface
+
+Set `visibility` to a Scala access modifier and nomos emits it on **every** generated top-level
+definition — variant/record case classes, the sealed union trait, generated enums, and the
+companion / `NomosFormats` objects — so nothing outside the given package can bind to them:
+
+```json
+{
+  "visibility": "private[incentives]",
+  "definitions": [ /* ... */ ]
+}
+```
+
+```scala
+private[incentives] sealed trait PackageStep { /* ... */ }
+private[incentives] case class AddNullsPackageStep(properties: AddNullsPackageStepProperties) extends PackageStep { /* ... */ }
+private[incentives] object PackageStep { def decode(...); def encode(...) }
+```
+
+Cross-module codecs (`X.decode` / `X.encode`, e.g. via `$gen:`) keep working as long as the
+callers are within the same enclosing package. The value must be a plain access modifier —
+`private`, `protected`, optionally qualified with `[this]` or a (dotted) package/type name (e.g.
+`private[incentives]`, `protected[com.example]`); anything else is rejected (the modifier is
+emitted into generated source, so it is validated rather than trusted verbatim).
 
 ### Definition Fields
 
@@ -50,7 +76,11 @@ Each definition in the `definitions` array has:
 - **`subPackage`** (optional): Additional package path (e.g., "models" → "com.example.models")
 - **`description`** (optional): Human-readable description of the type
 - **`validators`** (optional): Names of registered cross-field validators to run after schema validation (see `Nomos.validators`)
-- **`methods`** (optional): Raw Scala member declarations emitted into the generated case class body
+
+> Nomos generates the data shape, codecs, and validation only. Derived behavior (helper or
+> computed members) belongs in ordinary hand-written code in the consuming language — e.g. a
+> Scala extension object (`implicit class`) over the generated type — which keeps the extra
+> behavior explicit and portable rather than injected into the generated class.
 
 ## Basic Types
 
@@ -114,6 +144,35 @@ Closed value sets on a string or array items:
 }
 ```
 
+This keeps the field a `String` (or `List[String]`) and **validates** membership; it does not
+create a new type.
+
+#### Named enum type (`as: "enumType"`)
+
+To instead generate a dedicated sealed-trait enum and type the field as that enum, add
+`"as": "enumType"` and a `"name"`:
+
+```json
+{ "status": { "type": "string", "as": "enumType", "name": "Status", "enum": ["active", "inactive"] } }
+```
+
+Generates a `Status` type (in the definition's package) and types the field as `Status`:
+
+```scala
+sealed trait Status
+object Status {
+  case object Active extends Status
+  case object Inactive extends Status
+  val values: List[Status] = List(Active, Inactive)
+  def fromString(s: String): Option[Status] = ...
+  def asString(v: Status): String = ...
+  // plus decode / encode against the on-the-wire string
+}
+```
+
+Case-object names are the `PascalCase` of the enum values; encode/decode use the original
+string values.
+
 ### Defaults
 ```json
 {
@@ -141,15 +200,28 @@ Definitions may run registered cross-field validators by name (see `Nomos.valida
 ```
 
 ### Nested Objects
+
+A field's type must be a named type, not an inline (anonymous) object. Give the nested shape its
+own definition and reference it with [`$ref`](#1-type-references):
+
 ```json
 {
-  "address": {
-    "street": "string",
-    "city": "string",
-    "zipCode": "string"
-  }
+  "definitions": [
+    {
+      "name": "Person",
+      "template": { "name": "string", "address": "$ref:Address" }
+    },
+    {
+      "name": "Address",
+      "template": { "street": "string", "city": "string", "zipCode": "string" }
+    }
+  ]
 }
 ```
+
+Inline nested objects (an object literal as a field's value) are rejected at generation time with
+a message pointing here. (An empty object with [`$additionalProperties`](#additional-properties)
+is the exception — it is the supported way to express an open map.)
 
 ## Advanced Features
 
@@ -201,7 +273,38 @@ case class Address(
 )
 ```
 
-### 2. Recursive Types
+### 2. External Types (`$extern:` and `$gen:`)
+
+A field may reference a type that is **not** defined in the current template set, by its
+fully-qualified Scala name. There are two forms, depending on whether the target is a
+nomos-generated type:
+
+- **`$gen:<fully.qualified.Name>`** — the target is *another nomos-generated type* (typically
+  generated in a different Maven module and consumed as a JAR). Generated code calls that type's
+  companion `decode`/`encode` **directly**, so there is no runtime registration and the reference
+  is checked at compile time. Use this for generated types you can't reach with `$ref` because they
+  live in another generation unit.
+
+  ```json
+  { "owner": "$gen:com.example.shared.models.Owner" }
+  ```
+
+- **`$extern:<fully.qualified.Name>`** — the target is an *opaque, hand-written* type that nomos
+  does not generate. Generated code (de)serializes it through the runtime `CodecRegistry`, so the
+  application must register a codec at startup:
+
+  ```scala
+  import dev.cjfravel.nomos.serialization.CodecRegistry
+  CodecRegistry.register("com.example.legacy.Money")(MyMoneyCodec)
+  ```
+
+  If no codec is registered, `fromJson`/`toJson` fail with a descriptive error. Use `$gen:` instead
+  whenever the target is itself a nomos-generated type.
+
+In both forms the field's Scala type is the fully-qualified name, emitted verbatim, and the runtime
+validator treats the value as opaque (it is not schema-checked).
+
+### 3. Recursive Types
 
 Use `$ref:TypeName` for self-referential structures:
 
@@ -272,6 +375,46 @@ case class Person(
 )
 ```
 
+#### `nullable`: a boxed, null-defaulting field instead of `Option`
+
+For interop with sources that represent "absent" as JSON `null` (or omission) but where you want
+a plain reference type rather than `Option`, add `"nullable": true` to an `$optional` field. The
+field is generated as its **raw (boxed) type defaulting to `null`** — not `Option[T]` — and a
+missing or `null` value decodes to `null`:
+
+```json
+{ "score": { "$optional": "int", "nullable": true } }
+```
+
+```scala
+case class Row(score: java.lang.Integer = null)   // not Option[Int]
+```
+
+`nullable` takes precedence over `optional`: a field marked both is the boxed raw type, never an
+`Option`.
+
+#### `adapter`: a named (de)serialization adapter for a string field
+
+A required string field may declare an `adapter` to convert between its on-the-wire form and the
+value stored in the case class, keeping output byte-compatible with existing payloads. Register
+the named adapter at runtime; `decode` runs on parse and `encode` on output:
+
+```json
+{ "createdAt": { "type": "string", "adapter": "epochMillis" } }
+```
+
+```scala
+import dev.cjfravel.nomos.Nomos
+Nomos.adapters.register("epochMillis")(
+  decode = wire => /* wire -> model */ wire,
+  encode = model => /* model -> wire */ model
+)
+```
+
+`adapter` is only supported on **string** fields (a non-string field with an adapter is rejected
+at parse time). If no adapter is registered for the name at runtime, the value passes through
+unchanged.
+
 ### 4. Type Discriminators (Enum-like Behavior)
 
 Use the `$type` field to define a discriminator that determines which properties are valid:
@@ -318,28 +461,194 @@ Use the `$type` field to define a discriminator that determines which properties
 ```
 
 **Generated Case Classes:**
+
+The discriminator value is determined by the variant, so (for the default exact matching) it is
+emitted as a fixed `override val` — not a constructor parameter — keeping it out of the
+constructor and `unapply`, and preventing inconsistent construction:
+
 ```scala
-sealed trait Shape
+sealed trait Shape {
+  val shapeType: String
+}
 
 case class Circle(
-  shapeType: String,
   color: String,
   radius: Double
-) extends Shape
+) extends Shape {
+  override val shapeType: String = "circle"
+}
 
 case class Rectangle(
-  shapeType: String,
   color: String,
   width: Double,
   height: Double
-) extends Shape
+) extends Shape {
+  override val shapeType: String = "rectangle"
+}
 
 case class Triangle(
-  shapeType: String,
   color: String,
   base: Double,
   height: Double
-) extends Shape
+) extends Shape {
+  override val shapeType: String = "triangle"
+}
+```
+
+So you construct `Circle(color, radius)` and match `case Circle(color, radius) =>` — the
+discriminator is read off the value (`c.shapeType`) but never passed in. Three cases keep the
+discriminator as a **constructor field** instead, because the value is not fixed by the class:
+
+- **prefix matching** (`variantMatch: "prefix"`) — the on-the-wire value is parameterized
+  (e.g. `"Decimal(28,8)"`), so it is preserved as a field;
+- a **grouped `variantNames` class** that several discriminator values map to (it must record which
+  value it was);
+- the **`fallbackVariant`** (it carries the unrecognized value and the raw payload).
+
+**Discriminator options:**
+
+| Key | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `discriminator` | yes | — | Name of the field whose value selects the variant. |
+| `variants` | yes | — | Map of discriminator value → that variant's object structure. |
+| `commonFields` | no | `{}` | Fields shared by every variant. |
+| `includeDiscriminator` | no | `true` | Emit the discriminator on the generated case classes (as a fixed `override val` for exact matching — see above). |
+| `variantNames` | no | `{}` | Override the generated class name for a variant key (e.g. `"string"` → `"StringColumn"`). |
+| `variantMatch` | no | `"exact"` | How a discriminator value selects a variant: `"exact"` (equality) or `"prefix"` (the value *starts with* the variant key). |
+| `variantSubPackage` | no | — | Emit the variant case classes into a sub-package of the trait's package (see below). |
+| `fallbackVariant` | no | — | Name of a catch-all variant for unrecognized discriminator values (see below). |
+| `discriminatorEnum` | no | — | Generate an enum over the discriminator values and type the discriminator field as it (see below). |
+
+#### `variantSubPackage`: split the trait and its variants across packages
+
+By default the sealed trait and all of its variant case classes are generated into the same
+package (the definition's package). Set `variantSubPackage` to keep the **trait** in the
+definition's package `P` while emitting every **variant case class** into the sub-package
+`P.<variantSubPackage>`:
+
+```json
+{
+  "name": "Shape",
+  "subPackage": "shapes",
+  "template": {
+    "$type": {
+      "discriminator": "kind",
+      "variantSubPackage": "kinds",
+      "variants": {
+        "circle": { "radius": "number" },
+        "square": { "side": "number" }
+      }
+    }
+  }
+}
+```
+
+With a base package of `com.example`, this generates:
+
+- `com.example.shapes.Shape` — the sealed trait (and its `decode`/`encode` codecs)
+- `com.example.shapes.kinds.Circle`, `com.example.shapes.kinds.Square` — the variant case classes
+
+This is purely a code-layout control; it does not affect validation or serialization semantics.
+It is intended for porting an existing public API whose union trait lives in one package while
+its (often numerous) variant types live in a dedicated sibling package, so the generated layout
+can match the existing one without relocating public types.
+
+#### `fallbackVariant`: forward-compatible catch-all for unknown values
+
+By default a discriminator value that matches no variant fails to decode (and fails validation).
+Set `fallbackVariant` to a class name to instead capture unrecognized values in a generated
+catch-all case class, so older code can read — and faithfully re-emit — documents that use a
+discriminator value added later:
+
+```json
+{
+  "name": "Condition",
+  "template": {
+    "$type": {
+      "discriminator": "type",
+      "fallbackVariant": "UnknownCondition",
+      "commonFields": { "id": "string" },
+      "variants": {
+        "threshold": { "limit": "int" }
+      }
+    }
+  }
+}
+```
+
+Behavior when set:
+
+- An unrecognized discriminator value decodes into `UnknownCondition`, which carries the
+  discriminator value, every common field, and the **raw object**.
+- `encode` re-emits that preserved raw object **verbatim**, so an unknown variant round-trips
+  without loss.
+- Validation **accepts** an unrecognized value (common fields are still enforced, since every
+  variant shares them; the unknown variant-specific shape is not validated).
+
+When unset, behavior is unchanged: an unrecognized discriminator value is rejected (fail-closed).
+This keeps strict-by-default validation while allowing opt-in forward compatibility. To keep the
+discriminator type-safe while still accepting unknowns, combine it with
+[`discriminatorEnum`](#discriminatorenum-type-the-discriminator-as-a-generated-enum).
+
+#### `discriminatorEnum`: type the discriminator as a generated enum
+
+By default the discriminator field is generated as a plain `String`, so call sites compare
+against string literals. Set `discriminatorEnum` to a class name to generate a sealed-trait enum
+with one case object per discriminator value and type the discriminator field — on the trait and
+every variant — as that enum:
+
+```json
+{
+  "name": "Condition",
+  "template": {
+    "$type": {
+      "discriminator": "type",
+      "discriminatorEnum": "ConditionType",
+      "variants": {
+        "threshold": { "limit": "int" },
+        "window": { "seconds": "int" }
+      }
+    }
+  }
+}
+```
+
+Generates `ConditionType` (in the union's package, the same machinery as the
+[named enum type](#named-enum-type-as-enumtype)) and types the field as it:
+
+```scala
+sealed trait ConditionType
+object ConditionType {
+  case object Threshold extends ConditionType
+  case object Window extends ConditionType
+  // values / fromString / asString / decode / encode
+}
+
+case class Threshold(`type`: ConditionType, limit: Int) extends Condition
+```
+
+So call sites read `c.`type` == ConditionType.Window` (type-checked, discoverable) instead of
+comparing to a string. Codecs map the enum to/from its JSON string, so the wire format is
+unchanged. Case-object names are the `PascalCase` of the discriminator values.
+
+`discriminatorEnum` requires `includeDiscriminator: true` (there must be a field to type) and is
+incompatible with `variantMatch: "prefix"` (parameterized values are not a fixed set); these
+combinations are rejected.
+
+It **can** be combined with [`fallbackVariant`](#fallbackvariant-forward-compatible-catch-all-for-unknown-values):
+the generated enum then also gets an open-ended `final case class Unknown(value: String)` member,
+and the fallback variant carries the unrecognized discriminator value as `<Enum>.Unknown("…")`.
+So an unknown value is both type-safe (it is still an `<Enum>`) and preserved — `encode` re-emits
+the original payload verbatim, and `<Enum>.asString` recovers the original string:
+
+```scala
+sealed trait ConditionType
+object ConditionType {
+  case object Threshold extends ConditionType
+  case object Window extends ConditionType
+  final case class Unknown(value: String) extends ConditionType   // only when fallbackVariant is set
+  // ...
+}
 ```
 
 ### 5. Constraints
@@ -503,3 +812,14 @@ case class Owner(
   call resolves references only within the single template string passed to it.
 - Circular references are supported (e.g., TreeNode can reference itself)
 - Validation targets a definition by its fully-qualified name (e.g., `com.example.models.User`)
+- Two definitions may share the same simple `name` as long as they are in **different**
+  sub-packages; a duplicate name within one package is an error. A bare `$ref:Name` resolves to a
+  definition in the **referrer's own package** first, otherwise to the unique definition with that
+  name; if the same name exists in two other packages the reference is ambiguous and must be
+  qualified with `$gen:<fully.qualified.Name>`.
+- Inline (anonymous) objects and discriminators are not supported as a field's type in
+  multi-definition templates — give the nested shape its own named definition and reference it
+  with `$ref`. (An empty object with `$additionalProperties` is the supported way to express an
+  open map.)
+- The runtime JSON parser bounds hostile input: maximum nesting depth 512 and maximum input size
+  16 MB.

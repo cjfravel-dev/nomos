@@ -90,6 +90,10 @@ case class ObjectType(
  * @param commonFields Fields that are common across all variants (order-preserving)
  * @param includeInOutput Whether to include the discriminator field in generated case classes
  * @param variantNames Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
+ * @param variantMatch How a discriminator value is matched to a variant (default "exact")
+ * @param variantSubPackage Optional sub-package (relative to the trait's package) for the generated variant case classes; the trait stays in its own package
+ * @param fallbackVariant Optional name for a catch-all variant: an unrecognized discriminator value decodes into this case class (carrying the value and the raw object) and re-emits the preserved payload on encode, instead of failing
+ * @param discriminatorEnum Optional name for a generated enum over the discriminator values; when set, the discriminator field (on the trait and every variant) is typed as that enum instead of a raw String, and codecs map it to/from its JSON string
  */
 case class TypeDiscriminator(
   fieldName: String,
@@ -98,7 +102,9 @@ case class TypeDiscriminator(
   includeInOutput: Boolean = true,
   variantNames: Map[String, String] = Map.empty,
   variantMatch: String = "exact",
-  variantSubPackage: Option[String] = None
+  variantSubPackage: Option[String] = None,
+  fallbackVariant: Option[String] = None,
+  discriminatorEnum: Option[String] = None
 ) extends TemplateType
 
 /**
@@ -116,8 +122,14 @@ case class RecursiveRef(typeName: String) extends TemplateType
 /**
  * Reference to an external, hand-written type that nomos does not generate or validate.
  * Used for $extern:fully.qualified.Name syntax.
+ *
+ * @param qualifiedName the fully-qualified Scala type name, emitted verbatim
+ * @param generated when true, the target is another nomos-generated type (referenced via
+ *   `$gen:`): its companion's `decode`/`encode` are called directly, so no runtime codec
+ *   registration is needed. When false (`$extern:`), the type is opaque and (de)serialized
+ *   through the runtime CodecRegistry.
  */
-case class ExternalType(qualifiedName: String) extends TemplateType
+case class ExternalType(qualifiedName: String, generated: Boolean = false) extends TemplateType
 
 /**
  * Closed enum generated as a named sealed-trait type with string (de)serialization.
@@ -139,4 +151,18 @@ case class FieldDef(
   default: Option[String] = None,
   adapter: Option[String] = None,
   nullable: Boolean = false
-)
+) {
+  /**
+   * Whether the field must be present in the JSON. A field with a default is not required (it is
+   * defaulted when absent), matching the lenient decode; `optional` also relaxes it. This keeps
+   * validation consistent with (de)serialization.
+   */
+  def required: Boolean = !optional && default.isEmpty
+
+  /**
+   * Whether a present JSON `null` is acceptable for this field. Decode treats null the same as
+   * absent for optional/defaulted fields (yielding None / the default) and as `null` for nullable
+   * fields, so validation must not reject a present null in those cases.
+   */
+  def acceptsNull: Boolean = optional || nullable || default.isDefined
+}

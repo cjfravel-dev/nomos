@@ -38,8 +38,7 @@ object TemplateSerializer {
         templateType = ${serializeTemplateType(definition.templateType)},
         subPackage = $subPackage,
         description = $description,
-        validators = List(${definition.validators.map(v => s""""${escapeString(v)}"""").mkString(", ")}),
-        methods = List(${definition.methods.map(m => s""""${escapeString(m)}"""").mkString(", ")})
+        validators = List(${definition.validators.map(v => s""""${escapeString(v)}"""").mkString(", ")})
       )"""
   }
   
@@ -92,13 +91,13 @@ object TemplateSerializer {
       case RecursiveRef(typeName) =>
         s"""RecursiveRef("${escapeString(typeName)}")"""
       
-      case ExternalType(qn) =>
-        s"""ExternalType("${escapeString(qn)}")"""
+      case ExternalType(qn, generated) =>
+        s"""ExternalType("${escapeString(qn)}", generated = $generated)"""
       
       case EnumType(enumName, values) =>
         s"""EnumType("${escapeString(enumName)}", List(${values.map(v => s""""${escapeString(v)}"""").mkString(", ")}))"""
       
-      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage) =>
+      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage, fallbackVariant, discriminatorEnum) =>
         val variantsList = variants.map { case (name, objType) =>
           s""""${escapeString(name)}" -> ${serializeObjectTypeFields(objType)}"""
         }.mkString(", ")
@@ -113,6 +112,7 @@ object TemplateSerializer {
           }.mkString(", ")
           s"Map($entries)"
         }
+        def optStr(o: Option[String]) = o.map(s => s""""${escapeString(s)}"""").map(q => s"Some($q)").getOrElse("None")
         
         s"""TypeDiscriminator(
           fieldName = "${escapeString(fieldName)}",
@@ -121,7 +121,9 @@ object TemplateSerializer {
           includeInOutput = $includeInOutput,
           variantNames = $variantNamesMap,
           variantMatch = "${escapeString(variantMatch)}",
-          variantSubPackage = ${variantSubPackage.map(s => s""""${escapeString(s)}"""").map(q => s"Some($q)").getOrElse("None")}
+          variantSubPackage = ${optStr(variantSubPackage)},
+          fallbackVariant = ${optStr(fallbackVariant)},
+          discriminatorEnum = ${optStr(discriminatorEnum)}
         )"""
     }
   }

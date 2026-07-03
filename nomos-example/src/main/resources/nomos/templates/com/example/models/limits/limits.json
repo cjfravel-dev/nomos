@@ -4,7 +4,8 @@
       "name": "Limits",
       "template": {
         "name": "string",
-        "maxFiles": { "$optional": "int", "nullable": true }
+        "maxFiles": { "$optional": "int", "nullable": true },
+        "attributes": { "$additionalProperties": "string" }
       }
     }
   ]

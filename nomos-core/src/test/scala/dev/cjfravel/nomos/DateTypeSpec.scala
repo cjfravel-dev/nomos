@@ -29,10 +29,12 @@ class DateTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
     content should include("ts: java.time.LocalDateTime")
   }
 
-  "NomosFormats" should "register the java.time module" in {
+  "generated codec" should "decode and encode dates via java.time without a JSON library" in {
     val t = parse("""{"name":"N","template":{"d":"date"}}""").value
-    new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "NomosFormats.scala").get.content should include("JavaTimeModule")
+    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+      .generateMulti(t).value.find(_.fileName == "N.scala").get.content
+    content should include("""Codecs.temporal[java.time.LocalDate]("date"""")
+    content should include("JsonString(obj.d.toString)")
   }
 
   "validator" should "accept ISO dates and reject malformed ones" in {
@@ -41,6 +43,20 @@ class DateTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
     val v = new MultiValidator(t)
     v.validate("""{"d":"2024-01-02","ts":"2024-01-02T03:04:05"}""", "N") shouldBe a[Right[_, _]]
     v.validate("""{"d":"not-a-date","ts":"2024-01-02T03:04:05"}""", "N") shouldBe a[Left[_, _]]
+  }
+
+  "datetime validation" should "accept UTC instants, offsets, and fractional seconds" in {
+    val t = MultiTemplate("com.example", List(TemplateDefinition("N", ObjectType(ListMap(
+      "ts" -> FieldDef(DateTimeType(), false))))))
+    val v = new MultiValidator(t)
+    // Trailing Z (the dominant real-world form), incl. fractional seconds, and explicit offsets.
+    v.validate("""{"ts":"2025-11-11T11:11:11Z"}""", "N") shouldBe a[Right[_, _]]
+    v.validate("""{"ts":"2023-03-29T05:24:36.645000Z"}""", "N") shouldBe a[Right[_, _]]
+    v.validate("""{"ts":"2024-01-02T03:04:05+02:00"}""", "N") shouldBe a[Right[_, _]]
+    // Naive local date-times still validate.
+    v.validate("""{"ts":"2024-01-02T03:04:05"}""", "N") shouldBe a[Right[_, _]]
+    // Genuinely malformed values are still rejected.
+    v.validate("""{"ts":"nope"}""", "N") shouldBe a[Left[_, _]]
   }
 
   "serializer" should "round-trip date types" in {

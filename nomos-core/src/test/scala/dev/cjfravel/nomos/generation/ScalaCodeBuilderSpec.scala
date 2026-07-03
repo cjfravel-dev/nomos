@@ -36,12 +36,4 @@ class ScalaCodeBuilderSpec extends AnyFlatSpec with Matchers {
     ScalaCodeBuilder.toCamelCase("user_name") shouldBe "userName"
     ScalaCodeBuilder.toPascalCase("user_name") shouldBe "UserName"
   }
-
-  it should "build a custom serializer" in {
-    val b = ScalaCodeBuilder()
-    b.customSerializer("Shape", "kind", ListMap("circle" -> "Circle"))
-    val out = b.build()
-    out should include("fromJson")
-    out should include("circle")
-  }
 }
