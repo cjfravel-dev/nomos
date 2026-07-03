@@ -5,6 +5,19 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Primary consumer builds on Scala 2.12, and nomos publishes plain artifactIds (no _2.x
+      # suffix), so stay on the 2.12.x line. Patch updates (2.12.x) are still allowed.
+      - dependency-name: "org.scala-lang:*"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
+      # scoverage 2.1+ requires Java 17, but the coverage job runs on the Java 11 matrix leg.
+      # Stay on 2.0.x until coverage moves to Java 17. Patch updates (2.0.x) are still allowed.
+      - dependency-name: "org.scoverage:scoverage-maven-plugin"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
 
   - package-ecosystem: github-actions
     directory: "/"
