@@ -264,31 +264,47 @@ class TemplateParser {
       case Some(d) => renderDefaultLiteral(d, tpe, s"$path.default").right.map(Some(_))
     }
 
-  private def renderDefaultLiteral(d: JsonValue, tpe: TemplateType, path: String): Either[ParseError, String] = tpe match {
-    case StringType(_) =>
-      d.asString match {
-        case Some(s) => Right("\"" + ScalaCodeBuilder.escapeStringLiteral(s) + "\"")
-        case None => Left(ParseError.InvalidFieldValue("default", "a string", "default must be a string for a string field", path))
-      }
-    case IntType(_) | LongType(_) | NumberType(_) | DecimalType(_) =>
-      d match {
-        case _: JsonNumber => Right(Json.write(d))
-        case _ => Left(ParseError.InvalidFieldValue("default", "a number", "default must be a number for a numeric field", path))
-      }
-    case BooleanType() =>
-      d match {
-        case _: JsonBoolean => Right(Json.write(d))
-        case _ => Left(ParseError.InvalidFieldValue("default", "a boolean", "default must be a boolean for a boolean field", path))
-      }
-    case EnumType(enumName, values) =>
-      d.asString match {
-        case Some(s) if values.contains(s) => Right(s"$enumName.${ScalaCodeBuilder.toPascalCase(s)}")
-        case Some(s) => Left(ParseError.InvalidFieldValue("default", s"one of: ${values.mkString(", ")}", s"'$s' is not a value of enum '$enumName'", path))
-        case None => Left(ParseError.InvalidFieldValue("default", "an enum value (string)", "default must be a string naming an enum value", path))
-      }
-    case _ =>
-      Left(ParseError.InvalidFieldValue("default", "a string, numeric, boolean, or enum field",
-        "default values are only supported on string, numeric, boolean, and enum fields", path))
+  private def renderDefaultLiteral(d: JsonValue, tpe: TemplateType, path: String): Either[ParseError, String] = {
+    def number: Either[ParseError, JsonNumber] = d match {
+      case n: JsonNumber => Right(n)
+      case _ => Left(ParseError.InvalidFieldValue("default", "a number", "default must be a number for a numeric field", path))
+    }
+    tpe match {
+      case StringType(_) =>
+        d.asString match {
+          case Some(s) => Right("\"" + ScalaCodeBuilder.escapeStringLiteral(s) + "\"")
+          case None => Left(ParseError.InvalidFieldValue("default", "a string", "default must be a string for a string field", path))
+        }
+      case IntType(_) =>
+        number.right.flatMap(n => n.asInt.map(_.toString).toRight(
+          ParseError.InvalidFieldValue("default", "an Int", s"'${n.raw}' is not a valid Int default", path)))
+      case LongType(_) =>
+        // A whole-number default outside Int range is a bare Int literal in Scala and overflows, so
+        // a Long default must carry an `L` suffix.
+        number.right.flatMap(n => n.asLong.map(l => s"${l}L").toRight(
+          ParseError.InvalidFieldValue("default", "a Long", s"'${n.raw}' is not a valid Long default", path)))
+      case NumberType(_) =>
+        // A bare integer lexeme is an Int literal and can overflow; make it a floating literal.
+        // A lexeme with a fraction/exponent is already a valid Double literal.
+        number.right.map(n => if (n.raw.exists(c => c == '.' || c == 'e' || c == 'E')) n.raw else n.raw + ".0")
+      case DecimalType(_) =>
+        // Render exactly and independent of magnitude (a bare large literal would not compile).
+        number.right.map(n => s"""BigDecimal("${n.raw}")""")
+      case BooleanType() =>
+        d match {
+          case _: JsonBoolean => Right(Json.write(d))
+          case _ => Left(ParseError.InvalidFieldValue("default", "a boolean", "default must be a boolean for a boolean field", path))
+        }
+      case EnumType(enumName, values) =>
+        d.asString match {
+          case Some(s) if values.contains(s) => Right(s"$enumName.${ScalaCodeBuilder.toPascalCase(s)}")
+          case Some(s) => Left(ParseError.InvalidFieldValue("default", s"one of: ${values.mkString(", ")}", s"'$s' is not a value of enum '$enumName'", path))
+          case None => Left(ParseError.InvalidFieldValue("default", "an enum value (string)", "default must be a string naming an enum value", path))
+        }
+      case _ =>
+        Left(ParseError.InvalidFieldValue("default", "a string, numeric, boolean, or enum field",
+          "default values are only supported on string, numeric, boolean, and enum fields", path))
+    }
   }
 
   /**

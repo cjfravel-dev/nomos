@@ -45,4 +45,26 @@ class TypedDefaultSpec extends AnyFlatSpec with Matchers with EitherValues with 
     f("i").default shouldBe Some("3")
     f("b").default shouldBe Some("true")
   }
+
+  "a long default outside Int range" should "render with an L suffix and compile" in {
+    val t = parse("""{"name":"C","template":{"n":{"type":"long","default":9999999999}}}""").value
+    t.definitions.head.templateType.asInstanceOf[ObjectType].fields("n").default shouldBe Some("9999999999L")
+    compileErrors(gen.generateMulti(t).value) shouldBe empty
+  }
+
+  "a large number default" should "render as a valid Double literal and compile" in {
+    val t = parse("""{"name":"C","template":{"n":{"type":"number","default":9999999999}}}""").value
+    t.definitions.head.templateType.asInstanceOf[ObjectType].fields("n").default shouldBe Some("9999999999.0")
+    compileErrors(gen.generateMulti(t).value) shouldBe empty
+  }
+
+  "a large decimal default" should "render as BigDecimal(...) and compile" in {
+    val t = parse("""{"name":"C","template":{"n":{"type":"decimal","default":9999999999}}}""").value
+    t.definitions.head.templateType.asInstanceOf[ObjectType].fields("n").default shouldBe Some("""BigDecimal("9999999999")""")
+    compileErrors(gen.generateMulti(t).value) shouldBe empty
+  }
+
+  "an int default outside Int range" should "be rejected" in {
+    parse("""{"name":"C","template":{"n":{"type":"int","default":9999999999}}}""") shouldBe a[Left[_, _]]
+  }
 }
