@@ -53,18 +53,35 @@ class CodeGenerator(config: GeneratorConfig) {
       Left(errors.head) // Return first error
     } else {
       val generatedFiles = fileResults.collect { case Right(file) => file }
-      
-      // Generate a file per unique enum type, in its owning definition's package
-      val enumFiles = multiTemplate.definitions.flatMap { definition =>
+
+      // Collect every enum with its owning package. Two definitions in one package may declare the
+      // same enum name: identical declarations collapse to one file, but different value sets are
+      // genuinely different types, so a clash is a hard error (silently keeping one would emit a
+      // decoder that rejects the other's valid JSON).
+      val enumSpecs = multiTemplate.definitions.flatMap { definition =>
         val pkg = definition.fullPackage(multiTemplate.basePackage)
         collectEnums(definition.templateType).map { case (enumName, values, withUnknown) =>
-          generateEnum(pkg, enumName, values, withUnknown, definition.sourcePath, visibility)
+          (pkg, enumName, values, withUnknown, definition.sourcePath)
         }
-      }.groupBy(_.relativePath).values.map(_.head).toList
-      
-      // NomosFormats holds the embedded template and a validator for runtime validation.
-      val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate, visibility)
-      Right(nomosFormatsFile :: generatedFiles ::: enumFiles)
+      }
+      val enumConflicts = enumSpecs.groupBy { case (pkg, enumName, _, _, _) => (pkg, enumName) }.collect {
+        case ((pkg, enumName), specs) if specs.map { case (_, _, values, withUnknown, _) => (values, withUnknown) }.distinct.size > 1 =>
+          val variants = specs.map { case (_, _, values, _, _) => values.mkString("[", ", ", "]") }.distinct.mkString(" vs ")
+          val where = if (pkg.isEmpty) "" else s" in package '$pkg'"
+          s"Conflicting enum '$enumName'$where declared with different values ($variants); same-named enums in one package must have identical values"
+      }.toList
+
+      if (enumConflicts.nonEmpty) {
+        Left(GeneratorError.TemplateError(enumConflicts.mkString(", ")))
+      } else {
+        val enumFiles = enumSpecs.map { case (pkg, enumName, values, withUnknown, sourcePath) =>
+          generateEnum(pkg, enumName, values, withUnknown, sourcePath, visibility)
+        }.groupBy(_.relativePath).values.map(_.head).toList
+
+        // NomosFormats holds the embedded template and a validator for runtime validation.
+        val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate, visibility)
+        Right(nomosFormatsFile :: generatedFiles ::: enumFiles)
+      }
     }
   }
 
