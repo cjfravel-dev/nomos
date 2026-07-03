@@ -48,6 +48,17 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   private val dateParse: String => Unit = temporalParser(multiTemplate.dateType, isDate = true)
   private val dateTimeParse: String => Unit = temporalParser(multiTemplate.dateTimeType, isDate = false)
 
+  // Upper bound on validation recursion so adversarial/cyclic templates (e.g. a reference cycle
+  // that consumes no payload) fail with an error instead of a StackOverflowError. Well above the
+  // parser's input-nesting cap so it never trips on valid input.
+  private val MaxValidationDepth = 4096
+
+  // Constraint patterns are compiled once and reused; String.matches recompiles the regex on every
+  // value (slow for array-heavy input and a template-authored ReDoS surface).
+  private val compiledPatterns = scala.collection.concurrent.TrieMap.empty[String, java.util.regex.Pattern]
+  private def patternFor(regex: String): java.util.regex.Pattern =
+    compiledPatterns.getOrElseUpdate(regex, java.util.regex.Pattern.compile(regex))
+
   /** The JSON type name used in error messages (string, number, object, ...). */
   private def jsonType(json: JsonValue): String = json.typeName
 
@@ -76,7 +87,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   def validateJson(json: JsonValue, definitionName: String): Either[List[ValidationError], JsonValue] = {
     multiTemplate.getDefinition(definitionName) match {
       case Some(definition) =>
-        validateTypeWithRefs(definition.templateType, json, "root", definition.fullPackage(multiTemplate.basePackage)) match {
+        validateTypeWithRefs(definition.templateType, json, "root", definition.fullPackage(multiTemplate.basePackage), 0) match {
           case Nil =>
             definition.validators.flatMap(name => ValidatorRegistry.run(name, json)) match {
               case Nil => Right(json)
@@ -96,8 +107,13 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     templateType: TemplateType,
     json: JsonValue,
     path: String,
-    currentPackage: String
+    currentPackage: String,
+    depth: Int
   ): List[ValidationError] = {
+    if (depth > MaxValidationDepth)
+      return List(ValidationError(path,
+        s"validation exceeded the maximum depth of $MaxValidationDepth (a reference cycle?)",
+        "bounded nesting", "too deeply nested"))
     templateType match {
       case StringType(constraints) => validateString(json, path, constraints)
       case NumberType(constraints) => validateNumber(json, path, constraints)
@@ -107,25 +123,25 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case BooleanType() => validateBoolean(json, path)
       case DateType() => validateTemporal(json, path, "date", dateParse)
       case DateTimeType() => validateTemporal(json, path, "datetime", dateTimeParse)
-      case ArrayType(elementType, constraints) => validateArray(elementType, json, path, currentPackage, constraints)
-      case MapType(valueType) => validateMap(valueType, json, path, currentPackage)
+      case ArrayType(elementType, constraints) => validateArray(elementType, json, path, currentPackage, depth, constraints)
+      case MapType(valueType) => validateMap(valueType, json, path, currentPackage, depth)
       case UnionType(types) =>
-        if (types.exists(t => validateTypeWithRefs(t, json, path, currentPackage).isEmpty)) List.empty
+        if (types.exists(t => validateTypeWithRefs(t, json, path, currentPackage, depth + 1).isEmpty)) List.empty
         else List(ValidationError.typeMismatch(path, "one of union types", jsonType(json)))
-      case ObjectType(fields, additional) => validateObject(fields, json, path, currentPackage, additional)
+      case ObjectType(fields, additional) => validateObject(fields, json, path, currentPackage, depth, additional)
       case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch, _, fallbackVariant, _) =>
-        validateDiscriminator(fieldName, variants, commonFields, json, path, currentPackage, variantMatch, fallbackVariant.isDefined)
+        validateDiscriminator(fieldName, variants, commonFields, json, path, currentPackage, depth, variantMatch, fallbackVariant.isDefined)
       case ReferenceType(typeName) =>
         resolveRef(typeName, currentPackage) match {
           case Some(refDef) =>
-            validateTypeWithRefs(refDef.templateType, json, path, refDef.fullPackage(basePackage))
+            validateTypeWithRefs(refDef.templateType, json, path, refDef.fullPackage(basePackage), depth + 1)
           case None =>
             List(ValidationError(path, s"Unresolved reference: $typeName", "valid definition", typeName))
         }
       case RecursiveRef(typeName) =>
         resolveRef(typeName, currentPackage) match {
           case Some(refDef) =>
-            validateTypeWithRefs(refDef.templateType, json, path, refDef.fullPackage(basePackage))
+            validateTypeWithRefs(refDef.templateType, json, path, refDef.fullPackage(basePackage), depth + 1)
           case None =>
             List(ValidationError(path, s"Unresolved recursive reference: $typeName", "valid definition", typeName))
         }
@@ -155,7 +171,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
             Some(ValidationError.constraintViolation(path, s"minLength: $len", s"length ${value.length}"))
           case MaxLength(len) if value.length > len =>
             Some(ValidationError.constraintViolation(path, s"maxLength: $len", s"length ${value.length}"))
-          case Pattern(regex) if !value.matches(regex) =>
+          case Pattern(regex) if !patternFor(regex).matcher(value).matches() =>
             Some(ValidationError.constraintViolation(path, s"pattern: $regex", value))
           case Format(fmt) => validateFormat(fmt, value, path)
           case Enum(values) if !values.contains(value) =>
@@ -244,13 +260,14 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     json: JsonValue,
     path: String,
     currentPackage: String,
+    depth: Int,
     constraints: List[Constraint] = List.empty
   ): List[ValidationError] = {
     json.asArray match {
       case Some(array) =>
         val elements = array.values.toList
         val itemErrors = elements.zipWithIndex.flatMap { case (element, idx) =>
-          validateTypeWithRefs(elementType, element, s"$path[$idx]", currentPackage)
+          validateTypeWithRefs(elementType, element, s"$path[$idx]", currentPackage, depth + 1)
         }
         val countErrors = constraints.flatMap {
           case MinItems(n) if elements.size < n =>
@@ -271,12 +288,13 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     valueType: TemplateType,
     json: JsonValue,
     path: String,
-    currentPackage: String
+    currentPackage: String,
+    depth: Int
   ): List[ValidationError] = {
     json.asObject match {
       case Some(obj) =>
         obj.fields.toList.flatMap { case (key, value) =>
-          validateTypeWithRefs(valueType, value, s"$path.$key", currentPackage)
+          validateTypeWithRefs(valueType, value, s"$path.$key", currentPackage, depth + 1)
         }
       case None =>
         List(ValidationError.typeMismatch(path, "object", jsonType(json)))
@@ -288,6 +306,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     json: JsonValue,
     path: String,
     currentPackage: String,
+    depth: Int,
     additional: AdditionalProperties = ForbidExtra
   ): List[ValidationError] = {
     json.asObject match {
@@ -306,7 +325,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
             case Some(JsonNull) if fieldDef.acceptsNull =>
               List.empty // present null is accepted for optional/nullable/defaulted fields
             case Some(value) =>
-              validateTypeWithRefs(fieldDef.fieldType, value, s"$path.$fieldName", currentPackage)
+              validateTypeWithRefs(fieldDef.fieldType, value, s"$path.$fieldName", currentPackage, depth + 1)
             case None if fieldDef.optional =>
               List.empty
             case None =>
@@ -318,7 +337,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         val extraKeys = jsonFieldMap.keySet.diff(fields.keySet).toList
         val extraFields = additional match {
           case AllowExtra => List.empty
-          case TypedExtra(t) => extraKeys.flatMap(k => validateTypeWithRefs(t, jsonFieldMap(k), s"$path.$k", currentPackage))
+          case TypedExtra(t) => extraKeys.flatMap(k => validateTypeWithRefs(t, jsonFieldMap(k), s"$path.$k", currentPackage, depth + 1))
           case ForbidExtra => extraKeys.map { extraField =>
             ValidationError(
               s"$path.$extraField",
@@ -343,6 +362,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     json: JsonValue,
     path: String,
     currentPackage: String,
+    depth: Int,
     variantMatch: String = "exact",
     hasFallback: Boolean = false
   ): List[ValidationError] = {
@@ -366,7 +386,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                     case Some(JsonNull) if cfDef.acceptsNull =>
                       List.empty
                     case Some(value) =>
-                      validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", currentPackage)
+                      validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", currentPackage, depth + 1)
                     case None if cfDef.required =>
                       List(ValidationError.missingField(path, cfName))
                     case None =>
@@ -380,7 +400,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                     case Some(JsonNull) if vfDef.acceptsNull =>
                       List.empty
                     case Some(value) =>
-                      validateTypeWithRefs(vfDef.fieldType, value, s"$path.$vfName", currentPackage)
+                      validateTypeWithRefs(vfDef.fieldType, value, s"$path.$vfName", currentPackage, depth + 1)
                     case None if vfDef.required =>
                       List(ValidationError.missingField(path, vfName))
                     case None =>
@@ -411,7 +431,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                       case Some(JsonNull) if cfDef.acceptsNull =>
                         List.empty
                       case Some(value) =>
-                        validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", currentPackage)
+                        validateTypeWithRefs(cfDef.fieldType, value, s"$path.$cfName", currentPackage, depth + 1)
                       case None if cfDef.required =>
                         List(ValidationError.missingField(path, cfName))
                       case None =>
