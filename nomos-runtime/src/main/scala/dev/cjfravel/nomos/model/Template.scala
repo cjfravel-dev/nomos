@@ -157,7 +157,16 @@ case class MultiTemplate(
       if (MultiTemplate.ValidVisibility.findFirstIn(v).isEmpty)
         errors = s"Invalid visibility modifier: '$v' (expected e.g. private, protected, private[pkg])" :: errors
     }
-    
+
+    // Validate the collection types resolve to a decoder the generator actually emits. Field types
+    // honor listType/mapType, but the emitted decoders only produce List/Array for arrays and Map
+    // for maps; any other value yields a case-class field whose type does not match its decoder,
+    // so the generated code fails to compile. Reject unsupported values here with a clear message.
+    if (!MultiTemplate.SupportedListTypes.contains(listType))
+      errors = s"Unsupported listType: '$listType' (supported: ${MultiTemplate.SupportedListTypes.toList.sorted.mkString(", ")})" :: errors
+    if (!MultiTemplate.SupportedMapTypes.contains(mapType))
+      errors = s"Unsupported mapType: '$mapType' (supported: ${MultiTemplate.SupportedMapTypes.toList.sorted.mkString(", ")})" :: errors
+
     errors.reverse
   }
 
@@ -187,6 +196,18 @@ object MultiTemplate {
    * prefix so a template cannot inject arbitrary source.
    */
   val ValidVisibility = "^(private|protected)(\\[(this|[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*)\\])?$".r
+
+  /**
+   * Array collection types the generator can emit a matching decoder for. Field types honor
+   * `listType`, but the decoder only produces `List` (default) or `Array`, so only these compile.
+   */
+  val SupportedListTypes: Set[String] = Set("List", "Array")
+
+  /**
+   * Map collection types the generator can emit a matching decoder for. The decoder always yields
+   * an immutable `Map[String, T]`, so `Map` is the only value whose field type accepts it.
+   */
+  val SupportedMapTypes: Set[String] = Set("Map")
 
   /**
    * Creates a simple multi-template with a single definition
