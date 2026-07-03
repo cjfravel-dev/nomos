@@ -87,8 +87,12 @@ object Nomos {
     val writer = new FileWriter()
     val outputDirFile = new java.io.File(outputDir)
     
-    generator.generateMulti(template).map { generatedFiles =>
-      writer.writeFilesWithReport(generatedFiles, outputDirFile)
+    generator.generateMulti(template).right.flatMap { generatedFiles =>
+      val report = writer.writeFilesWithReport(generatedFiles, outputDirFile)
+      if (report.isFailure)
+        Left(GeneratorError.IOError(report.summary + ": " + report.failureMessages.mkString("; ")))
+      else
+        Right(report)
     }
   }
   
