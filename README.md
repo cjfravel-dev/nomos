@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo-mark.svg" alt="Nomos" width="160">
+  <img src="docs/assets/logo-mark.png" alt="Nomos" width="160">
 </p>
 
 [![CI](https://github.com/cjfravel-dev/nomos/actions/workflows/ci.yml/badge.svg)](https://github.com/cjfravel-dev/nomos/actions/workflows/ci.yml)
