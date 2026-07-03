@@ -6,19 +6,32 @@ package dev.cjfravel.nomos.serialization
  * byte-compatible with existing payloads. Decode runs on parse, encode on output.
  */
 object AdapterRegistry {
-  private val decoders = scala.collection.concurrent.TrieMap.empty[String, String => String]
-  private val encoders = scala.collection.concurrent.TrieMap.empty[String, String => String]
+  // Decode/encode are stored as one value so a registration is atomic: a concurrent reader never
+  // sees the decoder present while the encoder is still missing.
+  private val adapters = scala.collection.concurrent.TrieMap.empty[String, (String => String, String => String)]
 
-  def register(name: String)(decode: String => String, encode: String => String): Unit = {
-    decoders(name) = decode
-    encoders(name) = encode
-  }
+  def register(name: String)(decode: String => String, encode: String => String): Unit =
+    adapters(name) = (decode, encode)
 
-  def isRegistered(name: String): Boolean = decoders.contains(name)
+  def isRegistered(name: String): Boolean = adapters.contains(name)
 
-  def decode(name: String, value: String): String = decoders.get(name).map(_(value)).getOrElse(value)
+  /** Applies the named adapter's decode (wire -> model), or fails closed if none is registered. */
+  def decode(name: String, value: String): String =
+    adapters.get(name) match {
+      case Some((d, _)) => d(value)
+      case None => throw new IllegalStateException(unregistered(name))
+    }
 
-  def encode(name: String, value: String): String = encoders.get(name).map(_(value)).getOrElse(value)
+  /** Applies the named adapter's encode (model -> wire), or fails closed if none is registered. */
+  def encode(name: String, value: String): String =
+    adapters.get(name) match {
+      case Some((_, e)) => e(value)
+      case None => throw new IllegalStateException(unregistered(name))
+    }
 
-  def clear(): Unit = { decoders.clear(); encoders.clear() }
+  private def unregistered(name: String): String =
+    s"No adapter registered for '$name'. " +
+      s"""Register one at startup with AdapterRegistry.register("$name")(decode, encode)."""
+
+  def clear(): Unit = adapters.clear()
 }

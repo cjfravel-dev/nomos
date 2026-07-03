@@ -115,7 +115,10 @@ object Codecs {
 
   /** Decodes a JSON string then maps it through the named adapter (wire -> model). */
   def adapted(name: String): Decoder[String] =
-    (j: JsonValue) => string(j).right.map(s => AdapterRegistry.decode(name, s))
+    (j: JsonValue) => string(j).right.flatMap { s =>
+      if (AdapterRegistry.isRegistered(name)) Right(AdapterRegistry.decode(name, s))
+      else Left(s"no adapter registered for '$name'")
+    }
 
   /** Encodes a model string as JSON, mapping it through the named adapter first (model -> wire). */
   def adaptedEncode(name: String, value: String): JsonValue =
