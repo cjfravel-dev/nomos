@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-MIT%20%2B%20SaaS-blue)](LICENSE.md)
 [![Scala](https://img.shields.io/badge/Scala-2.12-DC322F?logo=scala&logoColor=white)](https://www.scala-lang.org/)
 
-**Generate Scala case classes, JSON codecs, and validators from declarative templates** — with **zero third-party JSON dependency** on your (or your consumers') classpath.
+**A JSON templating engine for Scala.** Define a template once; nomos generates matching case classes that validate, serialize, and deserialize JSON.
 
 📖 **[Full documentation →](https://cjfravel-dev.github.io/nomos/)**
 
@@ -62,7 +62,7 @@ is derived from the path):
 }
 ```
 
-generates a case class with dependency-free `fromJson`/`toJson`/`validate`:
+generates a matching case class that can validate, serialize, and deserialize JSON:
 
 ```scala
 import com.example.models.user.User
@@ -87,11 +87,11 @@ Everything lives on the [docs site](https://cjfravel-dev.github.io/nomos/):
 
 ## Runtime JSON API
 
-`nomos-runtime` carries a first-party JSON model in `dev.cjfravel.nomos.json` — a **public,
-supported, intentionally minimal** immutable tree with parse/write, typed accessors, and
-single-level transforms. It exists so generated code and validation never put a third-party JSON
-library on your classpath; it is **not** a general-purpose JSON toolkit (no path queries,
-streaming, schema, or reflection mapping). See the `JsonValue` scaladoc for the full contract.
+`nomos-runtime` provides the JSON model that generated code uses: a first-party,
+**public, supported, intentionally minimal** immutable tree in `dev.cjfravel.nomos.json` with
+parse/write, typed accessors, and single-level transforms. It is **not** a general-purpose JSON
+toolkit (no path queries, streaming, schema, or reflection mapping). See the `JsonValue` scaladoc
+for the full contract.
 
 ## Examples
 
