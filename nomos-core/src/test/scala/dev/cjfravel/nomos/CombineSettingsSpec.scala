@@ -3,9 +3,10 @@ package dev.cjfravel.nomos
 import dev.cjfravel.nomos.model._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.EitherValues
 import scala.collection.immutable.ListMap
 
-class CombineSettingsSpec extends AnyFlatSpec with Matchers {
+class CombineSettingsSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   def t(pkg: String,
         useOptionTypes: Boolean = true,
@@ -23,7 +24,7 @@ class CombineSettingsSpec extends AnyFlatSpec with Matchers {
       t("com.example.a"),
       t("com.example.b", useOptionTypes = false, listType = "Array",
         fromJsonStyle = "throwing", dateType = "java.util.Date", dateTimeType = "java.util.Date",
-        visibility = Some("private[example]"))))
+        visibility = Some("private[example]")))).value
     merged.useOptionTypes shouldBe false
     merged.listType shouldBe "Array"
     merged.fromJsonStyle shouldBe "throwing"
@@ -33,12 +34,38 @@ class CombineSettingsSpec extends AnyFlatSpec with Matchers {
   }
 
   "combine" should "keep defaults when no file overrides them" in {
-    val merged = MultiTemplate.combine(List(t("com.example.a"), t("com.example.b")))
+    val merged = MultiTemplate.combine(List(t("com.example.a"), t("com.example.b"))).value
     merged.useOptionTypes shouldBe true
     merged.listType shouldBe "List"
     merged.fromJsonStyle shouldBe "either"
     merged.dateType shouldBe "java.time.LocalDate"
     merged.dateTimeType shouldBe "java.time.LocalDateTime"
     merged.visibility shouldBe None
+  }
+
+  "combine" should "allow the same non-default value in more than one file" in {
+    val merged = MultiTemplate.combine(List(
+      t("com.example.a", listType = "Array"),
+      t("com.example.b", listType = "Array"))).value
+    merged.listType shouldBe "Array"
+  }
+
+  "combine" should "fail when two files give a setting conflicting non-default values" in {
+    val result = MultiTemplate.combine(List(
+      t("com.example.a", listType = "Array"),
+      t("com.example.b", listType = "Vector")))
+    result.isLeft shouldBe true
+    val msg = result.left.get
+    msg should include("listType")
+    msg should include("Array")
+    msg should include("Vector")
+  }
+
+  "combine" should "report every conflicting setting at once" in {
+    val msg = MultiTemplate.combine(List(
+      t("com.example.a", listType = "Array", dateType = "java.util.Date"),
+      t("com.example.b", listType = "Vector", dateType = "java.time.Instant"))).left.get
+    msg should include("listType")
+    msg should include("dateType")
   }
 }

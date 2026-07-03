@@ -96,8 +96,10 @@ object Nomos {
    * Generate code from many templates sharing one definition space so $ref resolves across files.
    */
   def generateAll(templates: java.util.List[MultiTemplate], outputDir: String): Either[GeneratorError, WriteReport] = {
-    val combined = MultiTemplate.combine(scala.collection.JavaConverters.asScalaBuffer(templates).toList)
-    generateCode(combined, outputDir)
+    MultiTemplate.combine(scala.collection.JavaConverters.asScalaBuffer(templates).toList) match {
+      case Left(error)     => Left(GeneratorError.TemplateError(error))
+      case Right(combined) => generateCode(combined, outputDir)
+    }
   }
   
   /**

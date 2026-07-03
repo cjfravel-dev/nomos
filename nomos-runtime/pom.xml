@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.cjfravel</groupId>
         <artifactId>nomos-parent</artifactId>
-        <version>0.0.1-alpha1</version>
+        <version>0.0.1-alpha2</version>
     </parent>
 
     <artifactId>nomos-runtime</artifactId>

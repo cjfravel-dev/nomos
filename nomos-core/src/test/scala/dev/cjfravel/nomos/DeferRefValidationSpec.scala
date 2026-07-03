@@ -24,7 +24,7 @@ class DeferRefValidationSpec extends AnyFlatSpec with Matchers with EitherValues
     val r = parser.parseMultiTemplate(rootOnly, "com.example.a", validateRefs = false).value
     val c = parser.parseMultiTemplate("""{"definitions":[{"name":"Child","template":{"id":"string"}}]}""",
       "com.example.b", validateRefs = false).value
-    MultiTemplate.combine(List(r, c)).validate() shouldBe empty
+    MultiTemplate.combine(List(r, c)).value.validate() shouldBe empty
   }
 }
 

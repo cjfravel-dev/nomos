@@ -24,7 +24,7 @@ Manage versions with the BOM, depend on the runtime, and add the plugin to gener
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.0.1-alpha1</version>
+            <version>0.0.1-alpha2</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -41,7 +41,7 @@ Manage versions with the BOM, depend on the runtime, and add the plugin to gener
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.0.1-alpha1</version>
+    <version>0.0.1-alpha2</version>
     <executions>
         <execution>
             <phase>generate-sources</phase>

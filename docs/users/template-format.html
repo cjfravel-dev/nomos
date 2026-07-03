@@ -79,7 +79,7 @@
       <tr><td><code>dateType</code> / <code>dateTimeType</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td><td>Generated temporal types</td></tr>
       <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td><code>either</code> or <code>throwing</code> (see Code Generation)</td></tr>
     </table>
-    <div class="callout note"><p>In a multi-file project, a setting declared in <em>any</em> template applies project-wide — you don't have to repeat it in every file.</p></div>
+    <div class="callout note"><p>These settings are project-wide. In a multi-file project, set a value in one template and it applies everywhere — you don't repeat it in every file. If two files set the <em>same</em> setting to different values, generation fails with an error naming the setting, so the result is never ambiguous.</p></div>
 
     <h2 id="scalars">Scalar types</h2>
     <table>

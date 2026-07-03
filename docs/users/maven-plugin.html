@@ -56,7 +56,7 @@
 <pre><code class="language-xml">&lt;plugin&gt;
   &lt;groupId&gt;dev.cjfravel&lt;/groupId&gt;
   &lt;artifactId&gt;nomos-maven-plugin&lt;/artifactId&gt;
-  &lt;version&gt;0.0.1-alpha1&lt;/version&gt;
+  &lt;version&gt;0.0.1-alpha2&lt;/version&gt;
   &lt;executions&gt;
     &lt;execution&gt;
       &lt;phase&gt;generate-sources&lt;/phase&gt;
@@ -85,7 +85,6 @@
 <pre><code class="language-xml">&lt;configuration&gt;
   &lt;outputDirectory&gt;target/generated-sources/nomos&lt;/outputDirectory&gt;
 &lt;/configuration&gt;</code></pre>
-    <div class="callout warn"><p>If you switch to a generated folder, delete any previously committed generated files under <code>src/main/scala</code> — two copies on the classpath cause duplicate-class errors.</p></div>
 
     <h2 id="multi">Multi-file projects</h2>
     <p>
@@ -93,7 +92,7 @@
       generating. That means a <code>$ref</code> in one file resolves to a definition in another —
       so you can split a large model one template per package and still cross-reference freely.
     </p>
-    <div class="callout tip"><p>Project-wide settings (<code>listType</code>, <code>dateType</code>, <code>fromJsonStyle</code>, …) need only appear in one template; the merge honors any non-default value across files.</p></div>
+    <div class="callout tip"><p>Project-wide settings (<code>listType</code>, <code>dateType</code>, <code>fromJsonStyle</code>, …) need only appear in one template and apply to the whole project. Setting the same one to conflicting values in different files is a build error.</p></div>
 
     <p class="muted" style="margin-top:28px">Back to <a href="getting-started.html">Getting Started</a>, or browse the <a href="../api/dev/cjfravel/nomos/Nomos$.html">API reference</a>.</p>
   </main>

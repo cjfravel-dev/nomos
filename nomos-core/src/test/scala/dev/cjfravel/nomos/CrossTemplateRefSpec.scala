@@ -15,13 +15,13 @@ class CrossTemplateRefSpec extends AnyFlatSpec with Matchers with EitherValues {
     ObjectType(ListMap("id" -> FieldDef(StringType(), false))))))
 
   "combine" should "merge definitions into a shared space preserving packages" in {
-    val merged = MultiTemplate.combine(List(rootT, childT))
+    val merged = MultiTemplate.combine(List(rootT, childT)).value
     merged.getDefinition("Root").map(merged.fqn(_)) shouldBe Some("com.example.a.Root")
     merged.getDefinition("Child").map(merged.fqn(_)) shouldBe Some("com.example.b.Child")
   }
 
   "generation" should "resolve a cross-template ref and import it" in {
-    val merged = MultiTemplate.combine(List(rootT, childT))
+    val merged = MultiTemplate.combine(List(rootT, childT)).value
     val files = new CodeGenerator(GeneratorConfig("", "target/test-gen")).generateMulti(merged).value
     val root = files.find(_.fileName == "Root.scala").get
     root.content should include("package com.example.a")
@@ -32,7 +32,7 @@ class CrossTemplateRefSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "combine of one template" should "keep its base package for NomosFormats" in {
     val merged = MultiTemplate.combine(List(MultiTemplate("com.example.models",
-      List(TemplateDefinition("User", ObjectType(ListMap("id" -> FieldDef(StringType(), false))), Some("user"))))))
+      List(TemplateDefinition("User", ObjectType(ListMap("id" -> FieldDef(StringType(), false))), Some("user")))))).value
     merged.basePackage shouldBe "com.example.models"
     merged.fqn(merged.definitions.head) shouldBe "com.example.models.user.User"
   }

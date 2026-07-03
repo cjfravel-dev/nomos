@@ -201,8 +201,13 @@ object MultiTemplate {
   /**
    * Combines templates into one shared definition space so $ref resolves across files.
    * Each definition's package is flattened into an absolute subPackage; the base package is empty.
+   *
+   * Generation settings (listType, dateType, fromJsonStyle, ...) are project-wide: each may be set
+   * in one file and applies to the whole project. A setting given conflicting non-default values in
+   * different files is a build error, so the merged result is unambiguous regardless of
+   * file-discovery order.
    */
-  def combine(templates: List[MultiTemplate]): MultiTemplate = {
+  def combine(templates: List[MultiTemplate]): Either[String, MultiTemplate] = {
     val absolute = templates.flatMap { t =>
       t.definitions.map(d => d.copy(subPackage = Some(d.fullPackage(t.basePackage))))
     }
@@ -212,17 +217,30 @@ object MultiTemplate {
       val sub = if (base.nonEmpty && full == base) "" else if (base.nonEmpty) full.stripPrefix(base + ".") else full
       d.copy(subPackage = if (sub.isEmpty) None else Some(sub))
     }
-    // Generation settings: take any non-default value across files so a setting declared in
-    // any template is honored regardless of file-discovery order.
-    def firstNonDefault[A](values: List[A], default: A): A = values.find(_ != default).getOrElse(default)
-    val useOptionTypes = firstNonDefault(templates.map(_.useOptionTypes), true)
-    val listType = firstNonDefault(templates.map(_.listType), "List")
-    val fromJsonStyle = firstNonDefault(templates.map(_.fromJsonStyle), "either")
-    val dateType = firstNonDefault(templates.map(_.dateType), "java.time.LocalDate")
-    val dateTimeType = firstNonDefault(templates.map(_.dateTimeType), "java.time.LocalDateTime")
-    val mapType = firstNonDefault(templates.map(_.mapType), "Map")
-    val visibility = firstNonDefault(templates.map(_.visibility), None)
-    MultiTemplate(base, defs, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
+    // A project-wide setting resolves to its single non-default value (or the default if none set).
+    // Two files giving it different non-default values is a conflict.
+    def resolve[A](name: String, values: List[A], default: A): Either[String, A] =
+      values.filter(_ != default).distinct match {
+        case Nil            => Right(default)
+        case single :: Nil  => Right(single)
+        case many           => Left(s"$name (${many.mkString(" vs ")})")
+      }
+    val useOptionTypes = resolve("useOptionTypes", templates.map(_.useOptionTypes), true)
+    val listType = resolve("listType", templates.map(_.listType), "List")
+    val fromJsonStyle = resolve("fromJsonStyle", templates.map(_.fromJsonStyle), "either")
+    val dateType = resolve("dateType", templates.map(_.dateType), "java.time.LocalDate")
+    val dateTimeType = resolve("dateTimeType", templates.map(_.dateTimeType), "java.time.LocalDateTime")
+    val mapType = resolve("mapType", templates.map(_.mapType), "Map")
+    val visibility = resolve("visibility", templates.map(_.visibility), None)
+    val conflicts = List(useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
+      .collect { case Left(msg) => msg }
+    if (conflicts.nonEmpty)
+      Left("Conflicting project-wide settings across template files: " + conflicts.mkString("; ") +
+        ". Each setting must resolve to a single value across all files.")
+    else
+      Right(MultiTemplate(base, defs, useOptionTypes.right.get, listType.right.get,
+        fromJsonStyle.right.get, dateType.right.get, dateTimeType.right.get, mapType.right.get,
+        visibility.right.get))
   }
 
   private def commonPrefix(pkgs: List[String]): String = {
