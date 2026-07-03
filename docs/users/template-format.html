@@ -73,9 +73,9 @@
     <table>
       <tr><th>Top-level field</th><th>Default</th><th>Meaning</th></tr>
       <tr><td><code>definitions</code></td><td>—</td><td>Array of type definitions (required)</td></tr>
-      <tr><td><code>useOptionTypes</code></td><td><code>true</code></td><td>Optional fields become <code>Option[T]</code></td></tr>
+      <tr><td><code>useOptionTypes</code></td><td><code>true</code></td><td>Must be <code>true</code>; optional fields become <code>Option[T]</code>. <code>false</code> is not supported; use per-field <code>nullable: true</code> for null-based optional fields.</td></tr>
       <tr><td><code>listType</code></td><td><code>"List"</code></td><td>Collection type for arrays (<code>List</code> or <code>Array</code>)</td></tr>
-      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Type for <code>$map</code> (e.g. <code>java.util.Map</code>)</td></tr>
+      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Only <code>"Map"</code> is supported for <code>$map</code>.</td></tr>
       <tr><td><code>dateType</code> / <code>dateTimeType</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td><td>Generated temporal types</td></tr>
       <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td><code>either</code> or <code>throwing</code> (see Code Generation)</td></tr>
     </table>
@@ -111,11 +111,10 @@
 
     <h2 id="enums">Enums</h2>
     <p>A closed value set either validates a <code>String</code>, or generates a dedicated enum type.</p>
-<pre><code class="language-json">// validates a String
-{ "priority": { "type": "string", "enum": ["low", "medium", "high"] } }
-
-// generates a sealed-trait enum type named Priority, and types the field as it
-{ "priority": { "type": "string", "enum": ["low", "high"], "as": "enumType", "name": "Priority" } }</code></pre>
+<p>To validate a string against a closed set:</p>
+<pre><code class="language-json">{ "priority": { "type": "string", "enum": ["low", "medium", "high"] } }</code></pre>
+    <p>To generate a sealed-trait enum type named <code>Priority</code> and type the field as it:</p>
+<pre><code class="language-json">{ "priority": { "type": "string", "enum": ["low", "high"], "as": "enumType", "name": "Priority" } }</code></pre>
 
     <h2 id="containers">Arrays &amp; maps</h2>
 <pre><code class="language-json">{
@@ -128,19 +127,19 @@
 
     <h2 id="optional">Optional, nullable &amp; defaults</h2>
 <pre><code class="language-json">{
-  "nickname": { "$optional": "string" },                       // Option[String]
-  "tags":     { "$optional": ["string"], "nullable": true },   // List[String] = null (no Option)
-  "retries":  { "$optional": "int", "nullable": true },        // java.lang.Integer = null (boxed)
-  "verbose":  { "type": "boolean", "default": false }          // verbose: Boolean = false
+  "nickname": { "$optional": "string" },
+  "tags":     { "$optional": ["string"], "nullable": true },
+  "retries":  { "$optional": "int", "nullable": true },
+  "verbose":  { "type": "boolean", "default": false }
 }</code></pre>
-    <div class="callout tip"><p><code>nullable: true</code> generates a raw nullable type instead of <code>Option</code>; value types are boxed (e.g. <code>java.lang.Integer</code>) so <code>null</code> compiles.</p></div>
+    <div class="callout tip"><p><code>nickname</code> becomes <code>Option[String]</code>. <code>nullable: true</code> generates a raw nullable type instead of <code>Option</code>; value types are boxed (e.g. <code>java.lang.Integer</code>) so <code>null</code> compiles. <code>verbose</code> becomes <code>verbose: Boolean = false</code>.</p></div>
 
     <h2 id="refs">References</h2>
 <pre><code class="language-json">{
-  "address": "$ref:Address",                 // another definition (any template in the project)
-  "rule":    "$extern:com.example.legacy.Rule" // a hand-written type Nomos won't generate or validate
+  "address": "$ref:Address",
+  "rule":    "$extern:com.example.legacy.Rule"
 }</code></pre>
-    <p>Self-references (recursive types) work too: a <code>TreeNode</code> may contain <code>["$ref:TreeNode"]</code>.</p>
+    <p><code>$ref</code> points at another definition in any template in the project. <code>$extern</code> names a hand-written type Nomos won't generate or validate. Self-references (recursive types) work too: a <code>TreeNode</code> may contain <code>["$ref:TreeNode"]</code>.</p>
 
     <h2 id="discriminators">Type discriminators</h2>
     <p>A discriminator becomes a <code>sealed trait</code> with a case-class variant per value.</p>
@@ -164,12 +163,12 @@
       <tr><td><code>variantNames</code></td><td>Map several values to one class to collapse identical variants</td></tr>
       <tr><td><code>variantMatch</code></td><td><code>exact</code> (default) or <code>prefix</code> — match parameterized tags like <code>Decimal(28,8)</code></td></tr>
       <tr><td><code>variantSubPackage</code></td><td>Place variant case classes in a sub-package</td></tr>
-      <tr><td><code>includeDiscriminator</code></td><td>Whether the discriminator field appears on the case classes (default true)</td></tr>
+      <tr><td><code>includeDiscriminator</code></td><td>Must be <code>true</code> (the default); <code>false</code> is rejected at generation because such a union cannot decode its own output.</td></tr>
     </table>
 
     <h2 id="keys">Reserved keys &amp; escaping</h2>
     <p>A field literally named like a template keyword (<code>type</code>, <code>enum</code>, …) must be backtick-quoted so it's read as a field, not a directive. Nomos strips the backticks and re-escapes Scala keywords in the output.</p>
-<pre><code class="language-json">{ "name": "string", "`type`": "string" }   // generates  `type`: String</code></pre>
+<pre><code class="language-json">{ "name": "string", "`type`": "string" }</code></pre>
 
     <p class="muted" style="margin-top:28px">Next: <a href="validation.html">Validation</a> — how the embedded template validates JSON, and how to extend it.</p>
   </main>

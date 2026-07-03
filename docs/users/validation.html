@@ -113,7 +113,7 @@ Nomos.validators.register("dates.startBeforeEnd") { json =>
 <pre><code class="language-json">{ "color": { "type": "string", "format": "hexColor" } }</code></pre>
 
     <h2 id="adapters">(De)serialization adapters</h2>
-    <p>Per-field adapters convert between an on-the-wire form and your model's form — useful for legacy encodings.</p>
+    <p>Per-field adapters convert between an on-the-wire form and your model's form — useful for legacy encodings. Adapters are honored only on required string fields; an adapter on a non-string field is rejected, and optional fields are not adapted.</p>
 <pre><code class="language-json">{ "createdAt": { "type": "string", "adapter": "epochMillis" } }</code></pre>
 <pre><code class="language-scala">Nomos.adapters.register("epochMillis")(
   decode = wire => wire,   // String => String

@@ -54,7 +54,7 @@
     </div>
 
     <h2 id="install">Installation</h2>
-    <p>Nomos is a multi-module Maven project. Import the BOM to align versions, then depend on <code>nomos-runtime</code> &mdash; the small, dependency-free library the generated code uses at runtime.</p>
+    <p>Nomos is a multi-module Maven project. Import the BOM to align versions, then depend on <code>nomos-runtime</code> &mdash; the small library the generated code uses at runtime, with no third-party JSON dependencies and only the Scala standard library required.</p>
 <pre><code class="language-xml">&lt;dependencyManagement&gt;
   &lt;dependencies&gt;
     &lt;dependency&gt;

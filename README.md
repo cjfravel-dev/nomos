@@ -106,8 +106,11 @@ mvn -f nomos-example/pom.xml test    # regenerates via the installed plugin, the
 
 ## Building
 
+Build and test the reactor (BOM, runtime, core, plugin), then the example separately (the end-to-end plugin path, which the reactor excludes):
+
 ```bash
 mvn clean test
+mvn -f nomos-example/pom.xml test
 ```
 
 More in the [contributor guide](https://cjfravel-dev.github.io/nomos/contributors/index.html).
