@@ -17,6 +17,8 @@
         <license>
             <name>MIT License with SaaS Provision</name>
             <url>https://github.com/cjfravel-dev/nomos/blob/main/LICENSE.md</url>
+            <comments>A custom, source-available license: the MIT License with an added SaaS provision. Not the standard OSI MIT License; see LICENSE.md for the exact terms.</comments>
+            <distribution>repo</distribution>
         </license>
     </licenses>
 
