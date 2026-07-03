@@ -1,19 +1,19 @@
-# Nomos
+<p align="center">
+  <img src="docs/assets/logo-mark.svg" alt="Nomos" width="160">
+</p>
 
-A Scala library for generating case classes and JSON validators from declarative templates.
+[![CI](https://github.com/cjfravel-dev/nomos/actions/workflows/ci.yml/badge.svg)](https://github.com/cjfravel-dev/nomos/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/dev.cjfravel/nomos-runtime?label=Maven%20Central)](https://central.sonatype.com/artifact/dev.cjfravel/nomos-runtime)
+[![License](https://img.shields.io/badge/license-MIT%20%2B%20SaaS-blue)](LICENSE.md)
+[![Scala](https://img.shields.io/badge/Scala-2.12-DC322F?logo=scala&logoColor=white)](https://www.scala-lang.org/)
 
-## Features
+**Generate Scala case classes, JSON codecs, and validators from declarative templates** — with **zero third-party JSON dependency** on your (or your consumers') classpath.
 
-- **Code Generation**: Generate Scala case classes from JSON templates
-- **Type Safety**: Dependency-free serialization with generated codecs (no third-party JSON library)
-- **Validation**: Runtime JSON validation against template schemas
-- **Type Discriminators**: Support for sealed traits with variants
-- **Maven Integration**: Maven plugin for build-time code generation
-- **BOM Support**: Centralized dependency management
+📖 **[Full documentation →](https://cjfravel-dev.github.io/nomos/)**
 
-## Quick Start
+## Install
 
-### 1. Add Dependencies
+Manage versions with the BOM, depend on the runtime, and add the plugin to generate at build time:
 
 ```xml
 <dependencyManagement>
@@ -21,7 +21,7 @@ A Scala library for generating case classes and JSON validators from declarative
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>0.0.1-alpha1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -31,160 +31,86 @@ A Scala library for generating case classes and JSON validators from declarative
 <dependencies>
     <dependency>
         <groupId>dev.cjfravel</groupId>
-        <artifactId>nomos-core</artifactId>
+        <artifactId>nomos-runtime</artifactId>
     </dependency>
 </dependencies>
-```
 
-### 2. Add Maven Plugin
-
-```xml
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.0.1-alpha1</version>
     <executions>
         <execution>
             <phase>generate-sources</phase>
-            <goals>
-                <goal>generate</goal>
-            </goals>
+            <goals><goal>generate</goal></goals>
         </execution>
     </executions>
 </plugin>
 ```
 
-### 3. Create Template
+## Quick look
 
-`src/main/resources/nomos/templates/com/example/models/user.json` (the base package `com.example.models` is derived from the path):
+A template at `src/main/resources/nomos/templates/com/example/models/user.json` (the base package
+is derived from the path):
+
 ```json
 {
   "definitions": [
-    {
-      "name": "User",
-      "subPackage": "user",
-      "template": {
-        "id": "string",
-        "username": "string",
-        "email": "string",
-        "age": { "$optional": "number" },
-        "roles": ["string"]
-      }
-    }
+    { "name": "User", "subPackage": "user",
+      "template": { "id": "string", "email": "string", "age": { "$optional": "number" } } }
   ]
 }
 ```
 
-### 4. Generate Code
-
-```bash
-mvn generate-sources
-```
-
-This generates:
-```scala
-case class User(
-  email: String,
-  username: String,
-  age: Option[Double],
-  id: String,
-  roles: List[String]
-)
-
-object User {
-  def fromJson(json: String): Either[String, User] = { ... }
-  def toJson(obj: User): String = { ... }
-}
-```
-
-### 5. Use Generated Code
+generates a case class with dependency-free `fromJson`/`toJson`/`validate`:
 
 ```scala
 import com.example.models.user.User
 
-// Parse JSON (returns Either[String, User] by default)
-val parsed = User.fromJson("""{"id":"123","username":"john","email":"j@x.com","roles":[]}""")
+User.fromJson("""{"id":"123","email":"j@x.com"}""")     // Either[String, User]
 
-// Or validate against the embedded template and parse in one step
-User.validate("""{"id":"123","username":"john","email":"j@x.com","roles":[]}""") match {
+User.validate("""{"id":"123","email":"j@x.com"}""") match {
   case Right(user)  => println(user)
-  case Left(errors) => errors.foreach(println) // Handle validation errors
+  case Left(errors) => errors.foreach(println)
 }
 ```
 
 ## Documentation
 
-- [Template Format](docs/TEMPLATE_FORMAT.md) - JSON template syntax
-- [Multi-Module Design](docs/MULTI_MODULE_DESIGN.md) - Project architecture
-- [Examples](docs/EXAMPLES.md) - Usage examples
-- [Template Embedding](docs/TEMPLATE_EMBEDDING.md) - Runtime validation from the embedded template
+Everything lives on the [docs site](https://cjfravel-dev.github.io/nomos/):
+
+- **[Getting Started](https://cjfravel-dev.github.io/nomos/users/getting-started.html)** — install, add the plugin, generate your first types
+- **[Template Format](https://cjfravel-dev.github.io/nomos/users/template-format.html)** — fields, optionals, defaults, discriminated unions, enums
+- **[Code Generation](https://cjfravel-dev.github.io/nomos/users/code-generation.html)** — what nomos emits and how to use it
+- **[Validation](https://cjfravel-dev.github.io/nomos/users/validation.html)** — runtime validation against the embedded template
+- **[Maven Plugin](https://cjfravel-dev.github.io/nomos/users/maven-plugin.html)** — plugin goals and configuration
 
 ## Runtime JSON API
 
-`nomos-runtime` is dependency-free: generated code, validation, and your own runtime code use a
-first-party JSON model in `dev.cjfravel.nomos.json` instead of a third-party library. This model
-is a **public, supported, semver-stable** part of `nomos-runtime` — safe to depend on directly
-from hand-written runtime code:
+`nomos-runtime` carries a first-party JSON model in `dev.cjfravel.nomos.json` — a **public,
+supported, intentionally minimal** immutable tree with parse/write, typed accessors, and
+single-level transforms. It exists so generated code and validation never put a third-party JSON
+library on your classpath; it is **not** a general-purpose JSON toolkit (no path queries,
+streaming, schema, or reflection mapping). See the `JsonValue` scaladoc for the full contract.
 
-```scala
-import dev.cjfravel.nomos.json._
+## Examples
 
-Json.parse("""{"a":1,"b":2}""") match {
-  case Right(obj: JsonObject) =>
-    val renamed = obj.mapKeys(_.toUpperCase).updated("c", JsonNumber.fromInt(3))
-    Json.write(renamed)            // {"A":1,"B":2,"c":3}
-  case Right(other) => other.typeName
-  case Left(error)  => error
-}
-```
+A complete, runnable example project is in [`nomos-example/`](nomos-example/):
 
-It is intentionally minimal — it provides only what generated codecs, validation, and
-straightforward hand-written runtime code need, and it is **not** a general-purpose JSON library.
-
-**In scope:**
-
-- an immutable JSON tree (`JsonObject`, `JsonArray`, `JsonString`, `JsonNumber`, `JsonBoolean`,
-  `JsonNull`); objects preserve key order and compare order-independently;
-- `Json.parse` and compact/pretty `Json.write` (whole-document, in-memory);
-- `Option`-returning type accessors (`asString`, `asInt`, `asObject`, ...) and exact numbers
-  (the original lexeme is preserved, so `30.0` round-trips);
-- shallow, single-level lookups (`JsonObject.field`, `JsonArray.get`) and immutable single-level
-  transforms (`updated`, `remove`, `mapKeys`).
-
-**Out of scope (intentionally excluded; requests for these are declined):**
-
-- path/query languages (JSON Pointer, JSONPath) or deep navigation helpers;
-- streaming / incremental parsing — the API is whole-document;
-- schema languages, diff/patch, canonicalization;
-- reflection/macro mapping to arbitrary case classes (that is what generated codecs are for);
-- mutable builders/in-place mutation, lenses/optics, comments/JSON5.
-
-If you need any of the above, layer your own library on top of this model — nomos will not grow
-into a general-purpose JSON toolkit.
-
-## Project Structure
-
-```
-nomos/
-├── nomos-bom/          # Dependency management BOM
-├── nomos-runtime/      # Zero-dependency runtime: JSON model, validation, codecs
-├── nomos-core/         # Build-time library (parser, generator)
-├── nomos-maven-plugin/ # Maven plugin
-└── nomos-example/      # Example project
+```bash
+mvn -f nomos-example/pom.xml test    # regenerates via the installed plugin, then runs the tests
 ```
 
 ## Building
 
 ```bash
-mvn clean install
+mvn clean install -Dgpg.skip=true    # full build; signing is on by default for releases
 ```
 
-## Testing
-
-```bash
-mvn test
-```
+Releases publish to Maven Central via the Sonatype Central Publisher (`mvn clean deploy` with a GPG
+key + `central` credentials). `dev/scripts/readme-has-version.sh` (wired into the build) fails if
+this README or the getting-started page doesn't reference the current version.
 
 ## License
 
-TBD
+Nomos is licensed under the [MIT License with a SaaS provision](LICENSE.md). © 2026 CJ Fravel.

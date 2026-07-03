@@ -6,12 +6,33 @@
 
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.0.1-alpha1</version>
     <packaging>pom</packaging>
 
     <name>Nomos Parent</name>
     <description>Parent POM for Nomos multi-module project</description>
     <url>https://github.com/cjfravel-dev/nomos</url>
+
+    <licenses>
+        <license>
+            <name>MIT License with SaaS Provision</name>
+            <url>https://github.com/cjfravel-dev/nomos/blob/main/LICENSE.md</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>CJ Fravel</name>
+            <email>cj@cjfravel.dev</email>
+            <organizationUrl>https://www.cjfravel.dev</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/cjfravel-dev/nomos.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/cjfravel-dev/nomos.git</developerConnection>
+        <url>https://github.com/cjfravel-dev/nomos/tree/main</url>
+    </scm>
 
     <modules>
         <module>nomos-bom</module>
@@ -98,6 +119,7 @@
                             <goals>
                                 <goal>compile</goal>
                                 <goal>testCompile</goal>
+                                <goal>doc-jar</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -160,5 +182,60 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- Active plugins inherited by every published module: docs-version check, signing,
+             and Maven Central publishing. Signing is skippable for local/CI builds with
+             -Dgpg.skip=true; publishing only runs on `mvn deploy`. -->
+        <plugins>
+            <!-- Fail the build unless README/getting-started reference the current version -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>readme-has-version</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>bash</executable>
+                            <arguments>
+                                <argument>dev/scripts/readme-has-version.sh</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Sign artifacts for Maven Central (skip with -Dgpg.skip=true) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.7</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Publish to Maven Central via Sonatype Central (runs on `mvn deploy`) -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 </project>

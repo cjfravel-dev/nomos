@@ -26,7 +26,7 @@
             <dependency>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-bom</artifactId>
-                <version>0.1.0-SNAPSHOT</version>
+                <version>0.0.1-alpha1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -45,7 +45,7 @@
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-runtime</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>0.0.1-alpha1</version>
         </dependency>
 
         <dependency>
@@ -65,7 +65,7 @@
             <plugin>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-maven-plugin</artifactId>
-                <version>0.1.0-SNAPSHOT</version>
+                <version>0.0.1-alpha1</version>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>

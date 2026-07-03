@@ -59,7 +59,7 @@ nomos/
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>0.0.1-alpha1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -129,7 +129,7 @@ This provides:
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.0.1-alpha1</version>
     <executions>
         <execution>
             <goals>
@@ -307,7 +307,7 @@ Add BOM and dependencies to `pom.xml`:
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>0.0.1-alpha1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -330,7 +330,7 @@ Add BOM and dependencies to `pom.xml`:
         <plugin>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-maven-plugin</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
+            <version>0.0.1-alpha1</version>
             <executions>
                 <execution>
                     <goals>
