@@ -72,7 +72,7 @@
       <span class="flow-step">GeneratedFile(s)</span>
     </div>
     <ul>
-      <li><b>TemplateParser</b> reads JSON into the type model, resolving <code>$ref</code> variants and applying defaults.</li>
+      <li><b>TemplateParser</b> reads JSON into the type model, resolving <code>$ref</code> variants, and validating and rendering default literals. Missing-field defaults are applied by the generated <code>decode</code>.</li>
       <li><b>CodeGenerator</b> walks the model to emit case classes, companions, enum files, and <code>NomosFormats</code>.</li>
       <li><b>TemplateSerializer</b> renders the model back into Scala source — this is what gets embedded for runtime validation.</li>
       <li><b>MultiValidator</b> validates JSON against a <code>MultiTemplate</code>, resolving references across definitions.</li>

@@ -2,7 +2,9 @@ package dev.cjfravel.nomos.json
 
 /**
  * Serializes a [[JsonValue]] back to JSON text. Object key order is preserved and numbers are
- * emitted from their original lexeme, so parse-then-write round-trips byte-for-byte.
+ * emitted from their original lexeme, so parse-then-write is a semantic round-trip: number lexemes
+ * are preserved exactly, but string escapes are normalized (e.g. `\u00e9` -> `é`) and duplicate
+ * object keys are collapsed (last value wins).
  */
 object JsonWriter {
 
