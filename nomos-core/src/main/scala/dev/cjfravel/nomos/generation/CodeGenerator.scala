@@ -18,6 +18,16 @@ class CodeGenerator(config: GeneratorConfig) {
       case _ =>
     }
 
+    // useOptionTypes=false would render optional fields as raw types while decode still binds an
+    // Option and encode still calls .map, producing uncompilable code. Reject it with a clear
+    // message; per-field `nullable: true` provides null-based optional fields instead.
+    if (!config.useOptionTypes) {
+      return Left(GeneratorError.TemplateError(
+        "useOptionTypes=false is not supported: optional fields would render as raw types while " +
+          "decode/encode still use Option, producing uncompilable code. Mark individual fields " +
+          "with \"nullable\": true for null-based optional fields instead."))
+    }
+
     // Reject template-derived names that are not valid Scala identifiers before emitting any
     // source. This prevents uncompilable output and closes path-traversal/code-injection vectors
     // where a name (e.g. an enum name used as a file name) flows into generated paths or source.

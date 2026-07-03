@@ -32,7 +32,6 @@ class GeneratedFileSpec extends AnyFlatSpec with Matchers with EitherValues {
     val cfg = GeneratorConfig("com.example", "out")
     cfg.packageDirectory("com.example.models").getPath should include("com")
     GeneratorConfig.default("com.x").outputDir shouldBe "src/main/scala"
-    GeneratorConfig.withNullableTypes("com.x", "o").useOptionTypes shouldBe false
     GeneratorConfig.withArrayType("com.x", "o").listType shouldBe "Array"
   }
 }
