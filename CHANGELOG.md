@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha4]
+
 ### Changed
 
 - **Breaking:** removed the single-valued `useOptionTypes` and `mapType` template settings. Optional
