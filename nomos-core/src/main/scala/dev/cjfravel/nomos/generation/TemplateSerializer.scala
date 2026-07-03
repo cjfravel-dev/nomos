@@ -14,7 +14,8 @@ object TemplateSerializer {
    */
   def serializeMultiTemplate(template: MultiTemplate): String = {
     val definitions = template.definitions.map(serializeDefinition).mkString(",\n      ")
-    
+    val visibility = template.visibility.map(s => s"""Some("${escapeString(s)}")""").getOrElse("None")
+
     s"""MultiTemplate(
       basePackage = "${escapeString(template.basePackage)}",
       definitions = List(
@@ -22,7 +23,11 @@ object TemplateSerializer {
       ),
       useOptionTypes = ${template.useOptionTypes},
       listType = "${escapeString(template.listType)}",
-      fromJsonStyle = "${escapeString(template.fromJsonStyle)}"
+      fromJsonStyle = "${escapeString(template.fromJsonStyle)}",
+      dateType = "${escapeString(template.dateType)}",
+      dateTimeType = "${escapeString(template.dateTimeType)}",
+      mapType = "${escapeString(template.mapType)}",
+      visibility = $visibility
     )"""
   }
   
@@ -107,7 +112,7 @@ object TemplateSerializer {
         val variantNamesMap = if (variantNames.isEmpty) {
           "Map.empty[String, String]"
         } else {
-          val entries = variantNames.map { case (k, v) =>
+          val entries = variantNames.toList.sortBy(_._1).map { case (k, v) =>
             s""""${escapeString(k)}" -> "${escapeString(v)}""""
           }.mkString(", ")
           s"Map($entries)"
