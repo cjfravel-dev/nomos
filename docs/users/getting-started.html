@@ -54,7 +54,7 @@
     </div>
 
     <h2 id="install">Installation</h2>
-    <p>Nomos is a multi-module Maven project. Import the BOM to align versions, then depend on <code>nomos-core</code>.</p>
+    <p>Nomos is a multi-module Maven project. Import the BOM to align versions, then depend on <code>nomos-runtime</code> &mdash; the small, dependency-free library the generated code uses at runtime.</p>
 <pre><code class="language-xml">&lt;dependencyManagement&gt;
   &lt;dependencies&gt;
     &lt;dependency&gt;
@@ -70,7 +70,7 @@
 &lt;dependencies&gt;
   &lt;dependency&gt;
     &lt;groupId&gt;dev.cjfravel&lt;/groupId&gt;
-    &lt;artifactId&gt;nomos-core&lt;/artifactId&gt;
+    &lt;artifactId&gt;nomos-runtime&lt;/artifactId&gt;
   &lt;/dependency&gt;
 &lt;/dependencies&gt;</code></pre>
 
