@@ -31,6 +31,12 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.cjfravel</groupId>
+                <artifactId>nomos-maven-plugin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- Scala -->
             <dependency>
                 <groupId>org.scala-lang</groupId>

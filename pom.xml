@@ -207,6 +207,7 @@
                             <executable>bash</executable>
                             <arguments>
                                 <argument>dev/scripts/readme-has-version.sh</argument>
+                                <argument>${project.version}</argument>
                             </arguments>
                         </configuration>
                     </execution>
