@@ -7,7 +7,8 @@ import java.io.File
  *
  * @param basePackage The base package for generated code (e.g., "com.myapp")
  * @param outputDir The directory where generated code will be written
- * @param useOptionTypes Whether to use Option[T] for optional fields (true) or nullable types (false). Default is true.
+ * @param useOptionTypes Must be true: optional fields are Option[T]. false is rejected at generation
+ *   (it produced uncompilable code); use per-field "nullable": true for null-based optional fields.
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  */
 case class GeneratorConfig(
@@ -63,13 +64,6 @@ object GeneratorConfig {
    */
   def default(basePackage: String): GeneratorConfig = {
     GeneratorConfig(basePackage, "src/main/scala", useOptionTypes = true)
-  }
-  
-  /**
-   * Creates a configuration that uses nullable types instead of Option
-   */
-  def withNullableTypes(basePackage: String, outputDir: String): GeneratorConfig = {
-    GeneratorConfig(basePackage, outputDir, useOptionTypes = false)
   }
   
   /**
