@@ -45,18 +45,23 @@ class DateTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
     v.validate("""{"d":"not-a-date","ts":"2024-01-02T03:04:05"}""", "N") shouldBe a[Left[_, _]]
   }
 
-  "datetime validation" should "accept UTC instants, offsets, and fractional seconds" in {
-    val t = MultiTemplate("com.example", List(TemplateDefinition("N", ObjectType(ListMap(
-      "ts" -> FieldDef(DateTimeType(), false))))))
-    val v = new MultiValidator(t)
-    // Trailing Z (the dominant real-world form), incl. fractional seconds, and explicit offsets.
-    v.validate("""{"ts":"2025-11-11T11:11:11Z"}""", "N") shouldBe a[Right[_, _]]
-    v.validate("""{"ts":"2023-03-29T05:24:36.645000Z"}""", "N") shouldBe a[Right[_, _]]
-    v.validate("""{"ts":"2024-01-02T03:04:05+02:00"}""", "N") shouldBe a[Right[_, _]]
-    // Naive local date-times still validate.
-    v.validate("""{"ts":"2024-01-02T03:04:05"}""", "N") shouldBe a[Right[_, _]]
-    // Genuinely malformed values are still rejected.
-    v.validate("""{"ts":"nope"}""", "N") shouldBe a[Left[_, _]]
+  "datetime validation" should "match the decoder for the configured dateTimeType" in {
+    // Default LocalDateTime: naive local date-times validate; trailing-Z/offset forms do NOT, because
+    // LocalDateTime.parse (what the codec uses) rejects them. Accepting them here would let validate()
+    // pass values fromJson() then rejects.
+    val local = new MultiValidator(MultiTemplate("com.example", List(TemplateDefinition("N", ObjectType(ListMap(
+      "ts" -> FieldDef(DateTimeType(), false)))))))
+    local.validate("""{"ts":"2024-01-02T03:04:05"}""", "N") shouldBe a[Right[_, _]]
+    local.validate("""{"ts":"2025-11-11T11:11:11Z"}""", "N") shouldBe a[Left[_, _]]
+    local.validate("""{"ts":"2024-01-02T03:04:05+02:00"}""", "N") shouldBe a[Left[_, _]]
+    local.validate("""{"ts":"nope"}""", "N") shouldBe a[Left[_, _]]
+
+    // With dateTimeType = OffsetDateTime, the trailing-Z/offset forms (incl. fractional seconds) validate.
+    val offset = new MultiValidator(MultiTemplate("com.example", List(TemplateDefinition("N", ObjectType(ListMap(
+      "ts" -> FieldDef(DateTimeType(), false))))), dateTimeType = "java.time.OffsetDateTime"))
+    offset.validate("""{"ts":"2025-11-11T11:11:11Z"}""", "N") shouldBe a[Right[_, _]]
+    offset.validate("""{"ts":"2023-03-29T05:24:36.645000Z"}""", "N") shouldBe a[Right[_, _]]
+    offset.validate("""{"ts":"2024-01-02T03:04:05+02:00"}""", "N") shouldBe a[Right[_, _]]
   }
 
   "serializer" should "round-trip date types" in {
