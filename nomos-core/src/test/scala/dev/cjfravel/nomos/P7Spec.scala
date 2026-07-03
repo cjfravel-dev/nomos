@@ -69,10 +69,10 @@ class P7Spec extends AnyFlatSpec with Matchers with EitherValues {
     file(parse("""{"definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}"""), "N.scala") should include("s: Map[String, String]")
   }
 
-  "configured map type" should "be honored" in {
-    val t = parse("""{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}""")
-    t.mapType shouldBe "java.util.Map"
-    file(t, "N.scala", GeneratorConfig("com.example", "target/test-gen", mapType = "java.util.Map")) should include("s: java.util.Map[String, String]")
+  "an unsupported map type" should "be rejected (the generated decoder only produces Map)" in {
+    parser.parseMultiTemplate(
+      """{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}""",
+      "com.example") shouldBe a[Left[_, _]]
   }
 
   // ---- P7-4: double keyword ----
