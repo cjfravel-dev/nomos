@@ -65,8 +65,8 @@ object Nomos {
   
   /**
    * Generate Scala case classes from a template.
-   * Uses the basePackage, useOptionTypes, and listType from the template; outputDir defaults
-   * to the standard Maven source root.
+   * Uses the basePackage and listType from the template; outputDir defaults to the standard Maven
+   * source root.
    *
    * @param template The template to generate code from
    * @param outputDir Output directory for generated files (default: src/main/scala)
@@ -76,12 +76,10 @@ object Nomos {
     val config = GeneratorConfig(
       template.basePackage,
       outputDir,
-      template.useOptionTypes,
       template.listType,
       throwingFromJson = template.fromJsonStyle == "throwing",
       dateType = template.dateType,
-      dateTimeType = template.dateTimeType,
-      mapType = template.mapType
+      dateTimeType = template.dateTimeType
     )
     val generator = new CodeGenerator(config)
     val writer = new FileWriter()

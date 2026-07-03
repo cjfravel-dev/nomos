@@ -64,12 +64,12 @@ class P7Spec extends AnyFlatSpec with Matchers with EitherValues {
     c should include("def fromJson(json: String): Either[String, Shape]")
   }
 
-  // ---- P7-3: configurable map type ----
+  // ---- P7-3: map type ----
   "default map" should "be Map[String, T]" in {
     file(parse("""{"definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}"""), "N.scala") should include("s: Map[String, String]")
   }
 
-  "an unsupported map type" should "be rejected (the generated decoder only produces Map)" in {
+  "the removed mapType setting" should "be rejected as an unknown top-level key" in {
     parser.parseMultiTemplate(
       """{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}""",
       "com.example") shouldBe a[Left[_, _]]

@@ -9,22 +9,20 @@ import scala.collection.immutable.ListMap
 
 /**
  * The embedded template drives runtime validation, so it must carry every project-wide setting that
- * affects validation. The serializer previously dropped dateType/dateTimeType/mapType/visibility, so
- * the validator reconstructed defaults regardless of configuration. These specs pin that the full
- * settings are embedded and survive the round-trip into the generated NomosFormats.
+ * affects validation. These specs pin that the full settings are embedded and survive the
+ * round-trip into the generated NomosFormats.
  */
 class EmbeddedSettingsSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
   private val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
 
-  "serializeMultiTemplate" should "embed dateType, dateTimeType, mapType and visibility" in {
+  "serializeMultiTemplate" should "embed dateType, dateTimeType and visibility" in {
     val t = MultiTemplate("com.example",
       List(TemplateDefinition("E", ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))))),
       dateType = "java.time.Instant", dateTimeType = "java.time.OffsetDateTime", visibility = Some("private[demo]"))
     val s = TemplateSerializer.serializeMultiTemplate(t)
     s should include("""dateType = "java.time.Instant"""")
     s should include("""dateTimeType = "java.time.OffsetDateTime"""")
-    s should include("""mapType = "Map"""")
     s should include("""visibility = Some("private[demo]")""")
   }
 

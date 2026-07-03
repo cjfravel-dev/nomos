@@ -50,7 +50,6 @@ case class TemplateDefinition(
  *
  * @param basePackage Base package for all generated code (derived from template path)
  * @param definitions List of type definitions
- * @param useOptionTypes Whether to use Option[T] for optional fields (default: true)
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  * @param visibility Optional access modifier (e.g. "private[incentives]") prepended to every
  *   generated top-level definition; absent means public
@@ -58,12 +57,10 @@ case class TemplateDefinition(
 case class MultiTemplate(
   basePackage: String,
   definitions: List[TemplateDefinition],
-  useOptionTypes: Boolean = true,
   listType: String = "List",
   fromJsonStyle: String = "either",
   dateType: String = "java.time.LocalDate",
   dateTimeType: String = "java.time.LocalDateTime",
-  mapType: String = "Map",
   visibility: Option[String] = None
 ) {
   /**
@@ -158,14 +155,12 @@ case class MultiTemplate(
         errors = s"Invalid visibility modifier: '$v' (expected e.g. private, protected, private[pkg])" :: errors
     }
 
-    // Validate the collection types resolve to a decoder the generator actually emits. Field types
-    // honor listType/mapType, but the emitted decoders only produce List/Array for arrays and Map
-    // for maps; any other value yields a case-class field whose type does not match its decoder,
-    // so the generated code fails to compile. Reject unsupported values here with a clear message.
+    // Validate the array collection type resolves to a decoder the generator actually emits. Field
+    // types honor listType, but the emitted decoders only produce List/Array for arrays; any other
+    // value yields a case-class field whose type does not match its decoder, so the generated code
+    // fails to compile. Reject unsupported values here with a clear message.
     if (!MultiTemplate.SupportedListTypes.contains(listType))
       errors = s"Unsupported listType: '$listType' (supported: ${MultiTemplate.SupportedListTypes.toList.sorted.mkString(", ")})" :: errors
-    if (!MultiTemplate.SupportedMapTypes.contains(mapType))
-      errors = s"Unsupported mapType: '$mapType' (supported: ${MultiTemplate.SupportedMapTypes.toList.sorted.mkString(", ")})" :: errors
 
     errors.reverse
   }
@@ -206,12 +201,6 @@ object MultiTemplate {
   val SupportedListTypes: Set[String] = Set("List", "Array")
 
   /**
-   * Map collection types the generator can emit a matching decoder for. The decoder always yields
-   * an immutable `Map[String, T]`, so `Map` is the only value whose field type accepts it.
-   */
-  val SupportedMapTypes: Set[String] = Set("Map")
-
-  /**
    * Creates a simple multi-template with a single definition
    */
   def single(
@@ -248,21 +237,19 @@ object MultiTemplate {
         case single :: Nil  => Right(single)
         case many           => Left(s"$name (${many.mkString(" vs ")})")
       }
-    val useOptionTypes = resolve("useOptionTypes", templates.map(_.useOptionTypes), true)
     val listType = resolve("listType", templates.map(_.listType), "List")
     val fromJsonStyle = resolve("fromJsonStyle", templates.map(_.fromJsonStyle), "either")
     val dateType = resolve("dateType", templates.map(_.dateType), "java.time.LocalDate")
     val dateTimeType = resolve("dateTimeType", templates.map(_.dateTimeType), "java.time.LocalDateTime")
-    val mapType = resolve("mapType", templates.map(_.mapType), "Map")
     val visibility = resolve("visibility", templates.map(_.visibility), None)
-    val conflicts = List(useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
+    val conflicts = List(listType, fromJsonStyle, dateType, dateTimeType, visibility)
       .collect { case Left(msg) => msg }
     if (conflicts.nonEmpty)
       Left("Conflicting project-wide settings across template files: " + conflicts.mkString("; ") +
         ". Each setting must resolve to a single value across all files.")
     else
-      Right(MultiTemplate(base, defs, useOptionTypes.right.get, listType.right.get,
-        fromJsonStyle.right.get, dateType.right.get, dateTimeType.right.get, mapType.right.get,
+      Right(MultiTemplate(base, defs, listType.right.get,
+        fromJsonStyle.right.get, dateType.right.get, dateTimeType.right.get,
         visibility.right.get))
   }
 

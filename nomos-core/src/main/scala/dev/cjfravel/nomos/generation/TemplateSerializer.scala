@@ -21,12 +21,10 @@ object TemplateSerializer {
       definitions = List(
       $definitions
       ),
-      useOptionTypes = ${template.useOptionTypes},
       listType = "${escapeString(template.listType)}",
       fromJsonStyle = "${escapeString(template.fromJsonStyle)}",
       dateType = "${escapeString(template.dateType)}",
       dateTimeType = "${escapeString(template.dateTimeType)}",
-      mapType = "${escapeString(template.mapType)}",
       visibility = $visibility
     )"""
   }

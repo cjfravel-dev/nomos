@@ -452,19 +452,29 @@ class TemplateParser {
   private def parseMultiTemplateJson(json: JsonValue, basePackage: String, validateRefs: Boolean): Either[ParseError, MultiTemplate] = {
     val path = "root"
 
+    val allowedKeys = Set(
+      "definitions", "listType", "fromJsonStyle", "dateType", "dateTimeType", "visibility")
+    val unknownKeys = json.asObject.map(_.keys).getOrElse(Vector.empty).filterNot(allowedKeys.contains)
+
     for {
+      _ <- Either.cond[ParseError, Unit](
+        unknownKeys.isEmpty,
+        (),
+        ParseError.StructureError(
+          s"Unknown top-level ${if (unknownKeys.size == 1) "key" else "keys"}: " +
+            unknownKeys.map(k => s"'$k'").mkString(", ") +
+            s". Supported settings: ${allowedKeys.toList.sorted.mkString(", ")}.",
+          path))
       definitionsJson <- extractField(json, "definitions", path)
       parsed <- parseDefinitions(definitionsJson, s"$path.definitions")
     } yield {
       val definitions = resolveRefVariants(parsed)
-      val useOptionTypes = extractOptionalBoolean(json, "useOptionTypes").getOrElse(true)
       val listType = extractOptionalString(json, "listType").getOrElse("List")
       val fromJsonStyle = extractOptionalString(json, "fromJsonStyle").getOrElse("either")
       val dateType = extractOptionalString(json, "dateType").getOrElse("java.time.LocalDate")
       val dateTimeType = extractOptionalString(json, "dateTimeType").getOrElse("java.time.LocalDateTime")
-      val mapType = extractOptionalString(json, "mapType").getOrElse("Map")
       val visibility = extractOptionalString(json, "visibility")
-      val multiTemplate = MultiTemplate(basePackage, definitions, useOptionTypes, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
+      val multiTemplate = MultiTemplate(basePackage, definitions, listType, fromJsonStyle, dateType, dateTimeType, visibility)
 
       multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate

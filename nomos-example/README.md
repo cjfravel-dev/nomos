@@ -93,7 +93,6 @@ The real `src/main/resources/nomos/templates/com/example/models/user.json` templ
 
 ```json
 {
-  "useOptionTypes": true,
   "listType": "List",
   "definitions": [
     {

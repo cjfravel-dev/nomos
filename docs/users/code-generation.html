@@ -105,9 +105,7 @@ object Priority {
     <p>Set these at the top level of a template (project-wide in multi-file builds):</p>
     <table>
       <tr><th>Option</th><th>Default</th><th>Effect</th></tr>
-      <tr><td><code>useOptionTypes</code></td><td><code>true</code></td><td>Must be <code>true</code>; optional fields become <code>Option[T]</code>. For null-based optional fields, use per-field <code>nullable: true</code>.</td></tr>
       <tr><td><code>listType</code></td><td><code>"List"</code></td><td><code>List</code> or <code>Array</code></td></tr>
-      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Must be <code>"Map"</code>; this is the only supported value for <code>$map</code>.</td></tr>
       <tr><td><code>dateType</code></td><td><code>java.time.LocalDate</code></td><td>e.g. <code>java.util.Date</code></td></tr>
       <tr><td><code>dateTimeType</code></td><td><code>java.time.LocalDateTime</code></td><td>Target for <code>datetime</code></td></tr>
       <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td>Only <code>"throwing"</code> is special (throwing <code>fromJson</code>); any other value yields the <code>Either</code>-returning <code>fromJson</code>.</td></tr>
