@@ -80,7 +80,21 @@ class CodeGenerator(config: GeneratorConfig) {
 
         // NomosFormats holds the embedded template and a validator for runtime validation.
         val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate, visibility)
-        Right(nomosFormatsFile :: generatedFiles ::: enumFiles)
+        val allFiles = nomosFormatsFile :: generatedFiles ::: enumFiles
+
+        // A definition and an inline enum (or a discriminatorEnum) sharing a name in one package map
+        // to the same file; written in list order the later one silently clobbers the earlier. Reject
+        // any duplicate output path across all emitted files rather than losing a type.
+        val pathCollisions = allFiles.groupBy(_.relativePath).collect {
+          case (path, files) if files.size > 1 => path
+        }.toList.sorted
+        if (pathCollisions.nonEmpty)
+          Left(GeneratorError.TemplateError(
+            "Name collision: multiple generated types map to the same output file(s): " +
+              pathCollisions.mkString(", ") +
+              ". A definition and an inline enum (or two types) share a name in one package; rename one of them."))
+        else
+          Right(allFiles)
       }
     }
   }
@@ -375,6 +389,14 @@ class CodeGenerator(config: GeneratorConfig) {
       else List(s"$context is not a safe external type name: '$value'")
     }
 
+    // Distinct source values that normalize (via toPascalCase) to the same identifier would emit
+    // duplicate case objects/classes, which does not compile. Report the colliding source values.
+    def normalizationCollisions(values: List[String], context: String): List[String] =
+      values.groupBy(ScalaCodeBuilder.toPascalCase).collect {
+        case (normalized, sources) if sources.distinct.size > 1 =>
+          s"$context normalize to the same name '$normalized': ${sources.distinct.sorted.mkString(", ")}"
+      }.toList
+
     def walk(tt: TemplateType, ctx: String): List[String] = tt match {
       case ObjectType(fields, additional) =>
         val fieldErrs = fields.toList.flatMap { case (fieldName, fieldDef) =>
@@ -390,7 +412,8 @@ class CodeGenerator(config: GeneratorConfig) {
       case UnionType(types) => types.flatMap(walk(_, ctx))
       case EnumType(enumName, values) =>
         ident(enumName, s"$ctx enum name") ++
-          values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)"))
+          values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)")) ++
+          normalizationCollisions(values, s"$ctx enum values")
       case ExternalType(qn, _) => externalType(qn, s"$ctx external type")
       case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage, fallbackVariant, discriminatorEnum) =>
         // The discriminator field becomes a generated Scala field only when it is included in the
@@ -401,9 +424,14 @@ class CodeGenerator(config: GeneratorConfig) {
         // object per variant value, so validate both the enum name and the derived case names.
         val discEnumErrs = discriminatorEnum.toList.flatMap { en =>
           ident(en, s"$ctx discriminatorEnum name") ++
-            variants.keys.toList.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx discriminatorEnum value '$v' (case object name)"))
+            variants.keys.toList.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx discriminatorEnum value '$v' (case object name)")) ++
+            normalizationCollisions(variants.keys.toList, s"$ctx discriminatorEnum values")
         }
-        fieldErrs ++ discEnumErrs ++
+        // With variantNames, several keys mapping to one class is intentional grouping; without it,
+        // each key becomes its own class named toPascalCase(key), so a normalization clash duplicates.
+        val variantKeyErrs =
+          if (variantNames.isEmpty) normalizationCollisions(variants.keys.toList, s"$ctx variant keys") else Nil
+        fieldErrs ++ discEnumErrs ++ variantKeyErrs ++
           variantSubPackage.toList.flatMap(qualified(_, s"$ctx variantSubPackage")) ++
           fallbackVariant.toList.flatMap(ident(_, s"$ctx fallbackVariant (class name)")) ++
           commonFields.toList.flatMap { case (n, fd) => ident(n, s"$ctx common field") ++ walk(fd.fieldType, s"$ctx.$n") } ++
