@@ -47,7 +47,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.version>2.12.18</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <scalatest.version>3.2.17</scalatest.version>
+        <scalatest.version>3.2.20</scalatest.version>
         <!-- Enforce the Java 8 API boundary at compile time (javac/scalac release 8) so code that
              uses a Java 9+ API fails the build instead of throwing NoSuchMethodError on a Java 8 consumer. -->
         <maven.compiler.release>8</maven.compiler.release>
