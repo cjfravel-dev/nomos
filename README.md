@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/assets/logo-mark.png" alt="Nomos" width="160">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-mark.png">
+    <img src="docs/assets/logo-mark-light.png" alt="Nomos" width="160">
+  </picture>
 </p>
 
 [![CI](https://github.com/cjfravel-dev/nomos/actions/workflows/ci.yml/badge.svg)](https://github.com/cjfravel-dev/nomos/actions/workflows/ci.yml)
