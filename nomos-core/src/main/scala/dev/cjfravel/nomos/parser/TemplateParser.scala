@@ -2,7 +2,7 @@ package dev.cjfravel.nomos.parser
 
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.generation.ScalaCodeBuilder
-import dev.cjfravel.nomos.json.{Json, JsonValue, JsonString, JsonBoolean}
+import dev.cjfravel.nomos.json.{Json, JsonValue, JsonString, JsonBoolean, JsonNumber}
 import scala.collection.immutable.ListMap
 
 /**
@@ -244,22 +244,51 @@ class TemplateParser {
           case Some(_) if !tpe.isInstanceOf[StringType] =>
             Left(ParseError.InvalidFieldValue("adapter", "a string-typed field", "adapter is only supported on string fields", path))
           case adapter =>
-            Right(FieldDef(tpe, optional = false, default = renderDefault(json), adapter = adapter))
+            renderDefault(json, tpe, path).right.map(default =>
+              FieldDef(tpe, optional = false, default = default, adapter = adapter))
         }
       }
     }
   }
 
   /**
-   * Renders a "default" literal from a complex type node as Scala source (strings quoted).
+   * Renders a field's "default" as a Scala literal of the field's type, and validates it is
+   * representable: string/numeric/boolean/enum defaults are supported (an enum default becomes
+   * `EnumName.Value`); a default of the wrong shape, an out-of-set enum value, or a default on any
+   * other type (date, datetime, reference, collection, object) is a clear parse error rather than
+   * uncompilable generated source.
    */
-  private def renderDefault(json: JsonValue): Option[String] = {
-    json.asObject.flatMap(_.field("default")).map { d =>
-      d.asString match {
-        case Some(s) => "\"" + ScalaCodeBuilder.escapeStringLiteral(s) + "\""
-        case None => Json.write(d)
-      }
+  private def renderDefault(json: JsonValue, tpe: TemplateType, path: String): Either[ParseError, Option[String]] =
+    json.asObject.flatMap(_.field("default")) match {
+      case None => Right(None)
+      case Some(d) => renderDefaultLiteral(d, tpe, s"$path.default").right.map(Some(_))
     }
+
+  private def renderDefaultLiteral(d: JsonValue, tpe: TemplateType, path: String): Either[ParseError, String] = tpe match {
+    case StringType(_) =>
+      d.asString match {
+        case Some(s) => Right("\"" + ScalaCodeBuilder.escapeStringLiteral(s) + "\"")
+        case None => Left(ParseError.InvalidFieldValue("default", "a string", "default must be a string for a string field", path))
+      }
+    case IntType(_) | LongType(_) | NumberType(_) | DecimalType(_) =>
+      d match {
+        case _: JsonNumber => Right(Json.write(d))
+        case _ => Left(ParseError.InvalidFieldValue("default", "a number", "default must be a number for a numeric field", path))
+      }
+    case BooleanType() =>
+      d match {
+        case _: JsonBoolean => Right(Json.write(d))
+        case _ => Left(ParseError.InvalidFieldValue("default", "a boolean", "default must be a boolean for a boolean field", path))
+      }
+    case EnumType(enumName, values) =>
+      d.asString match {
+        case Some(s) if values.contains(s) => Right(s"$enumName.${ScalaCodeBuilder.toPascalCase(s)}")
+        case Some(s) => Left(ParseError.InvalidFieldValue("default", s"one of: ${values.mkString(", ")}", s"'$s' is not a value of enum '$enumName'", path))
+        case None => Left(ParseError.InvalidFieldValue("default", "an enum value (string)", "default must be a string naming an enum value", path))
+      }
+    case _ =>
+      Left(ParseError.InvalidFieldValue("default", "a string, numeric, boolean, or enum field",
+        "default values are only supported on string, numeric, boolean, and enum fields", path))
   }
 
   /**
