@@ -7,8 +7,8 @@ import java.io.File
  *
  * @param basePackage The base package for generated code (e.g., "com.myapp")
  * @param outputDir The directory where generated code will be written
- * @param useOptionTypes Must be true: optional fields are Option[T]. false is rejected at generation
- *   (it produced uncompilable code); use per-field "nullable": true for null-based optional fields.
+ * @param useOptionTypes Must be true: optional fields are Option[T]. false is rejected at
+ *   generation; use per-field "nullable": true for null-based optional fields.
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
  */
 case class GeneratorConfig(

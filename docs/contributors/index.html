@@ -38,6 +38,7 @@
       <li><a href="#build">Build &amp; test</a></li>
       <li><a href="#coverage">Coverage</a></li>
       <li><a href="#tdd">Test-driven workflow</a></li>
+      <li><a href="#docs-release">Docs &amp; release</a></li>
       <li><a href="#style">Code style</a></li>
       <li><a href="#pr">Pull requests</a></li>
     </ul>
@@ -52,7 +53,7 @@
 
     <h2 id="setup">Prerequisites</h2>
     <ul>
-      <li><b>JDK 11</b> — set <code>JAVA_HOME</code> to a Java 11 install.</li>
+      <li><b>JDK 9+</b> — the build targets Java 8 bytecode via <code>--release 8</code>, which requires a JDK 9 or newer to compile. CI verifies the build on Java 11 and Java 17.</li>
       <li><b>Maven 3.9+</b></li>
       <li><b>Scala 2.12.18</b> — managed by the build; no separate install needed.</li>
     </ul>
@@ -72,6 +73,7 @@ cd nomos-example &amp;&amp; mvn test</code></pre>
     <p>Statement coverage for <code>nomos-core</code> runs via scoverage:</p>
 <pre><code class="language-bash">mvn -pl nomos-core scoverage:report
 # HTML report: nomos-core/target/site/scoverage/index.html</code></pre>
+    <p>CI enforces a floor with <code>scoverage:check</code>: the build fails if <code>nomos-core</code> statement coverage drops below 80%.</p>
 
     <h2 id="tdd">Test-driven workflow</h2>
     <p>
@@ -80,6 +82,22 @@ cd nomos-example &amp;&amp; mvn test</code></pre>
       then prove anything user-visible end-to-end in <code>nomos-example</code>. A feature that
       changes generated code should have both a content test (what's emitted) and an example
       test (that it compiles and runs).
+    </p>
+
+    <h2 id="docs-release">Docs &amp; release</h2>
+    <p>
+      User docs live under <code>docs/</code> and are served as the project site. Two build-time
+      gates keep them honest: <code>dev/scripts/readme-has-version.sh</code> fails the build unless
+      <code>README.md</code> and <code>getting-started.html</code> reference the current version,
+      and <code>dev/scripts/docs-no-stale-refs.sh</code> fails it if any doc or comment names a
+      third-party JSON library or a removed symbol. Regenerate the API reference under
+      <code>docs/api</code> with <code>dev/scripts/build-api-docs.sh</code> whenever the public
+      Scala surface changes.
+    </p>
+    <p>
+      Releases publish to Maven Central via <code>mvn deploy</code>. Publishing stages a
+      <em>droppable</em> deployment that requires a manual Publish in the Central portal
+      (<code>autoPublish</code> is off), and CI verifies the release artifacts.
     </p>
 
     <h2 id="style">Code style</h2>

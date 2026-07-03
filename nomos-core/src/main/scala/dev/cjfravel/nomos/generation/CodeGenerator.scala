@@ -577,10 +577,8 @@ class CodeGenerator(config: GeneratorConfig) {
     basePackage: String,
     currentPackage: String
   ): Unit = {
-    // Ambiguity (when the discriminator field is omitted from output) is checked by the caller
-    // so the failure can be returned through the Either API.
-    
-    // If variantNames is provided, use custom naming and grouping logic
+    // variantNames, when present, drives custom naming and grouping of variants; otherwise each
+    // definition maps to a single variant keyed by its discriminator value.
     if (discriminator.variantNames.nonEmpty) {
       generateDiscriminatorWithVariantNames(name, discriminator, builder, definitionsMap, basePackage, currentPackage)
     } else {

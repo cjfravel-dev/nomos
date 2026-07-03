@@ -4,7 +4,7 @@ package dev.cjfravel.nomos.json
  * A first-party, dependency-free JSON value model.
  *
  * This exists so generated code and runtime validation never expose a third-party JSON
- * library (e.g. Jackson) on a consumer's classpath. It uses only the Scala standard library.
+ * library on a consumer's classpath. It uses only the Scala standard library.
  *
  * '''Public, supported API.''' Because the runtime is dependency-free, this model is the JSON
  * type consumers reach for in hand-written runtime code (it also appears in public signatures
