@@ -171,11 +171,13 @@ case class MultiTemplate(
   }
 
   /**
-   * Collects every simple type-reference name used within a template type (ReferenceType).
+   * Collects every simple type-reference name used within a template type (ReferenceType and
+   * RecursiveRef), so build-time validation can flag an unresolved or ambiguous reference.
    */
   private def collectReferenceNames(templateType: TemplateType): Set[String] = {
     def findInType(tt: TemplateType): Set[String] = tt match {
       case ReferenceType(typeName) => Set(typeName)
+      case RecursiveRef(typeName) => Set(typeName)
       case ArrayType(elementType, _) => findInType(elementType)
       case MapType(valueType) => findInType(valueType)
       case ObjectType(fields, _) => fields.values.flatMap(f => findInType(f.fieldType)).toSet
