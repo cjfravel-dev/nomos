@@ -46,8 +46,9 @@
         <scala.version>2.12.18</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <scalatest.version>3.2.17</scalatest.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- Enforce the Java 8 API boundary at compile time (javac/scalac release 8) so code that
+             uses a Java 9+ API fails the build instead of throwing NoSuchMethodError on a Java 8 consumer. -->
+        <maven.compiler.release>8</maven.compiler.release>
         <maven.plugin.api.version>3.9.5</maven.plugin.api.version>
         <maven.plugin.annotations.version>3.10.2</maven.plugin.annotations.version>
         <plexus.utils.version>3.5.1</plexus.utils.version>
@@ -129,6 +130,7 @@
                             <arg>-deprecation</arg>
                             <arg>-feature</arg>
                             <arg>-unchecked</arg>
+                            <arg>-release:8</arg>
                         </args>
                     </configuration>
                 </plugin>
@@ -169,8 +171,7 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
+                        <release>${maven.compiler.release}</release>
                     </configuration>
                 </plugin>
 
