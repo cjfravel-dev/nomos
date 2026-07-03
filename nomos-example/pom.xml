@@ -17,6 +17,8 @@
         <scala.version>2.12.18</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- One place to align every nomos artifact: the BOM import and the (unmanageable-by-BOM) plugin. -->
+        <nomos.version>0.0.1-alpha2</nomos.version>
     </properties>
 
     <dependencyManagement>
@@ -25,7 +27,7 @@
             <dependency>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-bom</artifactId>
-                <version>0.0.1-alpha2</version>
+                <version>${nomos.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -40,17 +42,15 @@
         </dependency>
 
         <!-- Nomos Runtime - zero-dependency JSON model, validation, and codecs used by
-             the generated code. No third-party JSON library is required. -->
+             the generated code. Version managed by the BOM. -->
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-runtime</artifactId>
-            <version>0.0.1-alpha2</version>
         </dependency>
 
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.binary.version}</artifactId>
-            <version>3.2.17</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -64,7 +64,7 @@
             <plugin>
                 <groupId>dev.cjfravel</groupId>
                 <artifactId>nomos-maven-plugin</artifactId>
-                <version>0.0.1-alpha2</version>
+                <version>${nomos.version}</version>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>

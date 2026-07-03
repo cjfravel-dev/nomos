@@ -1,11 +1,16 @@
 #!/bin/bash
 
-# Fail if the project version in pom.xml is not referenced by the docs that must advertise it.
-# Wired into the Maven `test` phase (parent pom) so a version bump that forgets the docs breaks
-# the build. Run standalone with: dev/scripts/readme-has-version.sh
+# Fail if the project version is not referenced by the docs that must advertise it.
+# Wired into the Maven `test` phase (parent pom), which passes ${project.version} as $1, so a
+# version bump that forgets the docs breaks the build. Run standalone with:
+#   dev/scripts/readme-has-version.sh [version]
 
-# Extract version from the root pom.xml (the parent's <version> is first)
-VERSION=$(grep -oPm1 "(?<=<version>)[^<]+" pom.xml)
+# Prefer the version passed by Maven (${project.version}); otherwise read the root pom's own
+# <version> (the first one, before any <dependency>/<plugin> versions).
+VERSION="${1:-}"
+if [[ -z "$VERSION" ]]; then
+    VERSION=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' pom.xml | head -1)
+fi
 
 if [[ -z "$VERSION" ]]; then
     echo "Version not found in pom.xml"
@@ -25,7 +30,7 @@ for f in "${FILES[@]}"; do
         STATUS=1
         continue
     fi
-    if grep -q "$VERSION" "$f"; then
+    if grep -qF "$VERSION" "$f"; then
         echo "Version $VERSION is present in $f."
     else
         echo "Version $VERSION is NOT present in $f."
