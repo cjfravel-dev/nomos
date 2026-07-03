@@ -38,7 +38,6 @@ This directory contains comprehensive documentation for the Nomos project.
 
 **For Contributors:**
 - [MULTI_MODULE_DESIGN.md](MULTI_MODULE_DESIGN.md) - Module responsibilities
-- [ROADMAP.md](ROADMAP.md) - Planned work and known gaps (internal)
 
 ## Key Concepts
 
