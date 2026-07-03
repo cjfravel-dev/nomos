@@ -13,17 +13,21 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build & Test (Java 11)
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [11, 17]
+    name: Build & Test (Java ${{ matrix.java }})
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 11
+      - name: Set up Java ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 11
+          java-version: ${{ matrix.java }}
           cache: maven
 
       - name: Build, test and install (bom, runtime, core, plugin)
@@ -33,18 +37,18 @@ jobs:
         run: mvn -f nomos-example/pom.xml clean test -B
 
       - name: Coverage report (nomos-core)
-        if: always()
+        if: always() && matrix.java == 11
         run: mvn -pl nomos-core scoverage:report -Dgpg.skip=true -B
 
       - name: Upload coverage report
-        if: always()
+        if: always() && matrix.java == 11
         uses: actions/upload-artifact@v4
         with:
           name: coverage-nomos-core
           path: nomos-core/target/cobertura.xml
 
       - name: Post coverage to PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && matrix.java == 11
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: nomos-core/target/cobertura.xml
@@ -56,12 +60,12 @@ jobs:
           thresholds: "60 80"
 
       - name: Prepend header to coverage report
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && matrix.java == 11
         run: |
           sed -i '1s/^/## Code Coverage — nomos-core\n\n/' code-coverage-results.md
 
       - name: Add coverage comment to PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && matrix.java == 11
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: coverage-nomos-core
