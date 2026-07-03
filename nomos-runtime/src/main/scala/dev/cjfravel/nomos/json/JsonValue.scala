@@ -84,12 +84,19 @@ final case class JsonBoolean(value: Boolean) extends JsonValue
  * A JSON number, kept as its original textual lexeme so output round-trips exactly
  * (e.g. `30.0` stays `30.0`). Typed accessors derive values lazily and exactly.
  *
- * @param raw the original (or canonical) number text; always a valid JSON number
+ * @param raw the original (or canonical) number text; validated on construction to be a
+ *            well-formed JSON number lexeme so the writer can emit it verbatim as valid JSON
  */
 final case class JsonNumber(raw: String) extends JsonValue {
+  require(JsonNumber.isValidLexeme(raw), s"invalid JSON number lexeme: '$raw'")
 
   /** Exact decimal value of this number. */
   lazy val asBigDecimal: BigDecimal = BigDecimal(raw)
+
+  /** Exact decimal value, or None if the exponent/magnitude is beyond `BigDecimal`'s range. */
+  def asBigDecimalOption: Option[BigDecimal] =
+    try Some(asBigDecimal)
+    catch { case _: NumberFormatException | _: ArithmeticException => None }
 
   /** Double approximation of this number. */
   def asDouble: Double = java.lang.Double.parseDouble(raw)
@@ -121,6 +128,13 @@ object JsonNumber {
   private val IntMax = BigDecimal(Int.MaxValue)
   private val LongMin = BigDecimal(Long.MinValue)
   private val LongMax = BigDecimal(Long.MaxValue)
+
+  // The JSON grammar's number production: optional '-', an int part with no leading zeros, an
+  // optional fraction, and an optional exponent. Used to reject lexemes the writer could not emit.
+  private val Lexeme = java.util.regex.Pattern.compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?")
+
+  private[nomos] def isValidLexeme(raw: String): Boolean =
+    raw != null && Lexeme.matcher(raw).matches()
 
   def fromInt(value: Int): JsonNumber = JsonNumber(value.toString)
   def fromLong(value: Long): JsonNumber = JsonNumber(value.toString)

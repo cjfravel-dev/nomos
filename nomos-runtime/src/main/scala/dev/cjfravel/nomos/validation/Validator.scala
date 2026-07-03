@@ -1,7 +1,7 @@
 package dev.cjfravel.nomos.validation
 
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.json.{Json, JsonValue, JsonNull}
+import dev.cjfravel.nomos.json.{Json, JsonValue, JsonNull, JsonNumber}
 
 /**
  * Validates JSON data against multi-template definitions with reference resolution
@@ -126,7 +126,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   
   private def validateNumber(json: JsonValue, path: String, constraints: List[Constraint]): List[ValidationError] = {
     json.asNumber match {
-      case Some(n) => validateNumberConstraints(n.asDouble, path, constraints)
+      case Some(n) => validateNumberConstraints(n, path, constraints)
       case None => List(ValidationError.typeMismatch(path, "number", jsonType(json)))
     }
   }
@@ -146,22 +146,33 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         if (!inRange) {
           List(ValidationError.constraintViolation(path, s"$expected range", n.raw))
         } else {
-          validateNumberConstraints(n.asDouble, path, constraints)
+          validateNumberConstraints(n, path, constraints)
         }
     }
   }
   
-  private def validateNumberConstraints(value: Double, path: String, constraints: List[Constraint]): List[ValidationError] = {
-    constraints.flatMap {
-      case Min(min) if value < min =>
-        Some(ValidationError.constraintViolation(path, s"min: $min", value.toString))
-      case Max(max) if value > max =>
-        Some(ValidationError.constraintViolation(path, s"max: $max", value.toString))
-      case MultipleOf(mult) if value % mult != 0 =>
-        Some(ValidationError.constraintViolation(path, s"multipleOf: $mult", value.toString))
-      case _ => None
+  // Numeric constraints are evaluated in BigDecimal so precise decimals validate exactly; in
+  // Double, `0.3 % 0.1` is nonzero and would falsely reject valid tenths/cents. Constraint bounds
+  // are stored as Double, so they are lifted to BigDecimal via their canonical string form.
+  private def validateNumberConstraints(n: JsonNumber, path: String, constraints: List[Constraint]): List[ValidationError] = {
+    n.asBigDecimalOption match {
+      case None => List.empty // magnitude beyond BigDecimal's range; constraints cannot be evaluated exactly
+      case Some(value) =>
+        constraints.flatMap {
+          case Min(min) if value < BigDecimal(min.toString) =>
+            Some(ValidationError.constraintViolation(path, s"min: $min", n.raw))
+          case Max(max) if value > BigDecimal(max.toString) =>
+            Some(ValidationError.constraintViolation(path, s"max: $max", n.raw))
+          case MultipleOf(mult) if !isMultipleOf(value, BigDecimal(mult.toString)) =>
+            Some(ValidationError.constraintViolation(path, s"multipleOf: $mult", n.raw))
+          case _ => None
+        }
     }
   }
+
+  private def isMultipleOf(value: BigDecimal, mult: BigDecimal): Boolean =
+    if (mult.signum == 0) value.signum == 0
+    else value.remainder(mult).signum == 0
   
   private def validateBoolean(json: JsonValue, path: String): List[ValidationError] = {
     json.asBoolean match {

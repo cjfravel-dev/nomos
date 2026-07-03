@@ -51,6 +51,24 @@ class JsonNumberSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy JsonNumber.fromDouble(Double.NaN)
     an[IllegalArgumentException] should be thrownBy JsonNumber.fromDouble(Double.PositiveInfinity)
   }
+
+  // raw is emitted verbatim by the writer, so construction validates the lexeme: an invalid
+  // JsonNumber (which the writer would render as invalid JSON) cannot be built.
+  it should "reject a non-numeric or malformed lexeme" in {
+    an[IllegalArgumentException] should be thrownBy JsonNumber("NaN")
+    an[IllegalArgumentException] should be thrownBy JsonNumber("Infinity")
+    an[IllegalArgumentException] should be thrownBy JsonNumber("01")
+    an[IllegalArgumentException] should be thrownBy JsonNumber("1.")
+    an[IllegalArgumentException] should be thrownBy JsonNumber(".5")
+    an[IllegalArgumentException] should be thrownBy JsonNumber("+1")
+    an[IllegalArgumentException] should be thrownBy JsonNumber("1e")
+    an[IllegalArgumentException] should be thrownBy JsonNumber("")
+  }
+
+  it should "accept every well-formed lexeme form" in {
+    Seq("0", "-0", "42", "-2147483648", "30.0", "1e3", "-0.5E-2", "1E+10", "9999999999")
+      .foreach(s => JsonNumber(s).raw shouldBe s)
+  }
 }
 
 class JsonWriterSpec extends AnyFlatSpec with Matchers with EitherValues {
