@@ -33,7 +33,12 @@ class FileWriter {
       targetFile.getParentFile.mkdirs()
 
       // Write as UTF-8 so output is reproducible across platforms and non-ASCII content is intact.
-      java.nio.file.Files.write(targetFile.toPath, file.content.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+      // Skip rewriting a byte-identical file so its mtime is preserved and incremental compilation
+      // isn't defeated by regenerating unchanged content on every build.
+      val bytes = file.content.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+      val unchanged = targetFile.isFile &&
+        java.util.Arrays.equals(java.nio.file.Files.readAllBytes(targetFile.toPath), bytes)
+      if (!unchanged) java.nio.file.Files.write(targetFile.toPath, bytes)
       targetFile
     } match {
       case Success(f) => Right(f)

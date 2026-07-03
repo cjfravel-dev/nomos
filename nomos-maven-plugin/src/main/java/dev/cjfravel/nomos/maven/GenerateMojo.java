@@ -28,7 +28,7 @@ import java.util.List;
  * Scans the template directory for JSON files and generates code for each template.
  * All configuration is contained in the template files themselves.
  */
-@Mojo(name = "generate", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
+@Mojo(name = "generate", defaultPhase = LifecyclePhase.GENERATE_SOURCES, threadSafe = true)
 public class GenerateMojo extends AbstractMojo {
 
     private static final String DEFAULT_TEMPLATE_DIRECTORY = "src/main/resources/nomos/templates";
