@@ -110,7 +110,7 @@ The real `src/main/resources/nomos/templates/com/example/models/user.json` templ
 }
 ```
 
-There are no `basePackage`, `outputDir`, or `mainClass` keys in template JSON. The Maven plugin derives the base package from the file path under `src/main/resources/nomos/templates`.
+The Maven plugin derives the base package from the template's path under `src/main/resources/nomos/templates`.
 
 ## Generated Code Usage
 

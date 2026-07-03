@@ -107,12 +107,10 @@ mvn -f nomos-example/pom.xml test    # regenerates via the installed plugin, the
 ## Building
 
 ```bash
-mvn clean install -Dgpg.skip=true    # full build; signing is on by default for releases
+mvn clean test
 ```
 
-Releases publish to Maven Central via the Sonatype Central Publisher (`mvn clean deploy` with a GPG
-key + `central` credentials). `dev/scripts/readme-has-version.sh` (wired into the build) fails if
-this README or the getting-started page doesn't reference the current version.
+More in the [contributor guide](https://cjfravel-dev.github.io/nomos/contributors/index.html).
 
 ## License
 

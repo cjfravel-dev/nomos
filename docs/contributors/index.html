@@ -59,7 +59,7 @@
 
     <h2 id="build">Build &amp; test</h2>
 <pre><code class="language-bash"># build and install all modules
-mvn -DskipTests install
+mvn -DskipTests -Dgpg.skip=true install
 
 # run the core test suite
 mvn -pl nomos-core test
