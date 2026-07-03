@@ -204,13 +204,13 @@ The plugin scans `src/main/resources/nomos/templates` by default. Override with 
 - ✅ Template-based code generation
 - ✅ Optional fields with `Option[T]`
 - ✅ Array types with configurable collection types
-- ✅ Dependency-free JSON serialization (no third-party JSON library)
+- ✅ Dependency-free JSON serialization
 - ✅ Runtime validation with detailed error messages
 - ✅ Type-safe Scala case classes
 - ✅ Compile-time safety with generated code
 
 ## Learn More
 
-- [Template Format Documentation](../docs/TEMPLATE_FORMAT.md)
-- [Multi-Module Design](../docs/MULTI_MODULE_DESIGN.md)
-- [More Examples](../docs/EXAMPLES.md)
+- [Documentation site](https://cjfravel-dev.github.io/nomos/)
+- [Template Format](https://cjfravel-dev.github.io/nomos/users/template-format.html)
+- [Architecture](https://cjfravel-dev.github.io/nomos/contributors/architecture.html)

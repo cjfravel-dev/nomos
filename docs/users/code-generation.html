@@ -60,7 +60,7 @@
     <table>
       <tr><th>File</th><th>Contents</th></tr>
       <tr><td><code>com/example/models/user/User.scala</code></td><td>The <code>User</code> case class + companion</td></tr>
-      <tr><td><code>com/example/models/NomosFormats.scala</code></td><td>Shared mapper, embedded template, validator</td></tr>
+      <tr><td><code>com/example/models/NomosFormats.scala</code></td><td>Embedded template and validator</td></tr>
       <tr><td><code>…/&lt;Enum&gt;.scala</code></td><td>One file per generated enum type</td></tr>
     </table>
 
@@ -69,30 +69,36 @@
 
 object User {
   import com.example.models.NomosFormats._
+  import dev.cjfravel.nomos.json._
+  import dev.cjfravel.nomos.serialization.Codecs
   import dev.cjfravel.nomos.validation.ValidationError
 
-  def fromJson(json: String): Either[String, User] = { ... }
-  def toJson(obj: User): String = mapper.writeValueAsString(obj)
+  def decode(json: JsonValue): Either[String, User] = { ... }  // built from Codecs combinators
+  def encode(obj: User): JsonValue = { ... }
+  def fromJson(json: String): Either[String, User] = Json.parse(json).right.flatMap(decode)
+  def toJson(obj: User): String = Json.write(encode(obj))
   def validate(json: String): Either[List[ValidationError], User] = { ... }
 }</code></pre>
     <p>Discriminated unions instead generate a <code>sealed trait</code>, a case class per variant, and a companion whose <code>fromJson</code> dispatches on the discriminator value (using <code>startsWith</code> when <code>variantMatch: prefix</code>).</p>
 
     <h2 id="formats">NomosFormats</h2>
-    <p>A single <code>NomosFormats</code> per base package provides the Jackson <code>ObjectMapper</code> (Scala + Java-time modules registered), the reconstructed <code>MultiTemplate</code>, and a <code>MultiValidator</code> built from it.</p>
+    <p>A single <code>NomosFormats</code> per base package holds the reconstructed <code>MultiTemplate</code> and a <code>MultiValidator</code> built from it. Generated companions import it to validate without the original template file.</p>
 <pre><code class="language-scala">object NomosFormats {
-  val mapper: ObjectMapper = ...                 // Scala + JavaTime modules
   lazy val embeddedTemplate: MultiTemplate = ... // reconstructed from your template
   lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate)
 }</code></pre>
 
     <h2 id="enums">Enum files</h2>
-    <p>An <code>enumType</code> enum generates a self-contained sealed trait with case objects and Jackson string (de)serialization wired via annotations — no extra setup.</p>
+    <p>An <code>enumType</code> enum generates a self-contained sealed trait with case objects and string (de)serialization over <code>JsonValue</code> — no extra setup.</p>
 <pre><code class="language-scala">sealed trait Priority
 object Priority {
   case object Low extends Priority
   case object High extends Priority
+  val values: List[Priority] = List(Low, High)
   def fromString(s: String): Option[Priority] = ...
   def asString(v: Priority): String = ...
+  def decode(json: JsonValue): Either[String, Priority] = ...
+  def encode(v: Priority): JsonValue = ...
 }</code></pre>
 
     <h2 id="options">Generation options</h2>

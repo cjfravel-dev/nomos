@@ -101,7 +101,8 @@ Nomos.validate(template, jsonData, "com.example.User") match {
 import dev.cjfravel.nomos.validation.ValidationError
 
 Nomos.validators.register("dates.startBeforeEnd") { json =>
-  if (json.get("startDate").asText() <= json.get("endDate").asText()) Nil
+  def str(name: String) = json.asObject.flatMap(_.field(name)).flatMap(_.asString)
+  if (str("startDate").zip(str("endDate")).forall { case (s, e) => s <= e }) Nil
   else List(ValidationError("endDate", "must be >= startDate", "ordered", "unordered"))
 }</code></pre>
     <p>Registered validators run <em>after</em> schema validation passes, and their errors are tagged with the validator name.</p>

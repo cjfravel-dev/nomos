@@ -39,7 +39,7 @@
     <div class="badges">
       <img src="https://img.shields.io/badge/Scala-2.12-DC322F?logo=scala&amp;logoColor=white" alt="Scala 2.12">
       <img src="https://img.shields.io/badge/build-Maven-C71A36?logo=apachemaven&amp;logoColor=white" alt="Maven">
-      <img src="https://img.shields.io/badge/JSON-Jackson-blue" alt="Jackson">
+      <img src="https://img.shields.io/maven-central/v/dev.cjfravel/nomos-runtime?label=Maven%20Central" alt="Maven Central">
     </div>
     <div class="hero-actions">
       <a class="btn btn-primary" href="users/getting-started.html">Get Started</a>
@@ -106,7 +106,7 @@
     <p>
       Most JSON tooling annotates a hand-written model — serialization hints and
       validation constraints declared as field annotations (Gson's
-      <code>@SerializedName</code>, Jackson's <code>@JsonProperty</code>, Bean Validation's
+      <code>@SerializedName</code>, Bean Validation's
       <code>@NotNull</code>/<code>@Size</code>, and the like). The class stays
       the source of truth, and serialization and validation rules are scattered across
       annotations on its fields. Nomos inverts that: the template is the source of truth, and the

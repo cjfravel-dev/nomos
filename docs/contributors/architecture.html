@@ -46,14 +46,15 @@
     <div class="page-header">
       <span class="eyebrow">Contributors</span>
       <h1>Architecture</h1>
-      <p class="lede">Nomos is a small multi-module Maven project: a core library, a Maven plugin that drives it, and a BOM for version alignment.</p>
+      <p class="lede">Nomos is a small multi-module Maven project: a runtime that generated code depends on, a core generator library, a Maven plugin that drives it, and a BOM for version alignment.</p>
     </div>
 
     <h2 id="modules">Modules</h2>
     <table>
       <tr><th>Module</th><th>Responsibility</th></tr>
       <tr><td><code>nomos-bom</code></td><td>Bill of Materials — pins dependency versions for consumers</td></tr>
-      <tr><td><code>nomos-core</code></td><td>The library: parser, model, generator, validator, serializer, and the <code>Nomos</code> facade</td></tr>
+      <tr><td><code>nomos-runtime</code></td><td>Runtime that generated code depends on: the JSON model (<code>dev.cjfravel.nomos.json</code>), the template type model, codecs, and the validator + registries</td></tr>
+      <tr><td><code>nomos-core</code></td><td>The generator: template parser, code generator, template serializer, and the <code>Nomos</code> facade</td></tr>
       <tr><td><code>nomos-maven-plugin</code></td><td>Scans templates and invokes the core to generate sources at build time</td></tr>
       <tr><td><code>nomos-example</code></td><td>End-to-end consumer used as an integration test</td></tr>
     </table>
