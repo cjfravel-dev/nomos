@@ -91,8 +91,12 @@ object Nomos {
       val report = writer.writeFilesWithReport(generatedFiles, outputDirFile)
       if (report.isFailure)
         Left(GeneratorError.IOError(report.summary + ": " + report.failureMessages.mkString("; ")))
-      else
+      else {
+        // Remove generated files left over from a previous run (a removed definition/template),
+        // scoped to files carrying the generated header so hand-written sources are never deleted.
+        writer.pruneOrphans(outputDirFile, report.successes.map(_._2).toSet)
         Right(report)
+      }
     }
   }
   

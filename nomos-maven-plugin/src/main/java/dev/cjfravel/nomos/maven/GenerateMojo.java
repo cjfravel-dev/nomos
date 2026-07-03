@@ -67,9 +67,11 @@ public class GenerateMojo extends AbstractMojo {
     private String excludes;
 
     /**
-     * Output directory for generated sources, relative to ${project.basedir}.
+     * Output directory for generated sources, relative to ${project.basedir}. Defaults to the
+     * conventional generated-sources location, which is added as a compile root and should not be
+     * committed. Point it at a source dir (e.g. src/main/scala) only if you intend to commit output.
      */
-    @Parameter(property = "nomos.outputDirectory", defaultValue = "src/main/scala")
+    @Parameter(property = "nomos.outputDirectory", defaultValue = "target/generated-sources/nomos")
     private String outputDirectory;
 
     @Override
