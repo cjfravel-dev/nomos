@@ -24,11 +24,39 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         .orElse(if (candidates.lengthCompare(1) == 0) candidates.headOption else None)
     }
 
+  // Date/datetime validation must accept exactly what the generated decoder accepts, so it parses
+  // with the same type the codec uses (from the embedded dateType/dateTimeType). java.util.Date
+  // bridges through java.time (LocalDate for dates, Instant for datetimes) exactly as the codec
+  // does; every other (java.time.*) type is parsed via its static parse. This keeps validate and
+  // fromJson in agreement (e.g. a trailing-Z value is rejected for LocalDateTime, as the codec does).
+  private def temporalParser(typeName: String, isDate: Boolean): String => Unit = {
+    if (typeName == "java.util.Date") {
+      if (isDate) (s: String) => { java.time.LocalDate.parse(s); () }
+      else (s: String) => { java.time.Instant.parse(s); () }
+    } else {
+      try {
+        val method = Class.forName(typeName).getMethod("parse", classOf[CharSequence])
+        (s: String) => { method.invoke(null, s); () }
+      } catch {
+        case _: Throwable =>
+          if (isDate) (s: String) => { java.time.LocalDate.parse(s); () }
+          else (s: String) => { java.time.LocalDateTime.parse(s); () }
+      }
+    }
+  }
+
+  private val dateParse: String => Unit = temporalParser(multiTemplate.dateType, isDate = true)
+  private val dateTimeParse: String => Unit = temporalParser(multiTemplate.dateTimeType, isDate = false)
+
   /** The JSON type name used in error messages (string, number, object, ...). */
   private def jsonType(json: JsonValue): String = json.typeName
 
   /**
-   * Validates a JSON string against a specific definition in the multi-template
+   * Validates a JSON string against a specific definition in the multi-template.
+   *
+   * Structural fields are validated against the template; external-typed fields (`$gen:`/`$extern:`)
+   * are not schema-validated here — their validation is delegated to the referenced type's generated
+   * decode or the application-registered codec.
    *
    * @param jsonString The JSON string to validate
    * @param definitionName The name of the definition to validate against
@@ -77,8 +105,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case LongType(constraints) => validateWholeNumber(json, path, "long", constraints)
       case DecimalType(constraints) => validateNumber(json, path, constraints)
       case BooleanType() => validateBoolean(json, path)
-      case DateType() => validateTemporal(json, path, "date", s => java.time.LocalDate.parse(s))
-      case DateTimeType() => validateTemporal(json, path, "datetime", s => parseFlexibleDateTime(s))
+      case DateType() => validateTemporal(json, path, "date", dateParse)
+      case DateTimeType() => validateTemporal(json, path, "datetime", dateTimeParse)
       case ArrayType(elementType, constraints) => validateArray(elementType, json, path, currentPackage, constraints)
       case MapType(valueType) => validateMap(valueType, json, path, currentPackage)
       case UnionType(types) =>
@@ -102,6 +130,11 @@ class MultiValidator(multiTemplate: MultiTemplate) {
             List(ValidationError(path, s"Unresolved recursive reference: $typeName", "valid definition", typeName))
         }
       case ExternalType(_, _) =>
+        // External-typed fields are not schema-validated here: a `$gen:` type's schema lives in
+        // another module, and a `$extern:` type is (de)serialized by an application-registered
+        // codec. Validation of these values is delegated to the referenced type's generated decode
+        // (`$gen:`) or the registered codec (`$extern:`); validate() intentionally does not re-check
+        // their internal structure.
         List.empty
       case EnumType(_, values) =>
         json.asString match {
@@ -206,16 +239,6 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     }
   }
 
-  /**
-   * Accepts the common ISO-8601 datetime forms so validation agrees with the generated codecs and
-   * with real data: UTC instants (trailing `Z`), explicit offsets, and naive local date-times, all
-   * with optional fractional seconds. Throws if none parse (handled by validateTemporal).
-   */
-  private def parseFlexibleDateTime(s: String): Unit = {
-    try { java.time.OffsetDateTime.parse(s); () }
-    catch { case _: Exception => java.time.LocalDateTime.parse(s); () }
-  }
-  
   private def validateArray(
     elementType: TemplateType,
     json: JsonValue,
