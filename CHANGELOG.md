@@ -8,9 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
-- More built-in string `format` values: `guid` (with case-restricted `guidUpper`/`guidLower`),
-  `alpha`, `alphanumeric`, their `Upper`/`Lower` variants, and `pascalCase` — so common identifier
-  and GUID fields don't need hand-written `pattern` regexes.
+- More built-in string `format` values: case-restricted GUID variants (`guidUpper`/`uuidUpper`,
+  `guidLower`/`uuidLower`) alongside `guid`/`uuid`; `alpha`, `alphanumeric` and their
+  `Upper`/`Lower` variants; and case-style formats `pascalCase`, `camelCase`, `snakeCase`,
+  `kebabCase`, and `screamingSnakeCase` — so common identifier and GUID fields don't need
+  hand-written `pattern` regexes.
 
 ## [0.0.1-alpha4]
 

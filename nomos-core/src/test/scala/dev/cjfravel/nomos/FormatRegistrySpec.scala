@@ -28,16 +28,22 @@ class FormatRegistrySpec extends AnyFlatSpec with Matchers {
 
   "new built-in string formats" should "accept valid values and reject invalid ones" in {
     val cases = Seq(
-      ("guid",              "12345678-1234-1234-1234-123456789abc", "12345678-1234-1234-1234-12345678"),
-      ("guidUpper",         "12345678-1234-1234-1234-123456789ABC", "12345678-1234-1234-1234-123456789abc"),
-      ("guidLower",         "12345678-1234-1234-1234-123456789abc", "12345678-1234-1234-1234-123456789ABC"),
-      ("alpha",             "abcXYZ",                               "abc1"),
-      ("alphanumeric",      "abc123",                               "abc-1"),
-      ("alphaUpper",        "ABC",                                  "Abc"),
-      ("alphaLower",        "abc",                                  "aBc"),
-      ("alphanumericUpper", "ABC123",                               "abc123"),
-      ("alphanumericLower", "abc123",                               "ABC123"),
-      ("pascalCase",        "UserV2",                               "camelCase")
+      ("guid",               "12345678-1234-1234-1234-123456789abc", "12345678-1234-1234-1234-12345678"),
+      ("guidUpper",          "12345678-1234-1234-1234-123456789ABC", "12345678-1234-1234-1234-123456789abc"),
+      ("guidLower",          "12345678-1234-1234-1234-123456789abc", "12345678-1234-1234-1234-123456789ABC"),
+      ("uuidUpper",          "12345678-1234-1234-1234-123456789ABC", "12345678-1234-1234-1234-123456789abc"),
+      ("uuidLower",          "12345678-1234-1234-1234-123456789abc", "12345678-1234-1234-1234-123456789ABC"),
+      ("alpha",              "abcXYZ",                               "abc1"),
+      ("alphanumeric",       "abc123",                               "abc-1"),
+      ("alphaUpper",         "ABC",                                  "Abc"),
+      ("alphaLower",         "abc",                                  "aBc"),
+      ("alphanumericUpper",  "ABC123",                               "abc123"),
+      ("alphanumericLower",  "abc123",                               "ABC123"),
+      ("pascalCase",         "UserV2",                               "camelCase"),
+      ("camelCase",          "fooBarV2",                             "FooBar"),
+      ("snakeCase",          "foo_bar2",                             "foo__bar"),
+      ("kebabCase",          "foo-bar2",                             "foo_bar"),
+      ("screamingSnakeCase", "FOO_BAR2",                             "foo_bar")
     )
     for ((fmt, ok, bad) <- cases) {
       withClue(s"$fmt should accept '$ok': ") { FormatRegistry.validate(fmt, ok) shouldBe true }
