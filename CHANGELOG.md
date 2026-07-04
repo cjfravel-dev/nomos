@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha6]
+
 ### Changed
 
 - **Breaking:** custom validators now receive a `ValidatorContext` (`node`, `root`, `path`) instead
@@ -17,7 +19,7 @@ All notable changes to this project are documented here. The format is based on
 
 - Custom validators declared on a definition now run wherever that definition appears — including
   every level it is reached through a `$ref` — not only when it is the top-level definition being
-  validated.
+  validated. Validators run only after the whole document passes structural validation.
 
 ## [0.0.1-alpha5]
 
