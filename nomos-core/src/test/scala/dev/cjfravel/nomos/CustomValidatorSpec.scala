@@ -28,8 +28,8 @@ class CustomValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
     validators = List("dates.startBeforeEnd"))))
 
   "MultiValidator" should "run registered named validators after schema validation" in {
-    ValidatorRegistry.register("dates.startBeforeEnd") { json =>
-      val fields = json.asObject.map(_.fieldMap).getOrElse(Map.empty)
+    ValidatorRegistry.register("dates.startBeforeEnd") { ctx =>
+      val fields = ctx.node.asObject.map(_.fieldMap).getOrElse(Map.empty)
       val start = fields.get("startDate").flatMap(_.asString)
       val end = fields.get("endDate").flatMap(_.asString)
       if (start.zip(end).exists { case (s, e) => s <= e }) Nil

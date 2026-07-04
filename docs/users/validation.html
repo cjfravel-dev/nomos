@@ -91,9 +91,9 @@ Nomos.validate(template, jsonData, "com.example.User") match {
     <h2 id="validators">Custom validators</h2>
     <p>
       Schema describes shape; anything beyond it is a custom validator — an arbitrary check that
-      receives the whole JSON node and returns errors. Declare named validators on a definition,
-      and register their implementations once at startup. Common uses include rules that span
-      several fields or depend on one another (e.g. <code>startDate &lt;= endDate</code>, or
+      receives a <code>ValidatorContext</code> and returns errors. Declare named validators on a
+      definition, and register their implementations once at startup. Common uses include rules that
+      span several fields or depend on one another (e.g. <code>startDate &lt;= endDate</code>, or
       "if A then B is required"), but a validator can run any logic you like.
     </p>
 <pre><code class="language-json">{
@@ -104,12 +104,28 @@ Nomos.validate(template, jsonData, "com.example.User") match {
 <pre><code class="language-scala">import dev.cjfravel.nomos.Nomos
 import dev.cjfravel.nomos.validation.ValidationError
 
-Nomos.validators.register("dates.startBeforeEnd") { json =>
-  def str(name: String) = json.asObject.flatMap(_.field(name)).flatMap(_.asString)
+Nomos.validators.register("dates.startBeforeEnd") { ctx =>
+  def str(name: String) = ctx.node.asObject.flatMap(_.field(name)).flatMap(_.asString)
   if (str("startDate").zip(str("endDate")).forall { case (s, e) => s <= e }) Nil
-  else List(ValidationError("endDate", "must be >= startDate", "ordered", "unordered"))
+  else List(ValidationError(ctx.path, "must be >= startDate", "ordered", "unordered"))
 }</code></pre>
-    <p>Registered validators run <em>after</em> schema validation passes, and their errors are tagged with the validator name.</p>
+    <p>
+      The <code>ValidatorContext</code> carries three things:</p>
+    <table>
+      <tr><th>Field</th><th>Meaning</th></tr>
+      <tr><td><code>node</code></td><td>The JSON value at this validator's definition level — the whole document for a top-level definition, or the referenced sub-node when the definition is reached through a <code>$ref</code>.</td></tr>
+      <tr><td><code>root</code></td><td>The whole document, so a validator running at a nested level can still traverse up to siblings or the root.</td></tr>
+      <tr><td><code>path</code></td><td>The JSON path to <code>node</code> (e.g. <code>root</code>, <code>root.child</code>, <code>root.items[2]</code>), for error paths.</td></tr>
+    </table>
+    <p>
+      Custom validators run only after the whole document passes structural validation, so a
+      validator never sees structurally invalid data — if any field anywhere is the wrong shape,
+      no custom validator runs. A definition's validators run wherever that definition appears —
+      including every place it is reached through a <code>$ref</code> (inside objects, arrays, maps,
+      and discriminator variants) — not only when it is the top-level definition being validated.
+      Errors are tagged with the validator name. For a top-level definition, <code>node</code> and
+      <code>root</code> are the same value.
+    </p>
 
     <h2 id="formats">Custom string formats</h2>
     <p>The <code>format</code> constraint is backed by a registry seeded with named formats — <code>email</code>, <code>url</code>, <code>uuid</code>/<code>guid</code> (with case-restricted <code>*Upper</code>/<code>*Lower</code> variants), <code>iso8601</code>, the <code>alpha</code>/<code>alphanumeric</code> family, case-style formats (<code>pascalCase</code>, <code>camelCase</code>, <code>snakeCase</code>, <code>kebabCase</code>, <code>screamingSnakeCase</code>), and <code>majorAndMinor</code>; see <a href="template-format.html#constraints">Template Format</a> for the full list. Add your own domain formats. An unrecognized format name is treated as valid — it doesn't fail validation.</p>
