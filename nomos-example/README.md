@@ -172,7 +172,7 @@ The example uses Nomos BOM for dependency management:
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.0.1-alpha6</version>
+            <version>0.0.1-alpha7</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -188,7 +188,7 @@ Minimal plugin setup:
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.0.1-alpha6</version>
+    <version>0.0.1-alpha7</version>
     <executions>
         <execution>
             <phase>generate-sources</phase>

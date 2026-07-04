@@ -18,7 +18,7 @@
         <scala.binary.version>2.12</scala.binary.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- One place to align every nomos artifact: the BOM import and the (unmanageable-by-BOM) plugin. -->
-        <nomos.version>0.0.1-alpha6</nomos.version>
+        <nomos.version>0.0.1-alpha7</nomos.version>
     </properties>
 
     <dependencyManagement>
