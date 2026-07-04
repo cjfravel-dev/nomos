@@ -112,7 +112,7 @@ Nomos.validators.register("dates.startBeforeEnd") { json =>
     <p>Registered validators run <em>after</em> schema validation passes, and their errors are tagged with the validator name.</p>
 
     <h2 id="formats">Custom string formats</h2>
-    <p>The <code>format</code> constraint is backed by a registry seeded with <code>email</code>, <code>url</code>, <code>uuid</code>, <code>iso8601</code>, <code>alphaNoWhitespace</code>, and <code>majorAndMinor</code>; add your own domain formats. An unrecognized format name is treated as valid — it doesn't fail validation.</p>
+    <p>The <code>format</code> constraint is backed by a registry seeded with named formats — <code>email</code>, <code>url</code>, <code>uuid</code>/<code>guid</code> (plus case-restricted <code>guidUpper</code>/<code>guidLower</code>), <code>iso8601</code>, the <code>alpha</code>/<code>alphanumeric</code> family (with <code>Upper</code>/<code>Lower</code> variants), <code>pascalCase</code>, and <code>majorAndMinor</code>; see <a href="template-format.html#constraints">Template Format</a> for the full list. Add your own domain formats. An unrecognized format name is treated as valid — it doesn't fail validation.</p>
 <pre><code class="language-scala">Nomos.formats.register("hexColor")(_.matches("^#[0-9a-fA-F]{6}$"))</code></pre>
 <pre><code class="language-json">{ "color": { "type": "string", "format": "hexColor" } }</code></pre>
 

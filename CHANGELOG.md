@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- More built-in string `format` values: `guid` (with case-restricted `guidUpper`/`guidLower`),
+  `alpha`, `alphanumeric`, their `Upper`/`Lower` variants, and `pascalCase` — so common identifier
+  and GUID fields don't need hand-written `pattern` regexes.
+
 ## [0.0.1-alpha4]
 
 ### Changed
