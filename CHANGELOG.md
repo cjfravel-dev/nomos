@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha5]
+
 ### Added
 
 - More built-in string `format` values: case-restricted GUID variants (`guidUpper`/`uuidUpper`,
