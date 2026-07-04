@@ -106,7 +106,25 @@
       <tr><td>number / int / long / decimal</td><td><code>min</code>, <code>max</code>, <code>multipleOf</code></td></tr>
       <tr><td>array</td><td><code>minItems</code>, <code>maxItems</code>, <code>uniqueItems</code></td></tr>
     </table>
-    <p>Built-in <code>format</code> values: <code>email</code>, <code>url</code>, <code>uuid</code>, <code>iso8601</code>, <code>alphaNoWhitespace</code>, <code>majorAndMinor</code>. You can register more — see <a href="validation.html#formats">Validation</a>.</p>
+    <p>Built-in <code>format</code> values (register more — see <a href="validation.html#formats">Validation</a>):</p>
+    <table>
+      <tr><th>Format</th><th>Accepts</th></tr>
+      <tr><td><code>email</code></td><td>An email address</td></tr>
+      <tr><td><code>url</code></td><td>An <code>http</code>/<code>https</code> URL</td></tr>
+      <tr><td><code>uuid</code> / <code>guid</code></td><td>A UUID/GUID (hex, any case)</td></tr>
+      <tr><td><code>uuidUpper</code>/<code>guidUpper</code>, <code>uuidLower</code>/<code>guidLower</code></td><td>A GUID restricted to upper- or lower-case hex</td></tr>
+      <tr><td><code>iso8601</code></td><td>An ISO-8601 UTC timestamp (<code>YYYY-MM-DDThh:mm:ssZ</code>)</td></tr>
+      <tr><td><code>alpha</code> / <code>alphaNoWhitespace</code></td><td>Letters only</td></tr>
+      <tr><td><code>alphaUpper</code> / <code>alphaLower</code></td><td>Upper- or lower-case letters only</td></tr>
+      <tr><td><code>alphanumeric</code></td><td>Letters and digits</td></tr>
+      <tr><td><code>alphanumericUpper</code> / <code>alphanumericLower</code></td><td>Upper- or lower-case letters and digits</td></tr>
+      <tr><td><code>pascalCase</code></td><td>An upper-case-initial identifier (<code>Foo</code>, <code>UserV2</code>)</td></tr>
+      <tr><td><code>camelCase</code></td><td>A lower-case-initial identifier (<code>fooBar</code>)</td></tr>
+      <tr><td><code>snakeCase</code></td><td>Lower-case words joined by <code>_</code> (<code>foo_bar</code>)</td></tr>
+      <tr><td><code>kebabCase</code></td><td>Lower-case words joined by <code>-</code> (<code>foo-bar</code>)</td></tr>
+      <tr><td><code>screamingSnakeCase</code></td><td>Upper-case words joined by <code>_</code> (<code>FOO_BAR</code>)</td></tr>
+      <tr><td><code>majorAndMinor</code></td><td>A <code>major.minor</code> version (e.g. <code>1.2</code>)</td></tr>
+    </table>
     <p>A required <code>string</code> field may also declare an <code>adapter</code> to map between its on-the-wire form and the model value, e.g. <code>{ "type": "string", "adapter": "epochMillis" }</code>. Adapters are accepted <strong>only</strong> on required string fields — see <a href="validation.html#adapters">Validation</a>.</p>
 
     <h2 id="enums">Enums</h2>
