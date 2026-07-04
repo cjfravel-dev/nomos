@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha7]
+
 ### Added
 
 - `mapType` generation setting: `$map` fields can render as `java.util.Map[String, V]` (for a
