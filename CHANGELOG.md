@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Validation performance: the custom-validator phase now runs only for definitions whose reachable
+  subtree declares validators. A validator-free template no longer pays a second whole-document
+  traversal on every `validate()` call, and validator-free subtrees (and their union
+  re-validation) are pruned when only part of a template uses validators.
+
 ## [0.0.1-alpha7]
 
 ### Added

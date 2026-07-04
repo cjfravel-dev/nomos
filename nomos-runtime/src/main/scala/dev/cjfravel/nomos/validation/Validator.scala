@@ -24,6 +24,49 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         .orElse(if (candidates.lengthCompare(1) == 0) candidates.headOption else None)
     }
 
+  // Whether a template type's subtree can reach any custom validator, given a snapshot of
+  // per-definition reachability. Walks the (small, static) type structure, resolving references
+  // against `state`; used both to compute reachability and, once final, to prune the phase-two walk.
+  private def typeReaches(tt: TemplateType, pkg: String, state: Map[String, Boolean]): Boolean = tt match {
+    case ObjectType(fields, additional) =>
+      fields.values.exists(f => typeReaches(f.fieldType, pkg, state)) ||
+        (additional match { case TypedExtra(t) => typeReaches(t, pkg, state); case _ => false })
+    case ArrayType(e, _) => typeReaches(e, pkg, state)
+    case MapType(v) => typeReaches(v, pkg, state)
+    case UnionType(ts) => ts.exists(t => typeReaches(t, pkg, state))
+    case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
+      commonFields.values.exists(f => typeReaches(f.fieldType, pkg, state)) ||
+        variants.values.exists(v => typeReaches(v, pkg, state))
+    case ReferenceType(n) => resolveRef(n, pkg).exists(rd => state.getOrElse(multiTemplate.fqn(rd), false))
+    case RecursiveRef(n) => resolveRef(n, pkg).exists(rd => state.getOrElse(multiTemplate.fqn(rd), false))
+    case _ => false
+  }
+
+  // Per-definition (by FQN): does the definition declare validators, or reach one through its type's
+  // references? Computed once via a fixpoint so it terminates on reference cycles. The phase-two
+  // custom-validator walk is skipped/pruned for definitions and subtrees that reach no validator, so
+  // a validator-free template pays no second traversal.
+  private val defReaches: Map[String, Boolean] = {
+    var state = multiTemplate.definitions.map(d => multiTemplate.fqn(d) -> d.validators.nonEmpty).toMap
+    var changed = true
+    while (changed) {
+      changed = false
+      multiTemplate.definitions.foreach { d =>
+        val fqn = multiTemplate.fqn(d)
+        if (!state(fqn) && typeReaches(d.templateType, d.fullPackage(basePackage), state)) {
+          state = state.updated(fqn, true)
+          changed = true
+        }
+      }
+    }
+    state
+  }
+
+  /** Whether the phase-two custom-validator traversal does anything for `definitionName` — i.e. its
+   *  reachable subtree declares any validators. Package-private for tests. */
+  private[nomos] def reachesAnyValidator(definitionName: String): Boolean =
+    multiTemplate.getDefinition(definitionName).exists(d => defReaches.getOrElse(multiTemplate.fqn(d), false))
+
   // Date/datetime validation must accept exactly what the generated decoder accepts, so it parses
   // with the same type the codec uses (from the embedded dateType/dateTimeType). java.util.Date
   // bridges through java.time (LocalDate for dates, Instant for datetimes) exactly as the codec
@@ -124,6 +167,9 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     depth: Int
   ): List[ValidationError] = {
     if (depth > MaxValidationDepth) return Nil
+    // Prune: don't descend into a subtree whose type reaches no validator (this also short-circuits
+    // the whole walk for a validator-free document and skips the union re-validation below).
+    if (!typeReaches(templateType, currentPackage, defReaches)) return Nil
     templateType match {
       case ObjectType(fields, additional) =>
         json.asObject match {
