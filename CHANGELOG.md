@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** custom validators now receive a `ValidatorContext` (`node`, `root`, `path`) instead
+  of the bare JSON node. `node` is the value at the validator's level, `root` is the whole document
+  (so a validator can traverse up), and `path` is the JSON path. Update registrations from
+  `register(name) { json => ... }` to `register(name) { ctx => ... ctx.node ... }`.
+
+### Fixed
+
+- Custom validators declared on a definition now run wherever that definition appears — including
+  every level it is reached through a `$ref` — not only when it is the top-level definition being
+  validated.
+
 ## [0.0.1-alpha5]
 
 ### Added
