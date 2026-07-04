@@ -74,6 +74,7 @@
       <tr><th>Top-level field</th><th>Default</th><th>Meaning</th></tr>
       <tr><td><code>definitions</code></td><td>—</td><td>Array of type definitions (required)</td></tr>
       <tr><td><code>listType</code></td><td><code>"List"</code></td><td>Collection type for arrays (<code>List</code> or <code>Array</code>)</td></tr>
+      <tr><td><code>mapType</code></td><td><code>"Map"</code></td><td>Collection type for <code>$map</code> fields: <code>Map</code> (immutable) or <code>java.util.Map</code> for a Java-interop-friendly surface</td></tr>
       <tr><td><code>dateType</code> / <code>dateTimeType</code></td><td><code>java.time.LocalDate</code> / <code>LocalDateTime</code></td><td>Generated temporal types</td></tr>
       <tr><td><code>fromJsonStyle</code></td><td><code>"either"</code></td><td>Only <code>"throwing"</code> is special (<code>fromJson</code> throws on failure); any other value, including the default, yields the <code>Either</code>-returning <code>fromJson</code>. See <a href="code-generation.html#fromjson">Code Generation</a>.</td></tr>
       <tr><td><code>visibility</code></td><td>—</td><td>Access prefix applied to every generated top-level definition (e.g. <code>private</code>, <code>private[models]</code>) for package-private models.</td></tr>
@@ -141,7 +142,7 @@
   "labels": { "type": "array", "items": "string", "enum": ["red", "green", "blue"] },
   "settings": { "$map": "string" }
 }</code></pre>
-    <p><code>$map</code> generates a <code>Map[String, T]</code> with unrestricted keys and validated values.</p>
+    <p><code>$map</code> generates a <code>Map[String, T]</code> with unrestricted keys and validated values. Set the project-wide <code>mapType</code> to <code>java.util.Map</code> to generate <code>java.util.Map[String, T]</code> instead — useful when the generated models are consumed from Java.</p>
     <p>A JSON array with <strong>more than one</strong> element type is a <em>union</em>. It generates an <code>Any</code>-typed field whose value round-trips as-is (the codec passes the raw JSON through, so branches aren't validated individually):</p>
 <pre><code class="language-json">{ "value": ["string", "number"] }</code></pre>
 

@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- `mapType` generation setting: `$map` fields can render as `java.util.Map[String, V]` (for a
+  Java-interop-friendly public surface) instead of the default immutable `Map[String, V]`. The
+  concrete field type and its decode/encode wiring change; validation is unchanged.
+
 ## [0.0.1-alpha6]
 
 ### Changed

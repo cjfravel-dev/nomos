@@ -51,6 +51,8 @@ case class TemplateDefinition(
  * @param basePackage Base package for all generated code (derived from template path)
  * @param definitions List of type definitions
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
+ * @param mapType The collection type to use for `$map` fields: "Map" or "java.util.Map"
+ *   (default: "Map")
  * @param visibility Optional access modifier (e.g. "private[incentives]") prepended to every
  *   generated top-level definition; absent means public
  */
@@ -61,6 +63,7 @@ case class MultiTemplate(
   fromJsonStyle: String = "either",
   dateType: String = "java.time.LocalDate",
   dateTimeType: String = "java.time.LocalDateTime",
+  mapType: String = "Map",
   visibility: Option[String] = None
 ) {
   /**
@@ -161,6 +164,8 @@ case class MultiTemplate(
     // fails to compile. Reject unsupported values here with a clear message.
     if (!MultiTemplate.SupportedListTypes.contains(listType))
       errors = s"Unsupported listType: '$listType' (supported: ${MultiTemplate.SupportedListTypes.toList.sorted.mkString(", ")})" :: errors
+    if (!MultiTemplate.SupportedMapTypes.contains(mapType))
+      errors = s"Unsupported mapType: '$mapType' (supported: ${MultiTemplate.SupportedMapTypes.toList.sorted.mkString(", ")})" :: errors
 
     errors.reverse
   }
@@ -199,6 +204,12 @@ object MultiTemplate {
    * `listType`, but the decoder only produces `List` (default) or `Array`, so only these compile.
    */
   val SupportedListTypes: Set[String] = Set("List", "Array")
+
+  /**
+   * Map collection types the generator can emit a matching decoder for: the default immutable
+   * `Map`, and `java.util.Map` for a Java-interop-friendly public surface.
+   */
+  val SupportedMapTypes: Set[String] = Set("Map", "java.util.Map")
 
   /**
    * Creates a simple multi-template with a single definition
@@ -241,8 +252,9 @@ object MultiTemplate {
     val fromJsonStyle = resolve("fromJsonStyle", templates.map(_.fromJsonStyle), "either")
     val dateType = resolve("dateType", templates.map(_.dateType), "java.time.LocalDate")
     val dateTimeType = resolve("dateTimeType", templates.map(_.dateTimeType), "java.time.LocalDateTime")
+    val mapType = resolve("mapType", templates.map(_.mapType), "Map")
     val visibility = resolve("visibility", templates.map(_.visibility), None)
-    val conflicts = List(listType, fromJsonStyle, dateType, dateTimeType, visibility)
+    val conflicts = List(listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
       .collect { case Left(msg) => msg }
     if (conflicts.nonEmpty)
       Left("Conflicting project-wide settings across template files: " + conflicts.mkString("; ") +
@@ -250,7 +262,7 @@ object MultiTemplate {
     else
       Right(MultiTemplate(base, defs, listType.right.get,
         fromJsonStyle.right.get, dateType.right.get, dateTimeType.right.get,
-        visibility.right.get))
+        mapType.right.get, visibility.right.get))
   }
 
   private def commonPrefix(pkgs: List[String]): String = {
