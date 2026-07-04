@@ -453,7 +453,7 @@ class TemplateParser {
     val path = "root"
 
     val allowedKeys = Set(
-      "definitions", "listType", "fromJsonStyle", "dateType", "dateTimeType", "visibility")
+      "definitions", "listType", "fromJsonStyle", "dateType", "dateTimeType", "mapType", "visibility")
     val unknownKeys = json.asObject.map(_.keys).getOrElse(Vector.empty).filterNot(allowedKeys.contains)
 
     for {
@@ -473,8 +473,9 @@ class TemplateParser {
       val fromJsonStyle = extractOptionalString(json, "fromJsonStyle").getOrElse("either")
       val dateType = extractOptionalString(json, "dateType").getOrElse("java.time.LocalDate")
       val dateTimeType = extractOptionalString(json, "dateTimeType").getOrElse("java.time.LocalDateTime")
+      val mapType = extractOptionalString(json, "mapType").getOrElse("Map")
       val visibility = extractOptionalString(json, "visibility")
-      val multiTemplate = MultiTemplate(basePackage, definitions, listType, fromJsonStyle, dateType, dateTimeType, visibility)
+      val multiTemplate = MultiTemplate(basePackage, definitions, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
 
       multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate

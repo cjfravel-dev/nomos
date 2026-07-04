@@ -92,6 +92,24 @@ object Codecs {
     case other => Left(s"expected object, got ${other.typeName}")
   }
 
+  /** Converts a decoded string-keyed map into an insertion-ordered `java.util.Map` (for the
+   *  `mapType = "java.util.Map"` generation option). */
+  def toJavaMap[A](m: Map[String, A]): java.util.Map[String, A] = {
+    val jm = new java.util.LinkedHashMap[String, A]()
+    m.foreach { case (k, v) => jm.put(k, v) }
+    jm
+  }
+
+  /** Iterates a `java.util.Map`'s entries as key/value tuples, for encoding a `java.util.Map`
+   *  field back to JSON. */
+  def javaMapEntries[A](m: java.util.Map[String, A]): Iterator[(String, A)] = {
+    val it = m.entrySet().iterator()
+    new Iterator[(String, A)] {
+      def hasNext: Boolean = it.hasNext
+      def next(): (String, A) = { val e = it.next(); (e.getKey, e.getValue) }
+    }
+  }
+
   /** Decodes a required object field, prefixing the field name to any error. */
   def required[A](o: JsonObject, name: String, dec: Decoder[A]): Either[String, A] =
     o.field(name) match {

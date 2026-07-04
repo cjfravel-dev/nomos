@@ -34,9 +34,7 @@ class TopLevelKeysSpec extends AnyFlatSpec with Matchers with EitherValues {
     err.message should include("useOptionTypes")
   }
 
-  it should "reject the removed mapType setting as an unknown key" in {
-    val err = parse(
-      """{"mapType":"Map","definitions":[{"name":"N","template":{"m":{"$map":"string"}}}]}""").left.value
-    err.message should include("mapType")
+  it should "accept the mapType setting" in {
+    parse("""{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"m":{"$map":"string"}}}]}""") shouldBe a[Right[_, _]]
   }
 }

@@ -8,6 +8,8 @@ import java.io.File
  * @param basePackage The base package for generated code (e.g., "com.myapp")
  * @param outputDir The directory where generated code will be written
  * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
+ * @param mapType The collection type to use for `$map` fields: "Map" or "java.util.Map"
+ *   (default: "Map")
  */
 case class GeneratorConfig(
   basePackage: String,
@@ -15,7 +17,8 @@ case class GeneratorConfig(
   listType: String = "List",
   throwingFromJson: Boolean = false,
   dateType: String = "java.time.LocalDate",
-  dateTimeType: String = "java.time.LocalDateTime"
+  dateTimeType: String = "java.time.LocalDateTime",
+  mapType: String = "Map"
 ) {
   /**
    * Validates the configuration

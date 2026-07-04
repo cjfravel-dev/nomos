@@ -69,9 +69,9 @@ class P7Spec extends AnyFlatSpec with Matchers with EitherValues {
     file(parse("""{"definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}"""), "N.scala") should include("s: Map[String, String]")
   }
 
-  "the removed mapType setting" should "be rejected as an unknown top-level key" in {
+  "an unsupported mapType" should "be rejected" in {
     parser.parseMultiTemplate(
-      """{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}""",
+      """{"mapType":"java.util.HashMap","definitions":[{"name":"N","template":{"s":{"$map":"string"}}}]}""",
       "com.example") shouldBe a[Left[_, _]]
   }
 

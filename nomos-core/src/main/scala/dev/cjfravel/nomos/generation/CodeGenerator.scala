@@ -132,6 +132,25 @@ class CodeGenerator(config: GeneratorConfig) {
   // The following helpers emit Scala expressions that build/read the first-party JsonValue model,
   // so generated fromJson/toJson never depend on a third-party JSON library.
 
+  /** The Scala type for a `$map` field, honoring the configured mapType (Map or java.util.Map). */
+  private def mapScalaType(inner: String): String = s"${config.mapType}[String, $inner]"
+
+  /**
+   * A decoder expression for a `$map` field. Always decodes via `Codecs.map`; when the configured
+   * mapType is `java.util.Map`, the decoded immutable map is converted with `Codecs.toJavaMap`.
+   * `typeArg` supplies an explicit value type parameter (used for the `Any`-valued open-map case).
+   */
+  private def mapDecoderExpr(valueDec: String, typeArg: String = ""): String = {
+    val ta = if (typeArg.isEmpty) "" else s"[$typeArg]"
+    if (config.mapType == "java.util.Map")
+      s"((j: JsonValue) => Codecs.map$ta($valueDec)(j).right.map(m => Codecs.toJavaMap(m)))"
+    else s"Codecs.map$ta($valueDec)"
+  }
+
+  /** The key/value iterator expression for encoding a `$map` field, honoring the configured mapType. */
+  private def mapEntriesExpr(v: String): String =
+    if (config.mapType == "java.util.Map") s"Codecs.javaMapEntries($v)" else s"$v.iterator"
+
   /** A `Codecs.Decoder[T]` expression that decodes a JSON value into the field's Scala type. */
   private def decoderExpr(tt: TemplateType): String = tt match {
     case StringType(_) => "Codecs.string"
@@ -146,10 +165,10 @@ class CodeGenerator(config: GeneratorConfig) {
       if (config.listType == "Array")
         s"((j: JsonValue) => Codecs.list(${decoderExpr(elem)})(j).right.map(_.toArray))"
       else s"Codecs.list(${decoderExpr(elem)})"
-    case MapType(v) => s"Codecs.map(${decoderExpr(v)})"
+    case MapType(v) => mapDecoderExpr(decoderExpr(v))
     // Inline empty object with an additionalProperties policy renders as a Map field.
-    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => s"Codecs.map(${decoderExpr(vt)})"
-    case ObjectType(f, AllowExtra) if f.isEmpty => "Codecs.map[Any]((j: JsonValue) => Right(j))"
+    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => mapDecoderExpr(decoderExpr(vt))
+    case ObjectType(f, AllowExtra) if f.isEmpty => mapDecoderExpr("((j: JsonValue) => Right(j))", "Any")
     case UnionType(_) => "Codecs.any"
     case ReferenceType(n) => s"$n.decode"
     case RecursiveRef(n) => s"$n.decode"
@@ -179,10 +198,10 @@ class CodeGenerator(config: GeneratorConfig) {
     case DateType() => temporalEncodeExpr(config.dateType, isDate = true, v)
     case DateTimeType() => temporalEncodeExpr(config.dateTimeType, isDate = false, v)
     case ArrayType(elem, _) => s"JsonArray($v.iterator.map(x => ${encodeValueExpr(elem, "x")}).toVector)"
-    case MapType(vt) => s"JsonObject.fromFields($v.iterator.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
+    case MapType(vt) => s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
     // Inline empty object with an additionalProperties policy renders as a Map field.
-    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => s"JsonObject.fromFields($v.iterator.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
-    case ObjectType(f, AllowExtra) if f.isEmpty => s"""JsonObject.fromFields($v.iterator.map { case (k, x) => (k, (x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })) }.toSeq)"""
+    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
+    case ObjectType(f, AllowExtra) if f.isEmpty => s"""JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, (x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })) }.toSeq)"""
     case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
     case ReferenceType(n) => s"$n.encode($v)"
     case RecursiveRef(n) => s"$n.encode($v)"
@@ -999,15 +1018,15 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType, _) =>
         s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
       case MapType(valueType) =>
-        s"Map[String, ${scalaTypeForDefinition(valueType, optional = false, definitionsMap)}]"
+        mapScalaType(scalaTypeForDefinition(valueType, optional = false, definitionsMap))
       case UnionType(_) => "Any"
       case ReferenceType(typeName) => typeName
       case RecursiveRef(typeName) => typeName
       case ExternalType(qn, _) => qn
       case EnumType(enumName, _) => enumName
-      case ObjectType(fields, AllowExtra) if fields.isEmpty => "Map[String, Any]"
+      case ObjectType(fields, AllowExtra) if fields.isEmpty => mapScalaType("Any")
       case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
-        s"Map[String, ${scalaTypeForDefinition(vt, optional = false, definitionsMap)}]"
+        mapScalaType(scalaTypeForDefinition(vt, optional = false, definitionsMap))
       case ObjectType(_, _) =>
         "???" // Inline objects not supported in multi-definition mode
       case TypeDiscriminator(_, _, _, _, _, _, _, _, _) =>
