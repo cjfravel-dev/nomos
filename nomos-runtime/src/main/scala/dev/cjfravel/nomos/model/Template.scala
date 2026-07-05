@@ -156,7 +156,8 @@ case class MultiTemplate(
             errors = s"$ctx: discriminatorEnum requires includeDiscriminator to be true" :: errors
           if (d.variantMatch == "prefix")
             errors =
-              s"$ctx: discriminatorEnum is incompatible with variantMatch 'prefix' (parameterized values are not a fixed enum set)" :: errors
+              s"$ctx: discriminatorEnum is incompatible with variantMatch 'prefix' " +
+                "(parameterized values are not a fixed enum set)" :: errors
         case _ =>
       }
     }
@@ -174,10 +175,12 @@ case class MultiTemplate(
     // fails to compile. Reject unsupported values here with a clear message.
     if (!MultiTemplate.SupportedListTypes.contains(listType))
       errors =
-        s"Unsupported listType: '$listType' (supported: ${MultiTemplate.SupportedListTypes.toList.sorted.mkString(", ")})" :: errors
+        s"Unsupported listType: '$listType' " +
+          s"(supported: ${MultiTemplate.SupportedListTypes.toList.sorted.mkString(", ")})" :: errors
     if (!MultiTemplate.SupportedMapTypes.contains(mapType))
       errors =
-        s"Unsupported mapType: '$mapType' (supported: ${MultiTemplate.SupportedMapTypes.toList.sorted.mkString(", ")})" :: errors
+        s"Unsupported mapType: '$mapType' " +
+          s"(supported: ${MultiTemplate.SupportedMapTypes.toList.sorted.mkString(", ")})" :: errors
 
     errors.reverse
   }

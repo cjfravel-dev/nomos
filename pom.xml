@@ -59,6 +59,7 @@
         <mvn.scalafmt.version>1.1.1640084764.9f463a9</mvn.scalafmt.version>
         <scalafix.plugin.version>0.1.12_0.14.6</scalafix.plugin.version>
         <semanticdb.version>4.15.2</semanticdb.version>
+        <scalastyle.plugin.version>1.0.0</scalastyle.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -241,6 +242,36 @@
                             <phase>verify</phase>
                             <goals>
                                 <goal>scalafix</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- scalastyle: static style checks (adapted from Apache Spark's config, license-header
+                     rule removed) bound to `verify`; fails the build on any violation. -->
+                <plugin>
+                    <groupId>org.scalastyle</groupId>
+                    <artifactId>scalastyle-maven-plugin</artifactId>
+                    <version>${scalastyle.plugin.version}</version>
+                    <configuration>
+                        <verbose>false</verbose>
+                        <failOnViolation>true</failOnViolation>
+                        <failOnWarning>false</failOnWarning>
+                        <!-- Check main sources only; test sources are governed by scalafmt
+                             (formatting + line length) and scalafix (imports + unused). -->
+                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                        <sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
+                        <testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
+                        <configLocation>${project.basedir}/../scalastyle-config.xml</configLocation>
+                        <inputEncoding>UTF-8</inputEncoding>
+                        <outputEncoding>UTF-8</outputEncoding>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>scalastyle-check</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
                             </goals>
                         </execution>
                     </executions>

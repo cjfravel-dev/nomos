@@ -80,7 +80,8 @@ class CodeGenerator(config: GeneratorConfig) {
               val variants =
                 specs.map { case (_, _, values, _, _) => values.mkString("[", ", ", "]") }.distinct.mkString(" vs ")
               val where = if (pkg.isEmpty) "" else s" in package '$pkg'"
-              s"Conflicting enum '$enumName'$where declared with different values ($variants); same-named enums in one package must have identical values"
+              s"Conflicting enum '$enumName'$where declared with different values ($variants); " +
+                "same-named enums in one package must have identical values"
           }
           .toList
 
@@ -235,8 +236,8 @@ class CodeGenerator(config: GeneratorConfig) {
       case ObjectType(f, TypedExtra(vt)) if f.isEmpty =>
         s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
       case ObjectType(f, AllowExtra) if f.isEmpty =>
-        s"""JsonObject.fromFields(${mapEntriesExpr(
-            v)}.map { case (k, x) => (k, (x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })) }.toSeq)"""
+        val coerce = "(x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
+        s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, $coerce) }.toSeq)"
       case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
       case ReferenceType(n) => s"$n.encode($v)"
       case RecursiveRef(n) => s"$n.encode($v)"
@@ -391,7 +392,8 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.indent()
     if (config.throwingFromJson) {
       builder.line(
-        """case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError("root", e.getMessage, "valid JSON", json))) }""")
+        """case Right(_) => try Right(fromJson(json)) """ +
+          """catch { case e: Exception => Left(List(ValidationError("root", e.getMessage, "valid JSON", json))) }""")
     } else {
       builder.line(
         """case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))""")
@@ -596,8 +598,9 @@ class CodeGenerator(config: GeneratorConfig) {
         generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap, basePackage, packageName)
 
       case _ =>
-        return Left(GeneratorError.TemplateError(
-          s"Definition '${definition.name}' must be an ObjectType or TypeDiscriminator, got ${definition.templateType.getClass.getSimpleName}"))
+        return Left(
+          GeneratorError.TemplateError(s"Definition '${definition.name}' must be an ObjectType or TypeDiscriminator, " +
+            s"got ${definition.templateType.getClass.getSimpleName}"))
     }
 
     val content = builder.build()
@@ -689,8 +692,10 @@ class CodeGenerator(config: GeneratorConfig) {
    * body `override val` rather than a primary-constructor parameter (kept out of the constructor and `unapply`, and
    * preventing inconsistent construction).
    */
-  private def discOverrideVal(d: TypeDiscriminator, variantKey: String): String =
-    s"override val ${ScalaCodeBuilder.escapeKeyword(d.fieldName)}: ${discScalaType(d)} = ${discFixedValue(d, variantKey)}"
+  private def discOverrideVal(d: TypeDiscriminator, variantKey: String): String = {
+    val name = ScalaCodeBuilder.escapeKeyword(d.fieldName)
+    s"override val $name: ${discScalaType(d)} = ${discFixedValue(d, variantKey)}"
+  }
 
   /**
    * Generates a sealed trait with one case class per variant.
@@ -1168,10 +1173,12 @@ class CodeGenerator(config: GeneratorConfig) {
         case ObjectType(fields, TypedExtra(_)) if fields.isEmpty => Nil
         case _: ObjectType =>
           List(
-            s"$ctx: inline nested objects are not supported as a field type; define a separate type and reference it with $$ref")
+            s"$ctx: inline nested objects are not supported as a field type; " +
+              "define a separate type and reference it with $ref")
         case _: TypeDiscriminator =>
           List(
-            s"$ctx: inline discriminators are not supported as a field type; define a separate type and reference it with $$ref")
+            s"$ctx: inline discriminators are not supported as a field type; " +
+              "define a separate type and reference it with $ref")
         case ArrayType(elem, _) => fieldTypeError(elem, ctx)
         case MapType(v) => fieldTypeError(v, ctx)
         case _ => Nil
