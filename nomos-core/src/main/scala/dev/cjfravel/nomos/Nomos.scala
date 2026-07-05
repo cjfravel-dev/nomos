@@ -1,20 +1,20 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.model.MultiTemplate
-import dev.cjfravel.nomos.parser.{TemplateParser, ParseError}
-import dev.cjfravel.nomos.generation.{CodeGenerator, FileWriter, GeneratorConfig, GeneratorError, WriteReport}
-import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError, ValidatorRegistry, FormatRegistry}
+import dev.cjfravel.nomos.generation._
 import dev.cjfravel.nomos.json.JsonValue
+import dev.cjfravel.nomos.model.MultiTemplate
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
+import dev.cjfravel.nomos.validation._
 
 /**
  * Main entry point for the Nomos library.
  *
  * Nomos allows you to define JSON templates with multiple type definitions and then:
- * 1. Generate Scala case classes from templates
- * 2. Validate JSON strings against templates
+ *   1. Generate Scala case classes from templates
+ *   2. Validate JSON strings against templates
  *
  * @example
- * {{{
+ *   {{{
  * // Parse a template from JSON (base package derived from its file location)
  * val template = Nomos.parseTemplate(templateJson, "com.example.models").right.get
  *
@@ -23,69 +23,72 @@ import dev.cjfravel.nomos.json.JsonValue
  *
  * // Validate JSON data against a definition's fully-qualified name
  * val validationResult = Nomos.validate(template, jsonData, "com.example.models.User")
- * }}}
+ *   }}}
  */
 object Nomos {
-  
+
   /** Registry of named custom validators referenced by templates. */
   val validators: ValidatorRegistry.type = ValidatorRegistry
-  
+
   /** Registry of named string formats. */
   val formats: FormatRegistry.type = FormatRegistry
-  
+
   /** Registry of named (de)serialization adapters. */
   val adapters: dev.cjfravel.nomos.serialization.AdapterRegistry.type = dev.cjfravel.nomos.serialization.AdapterRegistry
-  
+
   /**
    * Parse a template from JSON string.
    *
-   * @param json The JSON string containing the template definition with definitions array
-   * @return Either ParseError or MultiTemplate
+   * @param json
+   *   The JSON string containing the template definition with definitions array
+   * @return
+   *   Either ParseError or MultiTemplate
    */
-  def parseTemplate(json: String, basePackage: String): Either[ParseError, MultiTemplate] = {
+  def parseTemplate(json: String, basePackage: String): Either[ParseError, MultiTemplate] =
     TemplateParser.parseMultiTemplateString(json, basePackage)
-  }
-  
+
   /**
    * Parse a template without resolving cross-file references, for later merging via generateAll.
    */
-  def parseTemplateDeferred(json: String, basePackage: String): Either[ParseError, MultiTemplate] = {
+  def parseTemplateDeferred(json: String, basePackage: String): Either[ParseError, MultiTemplate] =
     TemplateParser.parseMultiTemplateString(json, basePackage, validateRefs = false)
-  }
-  
+
   /**
-   * Parse a deferred template and tag every definition with the template's source file path,
-   * which the generator emits as a Source pointer in the generated header.
+   * Parse a deferred template and tag every definition with the template's source file path, which the generator emits
+   * as a Source pointer in the generated header.
    */
-  def parseTemplateDeferred(json: String, basePackage: String, sourcePath: String): Either[ParseError, MultiTemplate] = {
+  def parseTemplateDeferred(json: String, basePackage: String, sourcePath: String): Either[ParseError, MultiTemplate] =
     parseTemplateDeferred(json, basePackage).map { t =>
       t.copy(definitions = t.definitions.map(_.copy(sourcePath = Some(sourcePath))))
     }
-  }
-  
+
   /**
-   * Generate Scala case classes from a template.
-   * Uses the basePackage and listType from the template; outputDir defaults to the standard Maven
-   * source root.
+   * Generate Scala case classes from a template. Uses the basePackage and listType from the template; outputDir
+   * defaults to the standard Maven source root.
    *
-   * @param template The template to generate code from
-   * @param outputDir Output directory for generated files (default: src/main/scala)
-   * @return Either GeneratorError or WriteReport containing successes and failures
+   * @param template
+   *   The template to generate code from
+   * @param outputDir
+   *   Output directory for generated files (default: src/main/scala)
+   * @return
+   *   Either GeneratorError or WriteReport containing successes and failures
    */
-  def generateCode(template: MultiTemplate, outputDir: String = "src/main/scala"): Either[GeneratorError, WriteReport] = {
-    val config = GeneratorConfig(
-      template.basePackage,
-      outputDir,
-      template.listType,
-      throwingFromJson = template.fromJsonStyle == "throwing",
-      dateType = template.dateType,
-      dateTimeType = template.dateTimeType,
-      mapType = template.mapType
-    )
+  def generateCode(
+      template: MultiTemplate,
+      outputDir: String = "src/main/scala"): Either[GeneratorError, WriteReport] = {
+    val config =
+      GeneratorConfig(
+        template.basePackage,
+        outputDir,
+        template.listType,
+        throwingFromJson = template.fromJsonStyle == "throwing",
+        dateType = template.dateType,
+        dateTimeType = template.dateTimeType,
+        mapType = template.mapType)
     val generator = new CodeGenerator(config)
     val writer = new FileWriter()
     val outputDirFile = new java.io.File(outputDir)
-    
+
     generator.generateMulti(template).right.flatMap { generatedFiles =>
       val report = writer.writeFilesWithReport(generatedFiles, outputDirFile)
       if (report.isFailure)
@@ -98,58 +101,67 @@ object Nomos {
       }
     }
   }
-  
+
   /**
    * Generate code from many templates sharing one definition space so $ref resolves across files.
    */
-  def generateAll(templates: java.util.List[MultiTemplate], outputDir: String): Either[GeneratorError, WriteReport] = {
+  def generateAll(templates: java.util.List[MultiTemplate], outputDir: String): Either[GeneratorError, WriteReport] =
     MultiTemplate.combine(scala.collection.JavaConverters.asScalaBuffer(templates).toList) match {
-      case Left(error)     => Left(GeneratorError.TemplateError(error))
+      case Left(error) => Left(GeneratorError.TemplateError(error))
       case Right(combined) => generateCode(combined, outputDir)
     }
-  }
-  
+
   /**
    * Validate a JSON string against a template.
-   * 
-   * @param template The template to validate against
-   * @param json The JSON string to validate
-   * @param definitionName The fully-qualified or simple definition name to validate against
-   * @return Either a list of validation errors or the parsed JSON value
+   *
+   * @param template
+   *   The template to validate against
+   * @param json
+   *   The JSON string to validate
+   * @param definitionName
+   *   The fully-qualified or simple definition name to validate against
+   * @return
+   *   Either a list of validation errors or the parsed JSON value
    */
   def validate(
-    template: MultiTemplate,
-    json: String,
-    definitionName: String
-  ): Either[List[ValidationError], JsonValue] = {
+      template: MultiTemplate,
+      json: String,
+      definitionName: String): Either[List[ValidationError], JsonValue] = {
     val validator = new MultiValidator(template)
     validator.validate(json, definitionName)
   }
-  
+
   /**
    * Complete workflow: parse template, generate code, and provide a validator.
    *
-   * @param templateJson The JSON template definition
-   * @param basePackage Base package for generated code (derived from template location)
-   * @return Either error or NomosResult with template and write report
+   * @param templateJson
+   *   The JSON template definition
+   * @param basePackage
+   *   Base package for generated code (derived from template location)
+   * @return
+   *   Either error or NomosResult with template and write report
    */
-  def process(templateJson: String, basePackage: String, outputDir: String = "src/main/scala"): Either[NomosError, NomosResult] = {
+  def process(
+      templateJson: String,
+      basePackage: String,
+      outputDir: String = "src/main/scala"): Either[NomosError, NomosResult] =
     (for {
       template <- parseTemplate(templateJson, basePackage).left.map(NomosError.ParseFailed)
       report <- generateCode(template, outputDir).left.map(NomosError.GenerationFailed)
     } yield NomosResult(template, report)).left.map(identity)
-  }
-  
+
   /**
    * Parse template and create a validator for it.
-   * 
-   * @param templateJson The JSON template definition
-   * @param basePackage Base package for generated code (derived from template location)
-   * @return Either ParseError or MultiValidator
+   *
+   * @param templateJson
+   *   The JSON template definition
+   * @param basePackage
+   *   Base package for generated code (derived from template location)
+   * @return
+   *   Either ParseError or MultiValidator
    */
-  def createValidator(templateJson: String, basePackage: String): Either[ParseError, MultiValidator] = {
+  def createValidator(templateJson: String, basePackage: String): Either[ParseError, MultiValidator] =
     parseTemplate(templateJson, basePackage).map(new MultiValidator(_))
-  }
 }
 
 /**
@@ -163,7 +175,7 @@ object NomosError {
   case class ParseFailed(error: ParseError) extends NomosError {
     def message: String = s"Failed to parse template: ${error.message}"
   }
-  
+
   case class GenerationFailed(error: GeneratorError) extends NomosError {
     def message: String = s"Failed to generate code: ${error.message}"
   }
@@ -172,28 +184,28 @@ object NomosError {
 /**
  * Result of processing a template.
  *
- * @param template The parsed template
- * @param writeReport The report from writing generated files
+ * @param template
+ *   The parsed template
+ * @param writeReport
+ *   The report from writing generated files
  */
-case class NomosResult(
-  template: MultiTemplate,
-  writeReport: WriteReport
-) {
+case class NomosResult(template: MultiTemplate, writeReport: WriteReport) {
+
   /**
    * Create a validator for this template.
    */
   def validator: MultiValidator = new MultiValidator(template)
-  
+
   /**
    * Check if code generation was successful.
    */
   def isSuccess: Boolean = writeReport.failures.isEmpty
-  
+
   /**
    * Get all generated file paths.
    */
   def generatedFiles: List[String] = writeReport.successPaths
-  
+
   /**
    * Get all errors from code generation.
    */

@@ -3,9 +3,9 @@ package dev.cjfravel.nomos
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.validation.MultiValidator
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class RefVariantSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -22,8 +22,8 @@ class RefVariantSpec extends AnyFlatSpec with Matchers with EitherValues {
   "parser" should "resolve $ref variant bodies to the referenced object fields" in {
     val shape = parser.parseMultiTemplate(tmpl, "com.example").value.definitions.find(_.name == "Shape").get
     val disc = shape.templateType.asInstanceOf[TypeDiscriminator]
-    disc.variants("circle").fields.keySet should contain ("radius")
-    disc.variants("square").fields.keySet should contain ("side")
+    disc.variants("circle").fields.keySet should contain("radius")
+    disc.variants("square").fields.keySet should contain("side")
   }
 
   "validator" should "validate a ref-variant union" in {

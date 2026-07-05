@@ -1,10 +1,9 @@
 package dev.cjfravel.nomos.json
 
 /**
- * Serializes a [[JsonValue]] back to JSON text. Object key order is preserved and numbers are
- * emitted from their original lexeme, so parse-then-write is a semantic round-trip: number lexemes
- * are preserved exactly, but string escapes are normalized (e.g. `\u00e9` -> `é`) and duplicate
- * object keys are collapsed (last value wins).
+ * Serializes a [[JsonValue]] back to JSON text. Object key order is preserved and numbers are emitted from their
+ * original lexeme, so parse-then-write is a semantic round-trip: number lexemes are preserved exactly, but string
+ * escapes are normalized (e.g. `\u00e9` -> `é`) and duplicate object keys are collapsed (last value wins).
  */
 object JsonWriter {
 
@@ -22,32 +21,33 @@ object JsonWriter {
     sb.toString
   }
 
-  private def writeValue(value: JsonValue, sb: StringBuilder): Unit = value match {
-    case JsonNull => sb.append("null")
-    case JsonBoolean(b) => sb.append(if (b) "true" else "false")
-    case JsonNumber(raw) => sb.append(raw)
-    case JsonString(s) => writeString(s, sb)
-    case JsonArray(values) =>
-      sb.append('[')
-      var first = true
-      values.foreach { v =>
-        if (!first) sb.append(',')
-        writeValue(v, sb)
-        first = false
-      }
-      sb.append(']')
-    case o: JsonObject =>
-      sb.append('{')
-      var first = true
-      o.orderedFields.foreach { case (k, v) =>
-        if (!first) sb.append(',')
-        writeString(k, sb)
-        sb.append(':')
-        writeValue(v, sb)
-        first = false
-      }
-      sb.append('}')
-  }
+  private def writeValue(value: JsonValue, sb: StringBuilder): Unit =
+    value match {
+      case JsonNull => sb.append("null")
+      case JsonBoolean(b) => sb.append(if (b) "true" else "false")
+      case JsonNumber(raw) => sb.append(raw)
+      case JsonString(s) => writeString(s, sb)
+      case JsonArray(values) =>
+        sb.append('[')
+        var first = true
+        values.foreach { v =>
+          if (!first) sb.append(',')
+          writeValue(v, sb)
+          first = false
+        }
+        sb.append(']')
+      case o: JsonObject =>
+        sb.append('{')
+        var first = true
+        o.orderedFields.foreach { case (k, v) =>
+          if (!first) sb.append(',')
+          writeString(k, sb)
+          sb.append(':')
+          writeValue(v, sb)
+          first = false
+        }
+        sb.append('}')
+    }
 
   private def writePrettyValue(value: JsonValue, sb: StringBuilder, indent: String, level: Int): Unit =
     value match {
@@ -79,8 +79,8 @@ object JsonWriter {
     }
 
   /**
-   * Writes a JSON string literal, escaping per the JSON spec. This is distinct from Scala
-   * source escaping: it escapes the JSON control set and emits other characters verbatim.
+   * Writes a JSON string literal, escaping per the JSON spec. This is distinct from Scala source escaping: it escapes
+   * the JSON control set and emits other characters verbatim.
    */
   private def writeString(s: String, sb: StringBuilder): Unit = {
     sb.append('"')

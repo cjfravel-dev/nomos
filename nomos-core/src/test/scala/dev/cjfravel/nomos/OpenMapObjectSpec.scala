@@ -1,12 +1,10 @@
 package dev.cjfravel.nomos
-
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
+import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.validation.MultiValidator
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class OpenMapObjectSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -15,8 +13,13 @@ class OpenMapObjectSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "generator" should "emit Map[String, Any] for an open object (additionalProperties true)" in {
     val t = parse("""{"name":"N","template":{"extras":{"$additionalProperties":true}}}""").value
-    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "N.scala").get.content
+    val content =
+      new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+        .generateMulti(t)
+        .value
+        .find(_.fileName == "N.scala")
+        .get
+        .content
     content should include("extras: Map[String, Any]")
     // The codec must build/read a Map, not fall through to Codecs.any / JsonNull.
     content should include("Codecs.map[Any]")
@@ -25,8 +28,13 @@ class OpenMapObjectSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "generator" should "emit Map[String, T] for a typed open object" in {
     val t = parse("""{"name":"N","template":{"extras":{"$additionalProperties":"string"}}}""").value
-    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "N.scala").get.content
+    val content =
+      new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+        .generateMulti(t)
+        .value
+        .find(_.fileName == "N.scala")
+        .get
+        .content
     content should include("extras: Map[String, String]")
     content should include("Codecs.map(Codecs.string)")
     content should not include """"extras" -> JsonNull"""

@@ -1,19 +1,21 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.generation.FileWriter
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 import java.io.File
-import java.nio.file.Files
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+
 import scala.collection.immutable.ListMap
 
+import dev.cjfravel.nomos.generation.FileWriter
+import dev.cjfravel.nomos.model._
+import org.scalatest.EitherValues
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 /**
- * When a definition/template is removed, its previously-generated file must not linger as a stale
- * type. Generation prunes orphaned generated files (scoped to files carrying the generated header,
- * so hand-written sources are never deleted).
+ * When a definition/template is removed, its previously-generated file must not linger as a stale type. Generation
+ * prunes orphaned generated files (scoped to files carrying the generated header, so hand-written sources are never
+ * deleted).
  */
 class OrphanPruneSpec extends AnyFlatSpec with Matchers with EitherValues {
 

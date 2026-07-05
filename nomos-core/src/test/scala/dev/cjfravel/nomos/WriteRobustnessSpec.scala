@@ -1,25 +1,28 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.generation._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 import java.io.File
-import java.nio.file.Files
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+
 import scala.collection.immutable.ListMap
 
+import dev.cjfravel.nomos.generation._
+import dev.cjfravel.nomos.model._
+import org.scalatest.EitherValues
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 /**
- * Generation must fail closed when files cannot be written (a green build over stale/missing
- * sources is worse than a hard error), and generated files must be written as UTF-8 so output is
- * reproducible and non-ASCII content is not corrupted on non-UTF-8 default platforms.
+ * Generation must fail closed when files cannot be written (a green build over stale/missing sources is worse than a
+ * hard error), and generated files must be written as UTF-8 so output is reproducible and non-ASCII content is not
+ * corrupted on non-UTF-8 default platforms.
  */
 class WriteRobustnessSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   private def template(name: String) =
-    MultiTemplate("com.example", List(TemplateDefinition(name,
-      ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))))))
+    MultiTemplate(
+      "com.example",
+      List(TemplateDefinition(name, ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))))))
 
   "generateCode" should "return Left when generated files cannot be written" in {
     // A regular file as the output dir makes every write fail (no dirs can be created under it).

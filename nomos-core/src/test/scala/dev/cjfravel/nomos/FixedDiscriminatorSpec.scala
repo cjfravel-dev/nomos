@@ -1,17 +1,16 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
+import dev.cjfravel.nomos.parser.TemplateParser
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * For `includeDiscriminator: true` with exact matching, the discriminator value is fully
- * determined by the variant, so it is emitted as a fixed `override val` rather than a
- * constructor parameter: kept out of the constructor and `unapply`, matching idiomatic
- * hand-written sealed-trait models. These tests compile AND execute the generated code to prove
- * construction/pattern-match arity, the fixed value, and JSON round-trip.
+ * For `includeDiscriminator: true` with exact matching, the discriminator value is fully determined by the variant, so
+ * it is emitted as a fixed `override val` rather than a constructor parameter: kept out of the constructor and
+ * `unapply`, matching idiomatic hand-written sealed-trait models. These tests compile AND execute the generated code to
+ * prove construction/pattern-match arity, the fixed value, and JSON round-trip.
  */
 class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -19,10 +18,12 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
 
   private def generate(template: String): List[GeneratedFile] =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(parser.parseMultiTemplate(template, "com.example").value).value
+      .generateMulti(parser.parseMultiTemplate(template, "com.example").value)
+      .value
 
   "an exact string-discriminator variant" should "put the discriminator out of the ctor/unapply as a fixed override" in {
-    val tmpl = """{"definitions":[{"name":"Condition","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Condition","template":{"$type":{
       |"discriminator":"type",
       |"variants":{"OtherColumnIsEqualTo":{"other_column":"string","is_equal_to":"string"}}}}}]}""".stripMargin
     val driver =
@@ -46,7 +47,8 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
   }
 
   "an exact enum-discriminator variant (variantNames)" should "fix the enum value out of the ctor/unapply" in {
-    val tmpl = """{"definitions":[{"name":"Location","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Location","template":{"$type":{
       |"discriminator":"type","discriminatorEnum":"LocationType",
       |"variantNames":{"DataLake":"DataLakeLocation","EventHub":"EventHubLocation"},
       |"variants":{"DataLake":{"name":"string"},"EventHub":{"name":"string"}}}}}]}""".stripMargin
@@ -69,7 +71,8 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
   }
 
   "a grouped class (several discriminator values -> one class)" should "keep the discriminator as a ctor field to round-trip which value it was" in {
-    val tmpl = """{"definitions":[{"name":"U","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"U","template":{"$type":{
       |"discriminator":"type","variantNames":{"a":"Foo","b":"Foo"},
       |"variants":{"a":{"x":"string"},"b":{"x":"string"}}}}}]}""".stripMargin
     val driver =
@@ -89,7 +92,8 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
   }
 
   "an exact discriminator with common fields" should "keep common+variant fields in the ctor and fix the discriminator" in {
-    val tmpl = """{"definitions":[{"name":"Shape","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"shapeType","commonFields":{"color":"string"},
       |"variants":{"circle":{"radius":"number"}}}}}]}""".stripMargin
     val driver =

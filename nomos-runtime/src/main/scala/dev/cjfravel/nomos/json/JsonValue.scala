@@ -3,26 +3,26 @@ package dev.cjfravel.nomos.json
 /**
  * A first-party, dependency-free JSON value model.
  *
- * This exists so generated code and runtime validation never expose a third-party JSON
- * library on a consumer's classpath. It uses only the Scala standard library.
+ * This exists so generated code and runtime validation never expose a third-party JSON library on a consumer's
+ * classpath. It uses only the Scala standard library.
  *
- * '''Public, supported API.''' Because the runtime is dependency-free, this model is the JSON
- * type consumers reach for in hand-written runtime code (it also appears in public signatures
- * such as `MultiValidator.validate` and the `ValidatorRegistry` callback). It is a committed,
- * semver-stable part of `nomos-runtime` and safe to depend on directly.
+ * '''Public, supported API.''' Because the runtime is dependency-free, this model is the JSON type consumers reach for
+ * in hand-written runtime code (it also appears in public signatures such as `MultiValidator.validate` and the
+ * `ValidatorRegistry` callback). It is a committed, semver-stable part of `nomos-runtime` and safe to depend on
+ * directly.
  *
- * '''Scope (what this is).''' Deliberately minimal: an immutable JSON tree plus exactly the
- * operations generated codecs, validation, and straightforward hand-written runtime code need.
- *   - an immutable model: [[JsonNull]], [[JsonBoolean]], [[JsonString]], [[JsonNumber]],
- *     [[JsonArray]], [[JsonObject]] (insertion-ordered, order-independent equality);
+ * '''Scope (what this is).''' Deliberately minimal: an immutable JSON tree plus exactly the operations generated
+ * codecs, validation, and straightforward hand-written runtime code need.
+ *   - an immutable model: [[JsonNull]], [[JsonBoolean]], [[JsonString]], [[JsonNumber]], [[JsonArray]], [[JsonObject]]
+ *     (insertion-ordered, order-independent equality);
  *   - parse and (compact / pretty) write via [[Json]];
  *   - type tests/accessors (`isObject`, `asString`, `asInt`, ...) that return `Option`;
  *   - shallow, single-level lookups (`JsonObject.field`, `JsonArray.get`/`apply`);
  *   - immutable single-level transforms (`JsonObject.updated`, `remove`, `mapKeys`);
  *   - exact number handling: the original lexeme is preserved so output round-trips.
  *
- * '''Out of scope (what this is not, and will not become).''' This is not a general-purpose
- * JSON toolkit; the following are intentionally excluded and requests for them are declined:
+ * '''Out of scope (what this is not, and will not become).''' This is not a general-purpose JSON toolkit; the following
+ * are intentionally excluded and requests for them are declined:
  *   - path/query languages (JSON Pointer, JSONPath) or deep/recursive navigation helpers;
  *   - streaming, incremental, or push/pull parsing (the API is whole-document, in-memory);
  *   - schema languages, diff/patch (JSON Merge Patch / RFC 6902), or canonicalization;
@@ -39,39 +39,45 @@ sealed trait JsonValue {
   def isArray: Boolean = this.isInstanceOf[JsonArray]
 
   /** The JSON type name (object, array, string, number, boolean, null). */
-  def typeName: String = this match {
-    case JsonNull => "null"
-    case _: JsonString => "string"
-    case _: JsonNumber => "number"
-    case _: JsonBoolean => "boolean"
-    case _: JsonArray => "array"
-    case _: JsonObject => "object"
-  }
+  def typeName: String =
+    this match {
+      case JsonNull => "null"
+      case _: JsonString => "string"
+      case _: JsonNumber => "number"
+      case _: JsonBoolean => "boolean"
+      case _: JsonArray => "array"
+      case _: JsonObject => "object"
+    }
 
-  def asString: Option[String] = this match {
-    case JsonString(s) => Some(s)
-    case _ => None
-  }
+  def asString: Option[String] =
+    this match {
+      case JsonString(s) => Some(s)
+      case _ => None
+    }
 
-  def asBoolean: Option[Boolean] = this match {
-    case JsonBoolean(b) => Some(b)
-    case _ => None
-  }
+  def asBoolean: Option[Boolean] =
+    this match {
+      case JsonBoolean(b) => Some(b)
+      case _ => None
+    }
 
-  def asNumber: Option[JsonNumber] = this match {
-    case n: JsonNumber => Some(n)
-    case _ => None
-  }
+  def asNumber: Option[JsonNumber] =
+    this match {
+      case n: JsonNumber => Some(n)
+      case _ => None
+    }
 
-  def asArray: Option[JsonArray] = this match {
-    case a: JsonArray => Some(a)
-    case _ => None
-  }
+  def asArray: Option[JsonArray] =
+    this match {
+      case a: JsonArray => Some(a)
+      case _ => None
+    }
 
-  def asObject: Option[JsonObject] = this match {
-    case o: JsonObject => Some(o)
-    case _ => None
-  }
+  def asObject: Option[JsonObject] =
+    this match {
+      case o: JsonObject => Some(o)
+      case _ => None
+    }
 }
 
 case object JsonNull extends JsonValue
@@ -81,11 +87,12 @@ final case class JsonString(value: String) extends JsonValue
 final case class JsonBoolean(value: Boolean) extends JsonValue
 
 /**
- * A JSON number, kept as its original textual lexeme so output round-trips exactly
- * (e.g. `30.0` stays `30.0`). Typed accessors derive values lazily and exactly.
+ * A JSON number, kept as its original textual lexeme so output round-trips exactly (e.g. `30.0` stays `30.0`). Typed
+ * accessors derive values lazily and exactly.
  *
- * @param raw the original (or canonical) number text; validated on construction to be a
- *            well-formed JSON number lexeme so the writer can emit it verbatim as valid JSON
+ * @param raw
+ *   the original (or canonical) number text; validated on construction to be a well-formed JSON number lexeme so the
+ *   writer can emit it verbatim as valid JSON
  */
 final case class JsonNumber(raw: String) extends JsonValue {
   require(JsonNumber.isValidLexeme(raw), s"invalid JSON number lexeme: '$raw'")
@@ -107,16 +114,18 @@ final case class JsonNumber(raw: String) extends JsonValue {
     catch { case _: NumberFormatException => false }
 
   /** True when this number is integral and fits in a 32-bit Int. */
-  def fitsInt: Boolean = isIntegral && {
-    val bd = asBigDecimal
-    bd >= JsonNumber.IntMin && bd <= JsonNumber.IntMax
-  }
+  def fitsInt: Boolean =
+    isIntegral && {
+      val bd = asBigDecimal
+      bd >= JsonNumber.IntMin && bd <= JsonNumber.IntMax
+    }
 
   /** True when this number is integral and fits in a 64-bit Long. */
-  def fitsLong: Boolean = isIntegral && {
-    val bd = asBigDecimal
-    bd >= JsonNumber.LongMin && bd <= JsonNumber.LongMax
-  }
+  def fitsLong: Boolean =
+    isIntegral && {
+      val bd = asBigDecimal
+      bd >= JsonNumber.LongMin && bd <= JsonNumber.LongMax
+    }
 
   def asInt: Option[Int] = if (fitsInt) Some(asBigDecimal.toIntExact) else None
 
@@ -162,16 +171,16 @@ object JsonArray {
 }
 
 /**
- * A JSON object that preserves key insertion order (required for deterministic, byte-stable
- * output). Equality is order-independent and based on the field map, matching common JSON
- * semantics. Construction collapses duplicate keys last-wins while keeping first position.
+ * A JSON object that preserves key insertion order (required for deterministic, byte-stable output). Equality is
+ * order-independent and based on the field map, matching common JSON semantics. Construction collapses duplicate keys
+ * last-wins while keeping first position.
  */
 final class JsonObject private (val orderedFields: Vector[(String, JsonValue)]) extends JsonValue {
 
   /** Lazily-built lookup map (last value wins for duplicate keys). */
   lazy val fieldMap: Map[String, JsonValue] = {
     val b = Map.newBuilder[String, JsonValue]
-    orderedFields.foreach { case (k, v) => b += (k -> v) }
+    orderedFields.foreach { case (k, v) => b += k -> v }
     b.result()
   }
 
@@ -183,27 +192,28 @@ final class JsonObject private (val orderedFields: Vector[(String, JsonValue)]) 
   def contains(name: String): Boolean = fieldMap.contains(name)
 
   /**
-   * Returns a copy with `name` set to `value`: replaced in place if the key exists, otherwise
-   * appended. The original object is unchanged (the model is immutable).
+   * Returns a copy with `name` set to `value`: replaced in place if the key exists, otherwise appended. The original
+   * object is unchanged (the model is immutable).
    */
   def updated(name: String, value: JsonValue): JsonObject =
-    JsonObject.fromFields(orderedFields :+ (name -> value))
+    JsonObject.fromFields(orderedFields :+ name -> value)
 
   /** Returns a copy without `name` (unchanged if the key is absent). */
   def remove(name: String): JsonObject =
     new JsonObject(orderedFields.filterNot(_._1 == name))
 
   /**
-   * Returns a copy with every key transformed by `f`, preserving order. Useful for runtime key
-   * rewriting; if `f` collapses two keys, the later value wins (matching parser semantics).
+   * Returns a copy with every key transformed by `f`, preserving order. Useful for runtime key rewriting; if `f`
+   * collapses two keys, the later value wins (matching parser semantics).
    */
   def mapKeys(f: String => String): JsonObject =
     JsonObject.fromFields(orderedFields.map { case (k, v) => (f(k), v) })
 
-  override def equals(other: Any): Boolean = other match {
-    case that: JsonObject => this.fieldMap == that.fieldMap
-    case _ => false
-  }
+  override def equals(other: Any): Boolean =
+    other match {
+      case that: JsonObject => this.fieldMap == that.fieldMap
+      case _ => false
+    }
 
   override def hashCode(): Int = fieldMap.hashCode()
 
@@ -216,8 +226,8 @@ object JsonObject {
   def apply(fields: (String, JsonValue)*): JsonObject = fromFields(fields)
 
   /**
-   * Builds an object from ordered fields. Duplicate keys collapse last-wins while keeping the
-   * first occurrence's position, mirroring the parser's behavior.
+   * Builds an object from ordered fields. Duplicate keys collapse last-wins while keeping the first occurrence's
+   * position, mirroring the parser's behavior.
    */
   def fromFields(fields: Iterable[(String, JsonValue)]): JsonObject = {
     val seen = scala.collection.mutable.LinkedHashMap.empty[String, JsonValue]

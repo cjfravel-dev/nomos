@@ -1,17 +1,17 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
 import dev.cjfravel.nomos.model.TypeDiscriminator
 import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.validation.MultiValidator
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * A `fallbackVariant` turns an unrecognized discriminator value into a catch-all case class that
- * preserves the raw object and re-emits it verbatim on encode (forward compatibility), instead of
- * failing. These tests compile AND execute the generated decode/encode to prove the round-trip.
+ * A `fallbackVariant` turns an unrecognized discriminator value into a catch-all case class that preserves the raw
+ * object and re-emits it verbatim on encode (forward compatibility), instead of failing. These tests compile AND
+ * execute the generated decode/encode to prove the round-trip.
  */
 class FallbackVariantSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -19,15 +19,22 @@ class FallbackVariantSpec extends AnyFlatSpec with Matchers with EitherValues wi
 
   private def generate(template: String): List[GeneratedFile] =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(parser.parseMultiTemplate(template, "com.example").value).value
+      .generateMulti(parser.parseMultiTemplate(template, "com.example").value)
+      .value
 
   private val shapeTmpl =
     """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","fallbackVariant":"UnknownShape","variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
 
   "parser" should "capture fallbackVariant" in {
-    val disc = parser.parseMultiTemplate(shapeTmpl, "com.example").value
-      .definitions.head.templateType.asInstanceOf[TypeDiscriminator]
+    val disc =
+      parser
+        .parseMultiTemplate(shapeTmpl, "com.example")
+        .value
+        .definitions
+        .head
+        .templateType
+        .asInstanceOf[TypeDiscriminator]
     disc.fallbackVariant shouldBe Some("UnknownShape")
   }
 

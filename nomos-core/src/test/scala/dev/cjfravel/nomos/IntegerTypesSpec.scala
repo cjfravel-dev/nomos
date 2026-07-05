@@ -1,13 +1,14 @@
 package dev.cjfravel.nomos
 
+import scala.collection.immutable.ListMap
+
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.validation.MultiValidator
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import scala.collection.immutable.ListMap
 
 class IntegerTypesSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -28,8 +29,17 @@ class IntegerTypesSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-  def multi = MultiTemplate("com.example", List(TemplateDefinition("N", ObjectType(ListMap(
-    "a" -> FieldDef(IntType(), false), "b" -> FieldDef(LongType(), false), "c" -> FieldDef(DecimalType(), false))))))
+  def multi =
+    MultiTemplate(
+      "com.example",
+      List(
+        TemplateDefinition(
+          "N",
+          ObjectType(
+            ListMap(
+              "a" -> FieldDef(IntType(), false),
+              "b" -> FieldDef(LongType(), false),
+              "c" -> FieldDef(DecimalType(), false))))))
 
   "generator" should "map int/long/decimal to Int/Long/BigDecimal" in {
     val content = gen.generateMulti(multi).value.find(_.fileName == "N.scala").get.content

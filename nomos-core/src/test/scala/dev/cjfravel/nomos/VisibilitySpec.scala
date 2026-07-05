@@ -1,16 +1,16 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
+import dev.cjfravel.nomos.parser.TemplateParser
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * The top-level `visibility` option prepends a Scala access modifier to every generated top-level
- * definition (case classes, sealed traits, enums, companion/NomosFormats objects), so a module can
- * lock its surface to an enclosing package. The modifier is validated (not truly verbatim) to keep
- * it from breaking out of the definition position in generated source.
+ * The top-level `visibility` option prepends a Scala access modifier to every generated top-level definition (case
+ * classes, sealed traits, enums, companion/NomosFormats objects), so a module can lock its surface to an enclosing
+ * package. The modifier is validated (not truly verbatim) to keep it from breaking out of the definition position in
+ * generated source.
  */
 class VisibilitySpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -18,10 +18,12 @@ class VisibilitySpec extends AnyFlatSpec with Matchers with EitherValues with Co
 
   private def generate(template: String): List[GeneratedFile] =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(parser.parseMultiTemplate(template, "com.example").value).value
+      .generateMulti(parser.parseMultiTemplate(template, "com.example").value)
+      .value
 
   "visibility" should "prefix every generated top-level definition" in {
-    val tmpl = """{"visibility":"private[example]","definitions":[
+    val tmpl =
+      """{"visibility":"private[example]","definitions":[
       |{"name":"User","template":{"id":"string","age":"int"}}]}""".stripMargin
     val files = generate(tmpl)
     val user = files.find(_.fileName == "User.scala").get.content
@@ -31,7 +33,8 @@ class VisibilitySpec extends AnyFlatSpec with Matchers with EitherValues with Co
   }
 
   "package-private generated types" should "compile and be usable from within the enclosing package" in {
-    val tmpl = """{"visibility":"private[example]","definitions":[
+    val tmpl =
+      """{"visibility":"private[example]","definitions":[
       |{"name":"User","template":{"id":"string","age":"int"}}]}""".stripMargin
     val driver =
       """package com.example
@@ -49,7 +52,8 @@ class VisibilitySpec extends AnyFlatSpec with Matchers with EitherValues with Co
   }
 
   "visibility on a discriminated union with a discriminatorEnum" should "apply to the trait, variants, enum, and companions and compile" in {
-    val tmpl = """{"visibility":"private[example]","definitions":[
+    val tmpl =
+      """{"visibility":"private[example]","definitions":[
       |{"name":"Shape","template":{"$type":{"discriminator":"kind","discriminatorEnum":"ShapeType",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
     val files = generate(tmpl)
@@ -64,7 +68,8 @@ class VisibilitySpec extends AnyFlatSpec with Matchers with EitherValues with Co
   }
 
   "an unsafe visibility modifier" should "be rejected (cannot inject into generated source)" in {
-    val bad = """{"visibility":"private[x] } object Evil { def hack = 1 ; ","definitions":[
+    val bad =
+      """{"visibility":"private[x] } object Evil { def hack = 1 ; ","definitions":[
       |{"name":"User","template":{"id":"string"}}]}""".stripMargin
     parser.parseMultiTemplate(bad, "com.example").left.value.toString should include("Invalid visibility modifier")
   }

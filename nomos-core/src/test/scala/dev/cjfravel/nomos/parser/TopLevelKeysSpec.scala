@@ -1,13 +1,13 @@
 package dev.cjfravel.nomos.parser
 
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * The template's top-level object accepts a fixed set of settings keys. An unrecognized key is a
- * mistake (a typo, or a removed setting such as useOptionTypes/mapType) and is rejected with a
- * message naming the offending key, so it never silently no-ops.
+ * The template's top-level object accepts a fixed set of settings keys. An unrecognized key is a mistake (a typo, or a
+ * removed setting such as useOptionTypes/mapType) and is rejected with a message naming the offending key, so it never
+ * silently no-ops.
  */
 class TopLevelKeysSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -23,18 +23,17 @@ class TopLevelKeysSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   it should "reject an unknown top-level key, naming it" in {
-    val err = parse(
-      """{"listTpye":"List","definitions":[{"name":"N","template":{"id":"string"}}]}""").left.value
+    val err = parse("""{"listTpye":"List","definitions":[{"name":"N","template":{"id":"string"}}]}""").left.value
     err.message should include("listTpye")
   }
 
   it should "reject the removed useOptionTypes setting as an unknown key" in {
-    val err = parse(
-      """{"useOptionTypes":true,"definitions":[{"name":"N","template":{"id":"string"}}]}""").left.value
+    val err = parse("""{"useOptionTypes":true,"definitions":[{"name":"N","template":{"id":"string"}}]}""").left.value
     err.message should include("useOptionTypes")
   }
 
   it should "accept the mapType setting" in {
-    parse("""{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"m":{"$map":"string"}}}]}""") shouldBe a[Right[_, _]]
+    parse("""{"mapType":"java.util.Map","definitions":[{"name":"N","template":{"m":{"$map":"string"}}}]}""") shouldBe a[
+      Right[_, _]]
   }
 }

@@ -5,9 +5,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Generated `decode` routes numeric fields through these combinators, so a hostile lexeme must
- * yield a `Left` (the `Decoder` contract) rather than throwing or producing a non-finite value
- * that cannot be re-encoded.
+ * Generated `decode` routes numeric fields through these combinators, so a hostile lexeme must yield a `Left` (the
+ * `Decoder` contract) rather than throwing or producing a non-finite value that cannot be re-encoded.
  */
 class CodecsSpec extends AnyFlatSpec with Matchers {
 

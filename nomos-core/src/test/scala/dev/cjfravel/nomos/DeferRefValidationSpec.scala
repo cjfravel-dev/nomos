@@ -1,11 +1,11 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class DeferRefValidationSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -22,8 +22,13 @@ class DeferRefValidationSpec extends AnyFlatSpec with Matchers with EitherValues
 
   "combine" should "validate refs across merged templates" in {
     val r = parser.parseMultiTemplate(rootOnly, "com.example.a", validateRefs = false).value
-    val c = parser.parseMultiTemplate("""{"definitions":[{"name":"Child","template":{"id":"string"}}]}""",
-      "com.example.b", validateRefs = false).value
+    val c =
+      parser
+        .parseMultiTemplate(
+          """{"definitions":[{"name":"Child","template":{"id":"string"}}]}""",
+          "com.example.b",
+          validateRefs = false)
+        .value
     MultiTemplate.combine(List(r, c)).value.validate() shouldBe empty
   }
 }
@@ -37,7 +42,13 @@ class CollapseVariantsSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "generator" should "collapse identical variants into one shared class" in {
     val t = parser.parseMultiTemplate(tmpl, "com.example").value
-    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen")).generateMulti(t).value.find(_.fileName == "Num.scala").get.content
+    val content =
+      new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+        .generateMulti(t)
+        .value
+        .find(_.fileName == "Num.scala")
+        .get
+        .content
     "case class Number".r.findAllIn(content).size shouldBe 1
     content should not include "case class Int"
     content should not include "case class Double"

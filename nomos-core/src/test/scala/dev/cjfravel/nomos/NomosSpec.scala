@@ -1,11 +1,9 @@
 package dev.cjfravel.nomos
+import java.io.File
 
-import dev.cjfravel.nomos.model._
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import java.io.File
-import scala.collection.immutable.ListMap
 
 class NomosSpec extends AnyFlatSpec with Matchers with EitherValues {
 

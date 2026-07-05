@@ -1,11 +1,11 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class VariantSubPackageSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -15,13 +15,20 @@ class VariantSubPackageSpec extends AnyFlatSpec with Matchers with EitherValues 
        "variantSubPackage":"kinds","variants":{"circle":{"radius":"number"},"square":{"side":"number"}}}}}]}"""
 
   "parser" should "capture variantSubPackage" in {
-    val disc = parser.parseMultiTemplate(tmpl, "com.example").value.definitions.head.templateType.asInstanceOf[TypeDiscriminator]
+    val disc =
+      parser.parseMultiTemplate(tmpl, "com.example").value.definitions.head.templateType.asInstanceOf[TypeDiscriminator]
     disc.variantSubPackage shouldBe Some("kinds")
   }
 
   "generator" should "place variant case classes in the sub-package" in {
     val t = parser.parseMultiTemplate(tmpl, "com.example").value
-    val content = new CodeGenerator(GeneratorConfig("", "target/test-gen")).generateMulti(t).value.find(_.fileName == "Shape.scala").get.content
+    val content =
+      new CodeGenerator(GeneratorConfig("", "target/test-gen"))
+        .generateMulti(t)
+        .value
+        .find(_.fileName == "Shape.scala")
+        .get
+        .content
     content should include("sealed trait Shape")
     content should include("package kinds {")
     content should include("import _root_.com.example.shapes.kinds._")
@@ -34,7 +41,13 @@ class VariantSubPackageSpec extends AnyFlatSpec with Matchers with EitherValues 
          "variantSubPackage":"kinds","variantNames":{"circle":"RoundShape"},
          "variants":{"circle":{"radius":"number"}}}}}]}"""
     val t = parser.parseMultiTemplate(vn, "com.example").value
-    val content = new CodeGenerator(GeneratorConfig("", "target/test-gen")).generateMulti(t).value.find(_.fileName == "Shape.scala").get.content
+    val content =
+      new CodeGenerator(GeneratorConfig("", "target/test-gen"))
+        .generateMulti(t)
+        .value
+        .find(_.fileName == "Shape.scala")
+        .get
+        .content
     content should include("package kinds {")
     content should include("case class RoundShape")
     // the relocated variant must be imported back into the companion

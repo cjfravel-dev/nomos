@@ -1,12 +1,11 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import scala.collection.immutable.ListMap
 
 class NullableRawSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -14,7 +13,8 @@ class NullableRawSpec extends AnyFlatSpec with Matchers with EitherValues {
   def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "mark a field nullable" in {
-    val d = parse("""{"name":"N","template":{"tags":{"$optional":["string"],"nullable":true}}}""").value.definitions.head
+    val d =
+      parse("""{"name":"N","template":{"tags":{"$optional":["string"],"nullable":true}}}""").value.definitions.head
     val f = d.templateType.asInstanceOf[ObjectType].fields("tags")
     f.optional shouldBe true
     f.nullable shouldBe true
@@ -22,8 +22,13 @@ class NullableRawSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "generator" should "emit a raw nullable type with no Option wrapper" in {
     val t = parse("""{"name":"N","template":{"tags":{"$optional":["string"],"nullable":true}}}""").value
-    val content = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "N.scala").get.content
+    val content =
+      new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
+        .generateMulti(t)
+        .value
+        .find(_.fileName == "N.scala")
+        .get
+        .content
     content should include("tags: List[String] = null")
     content should not include "Option[List[String]]"
   }
@@ -31,10 +36,15 @@ class NullableRawSpec extends AnyFlatSpec with Matchers with EitherValues {
   "generator" should "still use Option for plain optional fields" in {
     val t = parse("""{"name":"N","template":{"tags":{"$optional":["string"]}}}""").value
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "N.scala").get.content should include("Option[List[String]]")
+      .generateMulti(t)
+      .value
+      .find(_.fileName == "N.scala")
+      .get
+      .content should include("Option[List[String]]")
   }
 
   "serializer" should "round-trip the nullable flag" in {
-    TemplateSerializer.serializeFieldDef(FieldDef(StringType(), optional = true, nullable = true)) should include("nullable = true")
+    TemplateSerializer.serializeFieldDef(FieldDef(StringType(), optional = true, nullable = true)) should include(
+      "nullable = true")
   }
 }

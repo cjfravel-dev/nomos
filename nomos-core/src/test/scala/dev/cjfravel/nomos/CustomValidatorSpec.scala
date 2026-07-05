@@ -1,31 +1,43 @@
 package dev.cjfravel.nomos
 
+import scala.collection.immutable.ListMap
+
+import dev.cjfravel.nomos.generation.TemplateSerializer
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.TemplateSerializer
-import dev.cjfravel.nomos.validation.{MultiValidator, ValidatorRegistry, ValidationError}
+import dev.cjfravel.nomos.validation.{MultiValidator, ValidationError, ValidatorRegistry}
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import scala.collection.immutable.ListMap
 
 class CustomValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
 
   "parser" should "parse definition-level validators list" in {
-    val json = """{"definitions":[{"name":"Reservation","validators":["dates.startBeforeEnd"],"template":{"startDate":"string","endDate":"string"}}]}"""
-    parser.parseMultiTemplate(json, "com.example").value.definitions.head.validators shouldBe List("dates.startBeforeEnd")
+    val json =
+      """{"definitions":[{"name":"Reservation","validators":["dates.startBeforeEnd"],"template":{"startDate":"string","endDate":"string"}}]}"""
+    parser.parseMultiTemplate(json, "com.example").value.definitions.head.validators shouldBe List(
+      "dates.startBeforeEnd")
   }
 
   it should "default validators to empty" in {
-    parser.parseMultiTemplate("""{"definitions":[{"name":"N","template":{"id":"string"}}]}""", "com.example")
-      .value.definitions.head.validators shouldBe Nil
+    parser
+      .parseMultiTemplate("""{"definitions":[{"name":"N","template":{"id":"string"}}]}""", "com.example")
+      .value
+      .definitions
+      .head
+      .validators shouldBe Nil
   }
 
-  def multi = MultiTemplate("com.example", List(TemplateDefinition("R",
-    ObjectType(ListMap("startDate" -> FieldDef(StringType(), false), "endDate" -> FieldDef(StringType(), false))),
-    validators = List("dates.startBeforeEnd"))))
+  def multi =
+    MultiTemplate(
+      "com.example",
+      List(
+        TemplateDefinition(
+          "R",
+          ObjectType(ListMap("startDate" -> FieldDef(StringType(), false), "endDate" -> FieldDef(StringType(), false))),
+          validators = List("dates.startBeforeEnd"))))
 
   "MultiValidator" should "run registered named validators after schema validation" in {
     ValidatorRegistry.register("dates.startBeforeEnd") { ctx =>
@@ -46,6 +58,7 @@ class CustomValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "serializer" should "round-trip definition validators" in {
-    TemplateSerializer.serializeDefinition(multi.definitions.head) should include("validators = List(\"dates.startBeforeEnd\")")
+    TemplateSerializer.serializeDefinition(multi.definitions.head) should include(
+      "validators = List(\"dates.startBeforeEnd\")")
   }
 }

@@ -35,18 +35,24 @@ class CodeGenerator(config: GeneratorConfig) {
         return Left(GeneratorError.TemplateError(errors.mkString(", ")))
       case _ =>
     }
-    
+
     // Get definitions map for reference resolution
     val definitionsMap = multiTemplate.definitionsMap
 
     // Access modifier prepended to every generated top-level definition (validated safe above).
     val visibility = multiTemplate.visibility.map(_ + " ").getOrElse("")
-    
+
     // Generate a file for each definition
-    val fileResults = multiTemplate.definitions.map { definition =>
-      generateFromDefinition(definition, multiTemplate.basePackage, definitionsMap, multiTemplate.definitions, visibility)
-    }
-    
+    val fileResults =
+      multiTemplate.definitions.map { definition =>
+        generateFromDefinition(
+          definition,
+          multiTemplate.basePackage,
+          definitionsMap,
+          multiTemplate.definitions,
+          visibility)
+      }
+
     // Check for errors
     val errors = fileResults.collect { case Left(err) => err }
     if (errors.nonEmpty) {
@@ -58,25 +64,38 @@ class CodeGenerator(config: GeneratorConfig) {
       // same enum name: identical declarations collapse to one file, but different value sets are
       // genuinely different types, so a clash is a hard error (silently keeping one would emit a
       // decoder that rejects the other's valid JSON).
-      val enumSpecs = multiTemplate.definitions.flatMap { definition =>
-        val pkg = definition.fullPackage(multiTemplate.basePackage)
-        collectEnums(definition.templateType).map { case (enumName, values, withUnknown) =>
-          (pkg, enumName, values, withUnknown, definition.sourcePath)
+      val enumSpecs =
+        multiTemplate.definitions.flatMap { definition =>
+          val pkg = definition.fullPackage(multiTemplate.basePackage)
+          collectEnums(definition.templateType).map { case (enumName, values, withUnknown) =>
+            (pkg, enumName, values, withUnknown, definition.sourcePath)
+          }
         }
-      }
-      val enumConflicts = enumSpecs.groupBy { case (pkg, enumName, _, _, _) => (pkg, enumName) }.collect {
-        case ((pkg, enumName), specs) if specs.map { case (_, _, values, withUnknown, _) => (values, withUnknown) }.distinct.size > 1 =>
-          val variants = specs.map { case (_, _, values, _, _) => values.mkString("[", ", ", "]") }.distinct.mkString(" vs ")
-          val where = if (pkg.isEmpty) "" else s" in package '$pkg'"
-          s"Conflicting enum '$enumName'$where declared with different values ($variants); same-named enums in one package must have identical values"
-      }.toList
+      val enumConflicts =
+        enumSpecs
+          .groupBy { case (pkg, enumName, _, _, _) => (pkg, enumName) }
+          .collect {
+            case ((pkg, enumName), specs)
+                if specs.map { case (_, _, values, withUnknown, _) => (values, withUnknown) }.distinct.size > 1 =>
+              val variants =
+                specs.map { case (_, _, values, _, _) => values.mkString("[", ", ", "]") }.distinct.mkString(" vs ")
+              val where = if (pkg.isEmpty) "" else s" in package '$pkg'"
+              s"Conflicting enum '$enumName'$where declared with different values ($variants); same-named enums in one package must have identical values"
+          }
+          .toList
 
       if (enumConflicts.nonEmpty) {
         Left(GeneratorError.TemplateError(enumConflicts.mkString(", ")))
       } else {
-        val enumFiles = enumSpecs.map { case (pkg, enumName, values, withUnknown, sourcePath) =>
-          generateEnum(pkg, enumName, values, withUnknown, sourcePath, visibility)
-        }.groupBy(_.relativePath).values.map(_.head).toList
+        val enumFiles =
+          enumSpecs
+            .map { case (pkg, enumName, values, withUnknown, sourcePath) =>
+              generateEnum(pkg, enumName, values, withUnknown, sourcePath, visibility)
+            }
+            .groupBy(_.relativePath)
+            .values
+            .map(_.head)
+            .toList
 
         // NomosFormats holds the embedded template and a validator for runtime validation.
         val nomosFormatsFile = generateNomosFormats(multiTemplate.basePackage, multiTemplate, visibility)
@@ -85,14 +104,20 @@ class CodeGenerator(config: GeneratorConfig) {
         // A definition and an inline enum (or a discriminatorEnum) sharing a name in one package map
         // to the same file; written in list order the later one silently clobbers the earlier. Reject
         // any duplicate output path across all emitted files rather than losing a type.
-        val pathCollisions = allFiles.groupBy(_.relativePath).collect {
-          case (path, files) if files.size > 1 => path
-        }.toList.sorted
+        val pathCollisions =
+          allFiles
+            .groupBy(_.relativePath)
+            .collect {
+              case (path, files) if files.size > 1 => path
+            }
+            .toList
+            .sorted
         if (pathCollisions.nonEmpty)
-          Left(GeneratorError.TemplateError(
-            "Name collision: multiple generated types map to the same output file(s): " +
-              pathCollisions.mkString(", ") +
-              ". A definition and an inline enum (or two types) share a name in one package; rename one of them."))
+          Left(
+            GeneratorError.TemplateError(
+              "Name collision: multiple generated types map to the same output file(s): " +
+                pathCollisions.mkString(", ") +
+                ". A definition and an inline enum (or two types) share a name in one package; rename one of them."))
         else
           Right(allFiles)
       }
@@ -100,14 +125,13 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Renders a field's Scala type. A nullable field becomes its raw type (no Option); when
-   * withNullDefault is set, nullable adds a "= null" default and a plain default is appended.
+   * Renders a field's Scala type. A nullable field becomes its raw type (no Option); when withNullDefault is set,
+   * nullable adds a "= null" default and a plain default is appended.
    */
   private def renderFieldType(
-    fieldDef: FieldDef,
-    definitionsMap: Map[String, TemplateDefinition],
-    withNullDefault: Boolean
-  ): String = {
+      fieldDef: FieldDef,
+      definitionsMap: Map[String, TemplateDefinition],
+      withNullDefault: Boolean): String =
     if (fieldDef.nullable) {
       val raw = boxIfPrimitive(scalaTypeForDefinition(fieldDef.fieldType, optional = false, definitionsMap))
       if (withNullDefault) s"$raw = null" else raw
@@ -115,18 +139,18 @@ class CodeGenerator(config: GeneratorConfig) {
       val t = scalaTypeForDefinition(fieldDef.fieldType, fieldDef.optional, definitionsMap)
       if (withNullDefault) fieldDef.default.map(d => s"$t = $d").getOrElse(t) else t
     }
-  }
 
   /**
    * Boxes Scala value types so a nullable field can default to null (value types cannot be null).
    */
-  private def boxIfPrimitive(scalaType: String): String = scalaType match {
-    case "Int"     => "java.lang.Integer"
-    case "Long"    => "java.lang.Long"
-    case "Double"  => "java.lang.Double"
-    case "Boolean" => "java.lang.Boolean"
-    case other     => other
-  }
+  private def boxIfPrimitive(scalaType: String): String =
+    scalaType match {
+      case "Int" => "java.lang.Integer"
+      case "Long" => "java.lang.Long"
+      case "Double" => "java.lang.Double"
+      case "Boolean" => "java.lang.Boolean"
+      case other => other
+    }
 
   // --- Dependency-free codec generation ---------------------------------------------------------
   // The following helpers emit Scala expressions that build/read the first-party JsonValue model,
@@ -136,9 +160,9 @@ class CodeGenerator(config: GeneratorConfig) {
   private def mapScalaType(inner: String): String = s"${config.mapType}[String, $inner]"
 
   /**
-   * A decoder expression for a `$map` field. Always decodes via `Codecs.map`; when the configured
-   * mapType is `java.util.Map`, the decoded immutable map is converted with `Codecs.toJavaMap`.
-   * `typeArg` supplies an explicit value type parameter (used for the `Any`-valued open-map case).
+   * A decoder expression for a `$map` field. Always decodes via `Codecs.map`; when the configured mapType is
+   * `java.util.Map`, the decoded immutable map is converted with `Codecs.toJavaMap`. `typeArg` supplies an explicit
+   * value type parameter (used for the `Any`-valued open-map case).
    */
   private def mapDecoderExpr(valueDec: String, typeArg: String = ""): String = {
     val ta = if (typeArg.isEmpty) "" else s"[$typeArg]"
@@ -152,95 +176,109 @@ class CodeGenerator(config: GeneratorConfig) {
     if (config.mapType == "java.util.Map") s"Codecs.javaMapEntries($v)" else s"$v.iterator"
 
   /** A `Codecs.Decoder[T]` expression that decodes a JSON value into the field's Scala type. */
-  private def decoderExpr(tt: TemplateType): String = tt match {
-    case StringType(_) => "Codecs.string"
-    case NumberType(_) => "Codecs.double"
-    case IntType(_) => "Codecs.int"
-    case LongType(_) => "Codecs.long"
-    case DecimalType(_) => "Codecs.bigDecimal"
-    case BooleanType() => "Codecs.boolean"
-    case DateType() => s"""Codecs.temporal[${config.dateType}]("date", ${temporalParseLambda(config.dateType, isDate = true)})"""
-    case DateTimeType() => s"""Codecs.temporal[${config.dateTimeType}]("datetime", ${temporalParseLambda(config.dateTimeType, isDate = false)})"""
-    case ArrayType(elem, _) =>
-      if (config.listType == "Array")
-        s"((j: JsonValue) => Codecs.list(${decoderExpr(elem)})(j).right.map(_.toArray))"
-      else s"Codecs.list(${decoderExpr(elem)})"
-    case MapType(v) => mapDecoderExpr(decoderExpr(v))
-    // Inline empty object with an additionalProperties policy renders as a Map field.
-    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => mapDecoderExpr(decoderExpr(vt))
-    case ObjectType(f, AllowExtra) if f.isEmpty => mapDecoderExpr("((j: JsonValue) => Right(j))", "Any")
-    case UnionType(_) => "Codecs.any"
-    case ReferenceType(n) => s"$n.decode"
-    case RecursiveRef(n) => s"$n.decode"
-    case ExternalType(qn, true) => s"$qn.decode"
-    case ExternalType(qn, false) => s"""((j: JsonValue) => CodecRegistry.decode[$qn]("$qn", j))"""
-    case EnumType(n, _) => s"$n.decode"
-    case _ => "Codecs.any"
-  }
+  private def decoderExpr(tt: TemplateType): String =
+    tt match {
+      case StringType(_) => "Codecs.string"
+      case NumberType(_) => "Codecs.double"
+      case IntType(_) => "Codecs.int"
+      case LongType(_) => "Codecs.long"
+      case DecimalType(_) => "Codecs.bigDecimal"
+      case BooleanType() => "Codecs.boolean"
+      case DateType() =>
+        s"""Codecs.temporal[${config.dateType}]("date", ${temporalParseLambda(config.dateType, isDate = true)})"""
+      case DateTimeType() =>
+        s"""Codecs.temporal[${config.dateTimeType}]("datetime", ${temporalParseLambda(
+            config.dateTimeType,
+            isDate = false)})"""
+      case ArrayType(elem, _) =>
+        if (config.listType == "Array")
+          s"((j: JsonValue) => Codecs.list(${decoderExpr(elem)})(j).right.map(_.toArray))"
+        else s"Codecs.list(${decoderExpr(elem)})"
+      case MapType(v) => mapDecoderExpr(decoderExpr(v))
+      // Inline empty object with an additionalProperties policy renders as a Map field.
+      case ObjectType(f, TypedExtra(vt)) if f.isEmpty => mapDecoderExpr(decoderExpr(vt))
+      case ObjectType(f, AllowExtra) if f.isEmpty => mapDecoderExpr("((j: JsonValue) => Right(j))", "Any")
+      case UnionType(_) => "Codecs.any"
+      case ReferenceType(n) => s"$n.decode"
+      case RecursiveRef(n) => s"$n.decode"
+      case ExternalType(qn, true) => s"$qn.decode"
+      case ExternalType(qn, false) => s"""((j: JsonValue) => CodecRegistry.decode[$qn]("$qn", j))"""
+      case EnumType(n, _) => s"$n.decode"
+      case _ => "Codecs.any"
+    }
 
   /** A boxed `Codecs.Decoder` for a nullable value-typed field (so it can hold null). */
-  private def boxedDecoderExpr(tt: TemplateType): String = tt match {
-    case IntType(_) => "Codecs.boxedInt"
-    case LongType(_) => "Codecs.boxedLong"
-    case NumberType(_) => "Codecs.boxedDouble"
-    case BooleanType() => "Codecs.boxedBoolean"
-    case other => decoderExpr(other)
-  }
+  private def boxedDecoderExpr(tt: TemplateType): String =
+    tt match {
+      case IntType(_) => "Codecs.boxedInt"
+      case LongType(_) => "Codecs.boxedLong"
+      case NumberType(_) => "Codecs.boxedDouble"
+      case BooleanType() => "Codecs.boxedBoolean"
+      case other => decoderExpr(other)
+    }
 
   /** A JsonValue expression that encodes `v` (an expression of the field's Scala type). */
-  private def encodeValueExpr(tt: TemplateType, v: String): String = tt match {
-    case StringType(_) => s"JsonString($v)"
-    case NumberType(_) => s"JsonNumber.fromDouble($v)"
-    case IntType(_) => s"JsonNumber.fromInt($v)"
-    case LongType(_) => s"JsonNumber.fromLong($v)"
-    case DecimalType(_) => s"JsonNumber.fromBigDecimal($v)"
-    case BooleanType() => s"JsonBoolean($v)"
-    case DateType() => temporalEncodeExpr(config.dateType, isDate = true, v)
-    case DateTimeType() => temporalEncodeExpr(config.dateTimeType, isDate = false, v)
-    case ArrayType(elem, _) => s"JsonArray($v.iterator.map(x => ${encodeValueExpr(elem, "x")}).toVector)"
-    case MapType(vt) => s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
-    // Inline empty object with an additionalProperties policy renders as a Map field.
-    case ObjectType(f, TypedExtra(vt)) if f.isEmpty => s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
-    case ObjectType(f, AllowExtra) if f.isEmpty => s"""JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, (x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })) }.toSeq)"""
-    case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
-    case ReferenceType(n) => s"$n.encode($v)"
-    case RecursiveRef(n) => s"$n.encode($v)"
-    case ExternalType(qn, true) => s"$qn.encode($v)"
-    case ExternalType(qn, false) => s"""CodecRegistry.encode("$qn", $v)"""
-    case EnumType(n, _) => s"$n.encode($v)"
-    case _ => "JsonNull"
-  }
+  private def encodeValueExpr(tt: TemplateType, v: String): String =
+    tt match {
+      case StringType(_) => s"JsonString($v)"
+      case NumberType(_) => s"JsonNumber.fromDouble($v)"
+      case IntType(_) => s"JsonNumber.fromInt($v)"
+      case LongType(_) => s"JsonNumber.fromLong($v)"
+      case DecimalType(_) => s"JsonNumber.fromBigDecimal($v)"
+      case BooleanType() => s"JsonBoolean($v)"
+      case DateType() => temporalEncodeExpr(config.dateType, isDate = true, v)
+      case DateTimeType() => temporalEncodeExpr(config.dateTimeType, isDate = false, v)
+      case ArrayType(elem, _) => s"JsonArray($v.iterator.map(x => ${encodeValueExpr(elem, "x")}).toVector)"
+      case MapType(vt) =>
+        s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
+      // Inline empty object with an additionalProperties policy renders as a Map field.
+      case ObjectType(f, TypedExtra(vt)) if f.isEmpty =>
+        s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
+      case ObjectType(f, AllowExtra) if f.isEmpty =>
+        s"""JsonObject.fromFields(${mapEntriesExpr(
+            v)}.map { case (k, x) => (k, (x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })) }.toSeq)"""
+      case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
+      case ReferenceType(n) => s"$n.encode($v)"
+      case RecursiveRef(n) => s"$n.encode($v)"
+      case ExternalType(qn, true) => s"$qn.encode($v)"
+      case ExternalType(qn, false) => s"""CodecRegistry.encode("$qn", $v)"""
+      case EnumType(n, _) => s"$n.encode($v)"
+      case _ => "JsonNull"
+    }
 
   /** Like [[encodeValueExpr]] but unboxes a nullable value-typed field before encoding. */
-  private def encodeNullableValueExpr(tt: TemplateType, v: String): String = tt match {
-    case IntType(_) => s"JsonNumber.fromInt($v.intValue)"
-    case LongType(_) => s"JsonNumber.fromLong($v.longValue)"
-    case NumberType(_) => s"JsonNumber.fromDouble($v.doubleValue)"
-    case BooleanType() => s"JsonBoolean($v.booleanValue)"
-    case other => encodeValueExpr(other, v)
-  }
+  private def encodeNullableValueExpr(tt: TemplateType, v: String): String =
+    tt match {
+      case IntType(_) => s"JsonNumber.fromInt($v.intValue)"
+      case LongType(_) => s"JsonNumber.fromLong($v.longValue)"
+      case NumberType(_) => s"JsonNumber.fromDouble($v.doubleValue)"
+      case BooleanType() => s"JsonBoolean($v.booleanValue)"
+      case other => encodeValueExpr(other, v)
+    }
 
   /**
-   * A `String => T` parser lambda for a temporal field of the configured type. `java.time.*`
-   * types have a static `parse` that returns the type, so they are emitted directly; other
-   * types (e.g. `java.util.Date`, whose `parse` returns a `long`) are bridged through `java.time`.
+   * A `String => T` parser lambda for a temporal field of the configured type. `java.time.*` types have a static
+   * `parse` that returns the type, so they are emitted directly; other types (e.g. `java.util.Date`, whose `parse`
+   * returns a `long`) are bridged through `java.time`.
    */
-  private def temporalParseLambda(typeName: String, isDate: Boolean): String = typeName match {
-    case "java.util.Date" if isDate =>
-      "s => java.util.Date.from(java.time.LocalDate.parse(s).atStartOfDay(java.time.ZoneOffset.UTC).toInstant)"
-    case "java.util.Date" =>
-      "s => java.util.Date.from(java.time.Instant.parse(s))"
-    case other => s"s => $other.parse(s)"
-  }
+  private def temporalParseLambda(typeName: String, isDate: Boolean): String =
+    typeName match {
+      case "java.util.Date" if isDate =>
+        "s => java.util.Date.from(java.time.LocalDate.parse(s).atStartOfDay(java.time.ZoneOffset.UTC).toInstant)"
+      case "java.util.Date" =>
+        "s => java.util.Date.from(java.time.Instant.parse(s))"
+      case other => s"s => $other.parse(s)"
+    }
 
   /** A JsonValue expression that encodes a temporal value of the configured type as a string. */
-  private def temporalEncodeExpr(typeName: String, isDate: Boolean, v: String): String = typeName match {
-    case "java.util.Date" if isDate =>
-      s"JsonString($v.toInstant.atZone(java.time.ZoneOffset.UTC).toLocalDate.toString)"
-    case "java.util.Date" =>
-      s"JsonString($v.toInstant.toString)"
-    case _ => s"JsonString($v.toString)"
-  }
+  private def temporalEncodeExpr(typeName: String, isDate: Boolean, v: String): String =
+    typeName match {
+      case "java.util.Date" if isDate =>
+        s"JsonString($v.toInstant.atZone(java.time.ZoneOffset.UTC).toLocalDate.toString)"
+      case "java.util.Date" =>
+        s"JsonString($v.toInstant.toString)"
+      case _ => s"JsonString($v.toString)"
+    }
 
   /** The decode binding `name <- <expr>` for one field of an object/variant. */
   private def fieldDecodeBinding(fieldName: String, fieldDef: FieldDef): String = {
@@ -248,10 +286,11 @@ class CodeGenerator(config: GeneratorConfig) {
     val keyLit = ScalaCodeBuilder.escapeStringLiteral(fieldName)
     // A field adapter maps the wire string through the named registry adapter; it only attaches to
     // required string fields (enforced by the parser), so it replaces the plain string decoder.
-    val decoder = fieldDef.adapter match {
-      case Some(name) => s"""Codecs.adapted("${ScalaCodeBuilder.escapeStringLiteral(name)}")"""
-      case None => decoderExpr(fieldDef.fieldType)
-    }
+    val decoder =
+      fieldDef.adapter match {
+        case Some(name) => s"""Codecs.adapted("${ScalaCodeBuilder.escapeStringLiteral(name)}")"""
+        case None => decoderExpr(fieldDef.fieldType)
+      }
     // Order mirrors renderFieldType: a nullable field is a raw (boxed) type, not an Option,
     // even when also marked optional, so the nullable codec must take precedence.
     val rhs =
@@ -271,10 +310,11 @@ class CodeGenerator(config: GeneratorConfig) {
   private def fieldEncodeEntry(fieldName: String, fieldDef: FieldDef, accessorPrefix: String): String = {
     val accessor = s"$accessorPrefix.${ScalaCodeBuilder.escapeKeyword(fieldName)}"
     val keyLit = ScalaCodeBuilder.escapeStringLiteral(fieldName)
-    def encode(v: String): String = fieldDef.adapter match {
-      case Some(name) => s"""Codecs.adaptedEncode("${ScalaCodeBuilder.escapeStringLiteral(name)}", $v)"""
-      case None => encodeValueExpr(fieldDef.fieldType, v)
-    }
+    def encode(v: String): String =
+      fieldDef.adapter match {
+        case Some(name) => s"""Codecs.adaptedEncode("${ScalaCodeBuilder.escapeStringLiteral(name)}", $v)"""
+        case None => encodeValueExpr(fieldDef.fieldType, v)
+      }
     if (fieldDef.nullable) {
       s"""Option($accessor).map(v => "$keyLit" -> ${encodeNullableValueExpr(fieldDef.fieldType, "v")})"""
     } else if (fieldDef.optional) {
@@ -286,11 +326,10 @@ class CodeGenerator(config: GeneratorConfig) {
 
   /** Emits `decode`, `encode`, `fromJson`, `toJson` for a record with ordered fields. */
   private def emitRecordCodec(
-    builder: ScalaCodeBuilder,
-    typeName: String,
-    constructor: String,
-    fields: List[(String, FieldDef)]
-  ): Unit = {
+      builder: ScalaCodeBuilder,
+      typeName: String,
+      constructor: String,
+      fields: List[(String, FieldDef)]): Unit = {
     // decode
     builder.line(s"def decode(json: JsonValue): Either[String, $typeName] = json match {")
     builder.indent()
@@ -351,9 +390,11 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"""validator.validate(json, "$fqn") match {""")
     builder.indent()
     if (config.throwingFromJson) {
-      builder.line("""case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError("root", e.getMessage, "valid JSON", json))) }""")
+      builder.line(
+        """case Right(_) => try Right(fromJson(json)) catch { case e: Exception => Left(List(ValidationError("root", e.getMessage, "valid JSON", json))) }""")
     } else {
-      builder.line("""case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))""")
+      builder.line(
+        """case Right(_) => fromJson(json).left.map(err => List(ValidationError("root", err, "valid JSON", json)))""")
     }
     builder.line("case Left(errors) => Left(errors)")
     builder.dedent()
@@ -374,8 +415,8 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Header prepended to every generated file. Includes a Source pointer when the template
-   * file is known, otherwise just the generic generated-by notice.
+   * Header prepended to every generated file. Includes a Source pointer when the template file is known, otherwise just
+   * the generic generated-by notice.
    */
   private def headerLines(sourcePath: Option[String]): List[String] = {
     val base = List("// Code generated by Nomos. DO NOT EDIT.")
@@ -385,11 +426,10 @@ class CodeGenerator(config: GeneratorConfig) {
     }
   }
 
-
   /**
-   * Collects every template-derived name that would be emitted as a Scala identifier or
-   * qualified name but is not a valid one. Running this before generation turns what would be
-   * uncompilable (or injectable) output into a clean, actionable error.
+   * Collects every template-derived name that would be emitted as a Scala identifier or qualified name but is not a
+   * valid one. Running this before generation turns what would be uncompilable (or injectable) output into a clean,
+   * actionable error.
    */
   private def collectNameErrors(multiTemplate: MultiTemplate): List[String] = {
     def ident(value: String, context: String): List[String] =
@@ -411,55 +451,74 @@ class CodeGenerator(config: GeneratorConfig) {
     // Distinct source values that normalize (via toPascalCase) to the same identifier would emit
     // duplicate case objects/classes, which does not compile. Report the colliding source values.
     def normalizationCollisions(values: List[String], context: String): List[String] =
-      values.groupBy(ScalaCodeBuilder.toPascalCase).collect {
-        case (normalized, sources) if sources.distinct.size > 1 =>
-          s"$context normalize to the same name '$normalized': ${sources.distinct.sorted.mkString(", ")}"
-      }.toList
+      values
+        .groupBy(ScalaCodeBuilder.toPascalCase)
+        .collect {
+          case (normalized, sources) if sources.distinct.size > 1 =>
+            s"$context normalize to the same name '$normalized': ${sources.distinct.sorted.mkString(", ")}"
+        }
+        .toList
 
-    def walk(tt: TemplateType, ctx: String): List[String] = tt match {
-      case ObjectType(fields, additional) =>
-        val fieldErrs = fields.toList.flatMap { case (fieldName, fieldDef) =>
-          ident(fieldName, s"$ctx field name") ++ walk(fieldDef.fieldType, s"$ctx.$fieldName")
-        }
-        val extraErrs = additional match {
-          case TypedExtra(vt) => walk(vt, s"$ctx.<additionalProperties>")
-          case _ => Nil
-        }
-        fieldErrs ++ extraErrs
-      case ArrayType(elementType, _) => walk(elementType, s"$ctx[]")
-      case MapType(valueType) => walk(valueType, s"$ctx{}")
-      case UnionType(types) => types.flatMap(walk(_, ctx))
-      case EnumType(enumName, values) =>
-        ident(enumName, s"$ctx enum name") ++
-          values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)")) ++
-          normalizationCollisions(values, s"$ctx enum values")
-      case ExternalType(qn, _) => externalType(qn, s"$ctx external type")
-      case TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, _, variantSubPackage, fallbackVariant, discriminatorEnum) =>
-        // The discriminator field becomes a generated Scala field only when it is included in the
-        // output or when variantNames forces a trait val; otherwise it is purely a JSON key.
-        val fieldErrs =
-          if (includeInOutput || variantNames.nonEmpty) ident(fieldName, s"$ctx discriminator field") else Nil
-        // A discriminator enum generates a sealed-trait type named discriminatorEnum with one case
-        // object per variant value, so validate both the enum name and the derived case names.
-        val discEnumErrs = discriminatorEnum.toList.flatMap { en =>
-          ident(en, s"$ctx discriminatorEnum name") ++
-            variants.keys.toList.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx discriminatorEnum value '$v' (case object name)")) ++
-            normalizationCollisions(variants.keys.toList, s"$ctx discriminatorEnum values")
-        }
-        // With variantNames, several keys mapping to one class is intentional grouping; without it,
-        // each key becomes its own class named toPascalCase(key), so a normalization clash duplicates.
-        val variantKeyErrs =
-          if (variantNames.isEmpty) normalizationCollisions(variants.keys.toList, s"$ctx variant keys") else Nil
-        fieldErrs ++ discEnumErrs ++ variantKeyErrs ++
-          variantSubPackage.toList.flatMap(qualified(_, s"$ctx variantSubPackage")) ++
-          fallbackVariant.toList.flatMap(ident(_, s"$ctx fallbackVariant (class name)")) ++
-          commonFields.toList.flatMap { case (n, fd) => ident(n, s"$ctx common field") ++ walk(fd.fieldType, s"$ctx.$n") } ++
-          variants.toList.flatMap { case (key, obj) =>
-            val className = variantNames.getOrElse(key, ScalaCodeBuilder.toPascalCase(key))
-            ident(className, s"$ctx variant '$key' (class name)") ++ walk(obj, s"$ctx.$key")
-          }
-      case _ => Nil
-    }
+    def walk(tt: TemplateType, ctx: String): List[String] =
+      tt match {
+        case ObjectType(fields, additional) =>
+          val fieldErrs =
+            fields.toList.flatMap { case (fieldName, fieldDef) =>
+              ident(fieldName, s"$ctx field name") ++ walk(fieldDef.fieldType, s"$ctx.$fieldName")
+            }
+          val extraErrs =
+            additional match {
+              case TypedExtra(vt) => walk(vt, s"$ctx.<additionalProperties>")
+              case _ => Nil
+            }
+          fieldErrs ++ extraErrs
+        case ArrayType(elementType, _) => walk(elementType, s"$ctx[]")
+        case MapType(valueType) => walk(valueType, s"$ctx{}")
+        case UnionType(types) => types.flatMap(walk(_, ctx))
+        case EnumType(enumName, values) =>
+          ident(enumName, s"$ctx enum name") ++
+            values.flatMap(v => ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx enum value '$v' (case object name)")) ++
+            normalizationCollisions(values, s"$ctx enum values")
+        case ExternalType(qn, _) => externalType(qn, s"$ctx external type")
+        case TypeDiscriminator(
+              fieldName,
+              variants,
+              commonFields,
+              includeInOutput,
+              variantNames,
+              _,
+              variantSubPackage,
+              fallbackVariant,
+              discriminatorEnum) =>
+          // The discriminator field becomes a generated Scala field only when it is included in the
+          // output or when variantNames forces a trait val; otherwise it is purely a JSON key.
+          val fieldErrs =
+            if (includeInOutput || variantNames.nonEmpty) ident(fieldName, s"$ctx discriminator field") else Nil
+          // A discriminator enum generates a sealed-trait type named discriminatorEnum with one case
+          // object per variant value, so validate both the enum name and the derived case names.
+          val discEnumErrs =
+            discriminatorEnum.toList.flatMap { en =>
+              ident(en, s"$ctx discriminatorEnum name") ++
+                variants.keys.toList.flatMap(v =>
+                  ident(ScalaCodeBuilder.toPascalCase(v), s"$ctx discriminatorEnum value '$v' (case object name)")) ++
+                normalizationCollisions(variants.keys.toList, s"$ctx discriminatorEnum values")
+            }
+          // With variantNames, several keys mapping to one class is intentional grouping; without it,
+          // each key becomes its own class named toPascalCase(key), so a normalization clash duplicates.
+          val variantKeyErrs =
+            if (variantNames.isEmpty) normalizationCollisions(variants.keys.toList, s"$ctx variant keys") else Nil
+          fieldErrs ++ discEnumErrs ++ variantKeyErrs ++
+            variantSubPackage.toList.flatMap(qualified(_, s"$ctx variantSubPackage")) ++
+            fallbackVariant.toList.flatMap(ident(_, s"$ctx fallbackVariant (class name)")) ++
+            commonFields.toList.flatMap { case (n, fd) =>
+              ident(n, s"$ctx common field") ++ walk(fd.fieldType, s"$ctx.$n")
+            } ++
+            variants.toList.flatMap { case (key, obj) =>
+              val className = variantNames.getOrElse(key, ScalaCodeBuilder.toPascalCase(key))
+              ident(className, s"$ctx variant '$key' (class name)") ++ walk(obj, s"$ctx.$key")
+            }
+        case _ => Nil
+      }
 
     multiTemplate.definitions.flatMap { d =>
       val ctx = s"Definition '${d.name}'"
@@ -467,81 +526,80 @@ class CodeGenerator(config: GeneratorConfig) {
     }
   }
 
-
   /**
    * Generates code for a single definition within a multi-template
    */
   private def generateFromDefinition(
-    definition: TemplateDefinition,
-    basePackage: String,
-    definitionsMap: Map[String, TemplateDefinition],
-    allDefinitions: List[TemplateDefinition],
-    visibility: String
-  ): Either[GeneratorError, GeneratedFile] = {
-    
+      definition: TemplateDefinition,
+      basePackage: String,
+      definitionsMap: Map[String, TemplateDefinition],
+      allDefinitions: List[TemplateDefinition],
+      visibility: String): Either[GeneratorError, GeneratedFile] = {
+
     // Validate definition name
     definition.validateName() match {
       case Some(error) =>
         return Left(GeneratorError.TemplateError(error))
       case None =>
     }
-    
+
     // Get the full package path
     val packageName = definition.fullPackage(basePackage)
-    
+
     // Collect all referenced types to generate imports
     val referencedTypes = collectReferences(definition.templateType)
     // For a discriminator that relocates its variants into a sub-package, a referenced type that
     // lives in that same sub-package is visible to the variants without an import; a file-level
     // import of it would be ambiguous inside the nested package block, so drop it here.
-    val variantSubExcluded: Set[String] = definition.templateType match {
-      case d: TypeDiscriminator if d.variantSubPackage.isDefined =>
-        val subPkg = if (packageName.nonEmpty) s"$packageName.${d.variantSubPackage.get}" else d.variantSubPackage.get
-        referencedTypes.filter(rt => allDefinitions.find(_.name == rt).exists(_.fullPackage(basePackage) == subPkg))
-      case _ => Set.empty
-    }
+    val variantSubExcluded: Set[String] =
+      definition.templateType match {
+        case d: TypeDiscriminator if d.variantSubPackage.isDefined =>
+          val subPkg = if (packageName.nonEmpty) s"$packageName.${d.variantSubPackage.get}" else d.variantSubPackage.get
+          referencedTypes.filter(rt => allDefinitions.find(_.name == rt).exists(_.fullPackage(basePackage) == subPkg))
+        case _ => Set.empty
+      }
     val imports = generateImports(packageName, basePackage, referencedTypes -- variantSubExcluded, allDefinitions)
-    
+
     val builder = ScalaCodeBuilder(visibility)
-    
+
     // Generated-file header with optional source pointer
     headerLines(definition.sourcePath).foreach(builder.line)
-    
+
     // Package declaration
     builder.line(s"package $packageName")
     builder.emptyLine()
-    
+
     // File-level imports are cross-package references; each companion emits its own codec imports.
     val allImports = imports
-    
+
     if (allImports.nonEmpty) {
       allImports.foreach(builder.line)
       builder.emptyLine()
     }
-    
+
     // Generate based on template type
     definition.templateType match {
       case obj: ObjectType =>
         generateObjectForDefinition(definition.name, obj, builder, definitionsMap, basePackage, packageName)
-      
+
       case disc: TypeDiscriminator =>
         // includeDiscriminator=false drops the discriminator from the model and from encode output
         // while decode still requires it, so such a union cannot decode its own output. Reject it
         // with a clear message rather than emitting a type that fails to round-trip.
         if (!disc.includeInOutput) {
-          return Left(GeneratorError.TemplateError(
-            s"Definition '${definition.name}': includeDiscriminator=false is not supported. " +
-            "The discriminator is omitted from the model and from encode output but is required to " +
-            "decode, so the type cannot decode its own output. Set includeDiscriminator to true."))
+          return Left(
+            GeneratorError.TemplateError(
+              s"Definition '${definition.name}': includeDiscriminator=false is not supported. " +
+                "The discriminator is omitted from the model and from encode output but is required to " +
+                "decode, so the type cannot decode its own output. Set includeDiscriminator to true."))
         }
         generateDiscriminatorForDefinition(definition.name, disc, builder, definitionsMap, basePackage, packageName)
-      
+
       case _ =>
         return Left(GeneratorError.TemplateError(
-          s"Definition '${definition.name}' must be an ObjectType or TypeDiscriminator, got ${definition.templateType.getClass.getSimpleName}"
-        ))
+          s"Definition '${definition.name}' must be an ObjectType or TypeDiscriminator, got ${definition.templateType.getClass.getSimpleName}"))
     }
-    
+
     val content = builder.build()
     Right(GeneratedFile(packageName, definition.name, content))
   }
@@ -550,19 +608,19 @@ class CodeGenerator(config: GeneratorConfig) {
    * Generates an object type for a definition (without nested types - those are separate definitions)
    */
   private def generateObjectForDefinition(
-    name: String,
-    objectType: ObjectType,
-    builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition],
-    basePackage: String,
-    currentPackage: String
-  ): Unit = {
-    val fieldList = objectType.fields.map { case (fieldName, fieldDef) =>
-      (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
-    }.toList
-    
+      name: String,
+      objectType: ObjectType,
+      builder: ScalaCodeBuilder,
+      definitionsMap: Map[String, TemplateDefinition],
+      basePackage: String,
+      currentPackage: String): Unit = {
+    val fieldList =
+      objectType.fields.map { case (fieldName, fieldDef) =>
+        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
+      }.toList
+
     builder.caseClass(name, fieldList, None)
-    
+
     // Companion object with dependency-free codecs and validation
     builder.emptyLine()
     builder.companionObject(name) {
@@ -574,18 +632,16 @@ class CodeGenerator(config: GeneratorConfig) {
     }
   }
 
-
   /**
    * Generates a discriminator for a definition
    */
   private def generateDiscriminatorForDefinition(
-    name: String,
-    discriminator: TypeDiscriminator,
-    builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition],
-    basePackage: String,
-    currentPackage: String
-  ): Unit = {
+      name: String,
+      discriminator: TypeDiscriminator,
+      builder: ScalaCodeBuilder,
+      definitionsMap: Map[String, TemplateDefinition],
+      basePackage: String,
+      currentPackage: String): Unit =
     // variantNames, when present, drives custom naming and grouping of variants; otherwise each
     // definition maps to a single variant keyed by its discriminator value.
     if (discriminator.variantNames.nonEmpty) {
@@ -593,7 +649,6 @@ class CodeGenerator(config: GeneratorConfig) {
     } else {
       generateDiscriminatorOriginal(name, discriminator, builder, definitionsMap, basePackage, currentPackage)
     }
-  }
 
   /** The discriminator field's rendered Scala type (the enum name, or `String`). */
   private def discScalaType(d: TypeDiscriminator): String = d.discriminatorEnum.getOrElse("String")
@@ -613,9 +668,8 @@ class CodeGenerator(config: GeneratorConfig) {
     }
 
   /**
-   * Decode expression for the discriminator field value of the *fallback* (unmatched) variant.
-   * With a discriminatorEnum the unknown string is wrapped in the enum's open-ended `Unknown`
-   * member; otherwise it is the raw string.
+   * Decode expression for the discriminator field value of the *fallback* (unmatched) variant. With a discriminatorEnum
+   * the unknown string is wrapped in the enum's open-ended `Unknown` member; otherwise it is the raw string.
    */
   private def discFallbackArg(d: TypeDiscriminator, valueExpr: String): String =
     d.discriminatorEnum match {
@@ -631,9 +685,9 @@ class CodeGenerator(config: GeneratorConfig) {
     }
 
   /**
-   * The fixed-override member for a known variant's discriminator: the value is determined by the
-   * variant, so it is a body `override val` rather than a primary-constructor parameter (kept out
-   * of the constructor and `unapply`, and preventing inconsistent construction).
+   * The fixed-override member for a known variant's discriminator: the value is determined by the variant, so it is a
+   * body `override val` rather than a primary-constructor parameter (kept out of the constructor and `unapply`, and
+   * preventing inconsistent construction).
    */
   private def discOverrideVal(d: TypeDiscriminator, variantKey: String): String =
     s"override val ${ScalaCodeBuilder.escapeKeyword(d.fieldName)}: ${discScalaType(d)} = ${discFixedValue(d, variantKey)}"
@@ -642,18 +696,17 @@ class CodeGenerator(config: GeneratorConfig) {
    * Generates a sealed trait with one case class per variant.
    */
   private def generateDiscriminatorOriginal(
-    name: String,
-    discriminator: TypeDiscriminator,
-    builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition],
-    basePackage: String,
-    currentPackage: String
-  ): Unit = {
+      name: String,
+      discriminator: TypeDiscriminator,
+      builder: ScalaCodeBuilder,
+      definitionsMap: Map[String, TemplateDefinition],
+      basePackage: String,
+      currentPackage: String): Unit = {
     // The discriminator is a fixed per-variant override only for exact matching. With "prefix"
     // matching the on-the-wire value is parameterized (e.g. "Decimal(28,8)" matches key "Decimal"),
     // so it must stay a constructor field to preserve the actual value on round-trip.
     val discFixed = discriminator.includeInOutput && discriminator.variantMatch != "prefix"
-    val discAsCtor = discriminator.includeInOutput && !discFixed  // prefix: keep as ctor field
+    val discAsCtor = discriminator.includeInOutput && !discFixed // prefix: keep as ctor field
 
     // Non-discriminator ctor fields of a variant case class: common, then variant.
     def variantCtorFields(variantType: ObjectType): List[(String, FieldDef)] =
@@ -662,7 +715,9 @@ class CodeGenerator(config: GeneratorConfig) {
     // Generate sealed trait. When the discriminator is emitted it is an abstract member here, so
     // each variant's fixed override (or constructor value) satisfies one contract.
     if (discriminator.includeInOutput)
-      builder.sealedTraitWithFields(name, List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator))))
+      builder.sealedTraitWithFields(
+        name,
+        List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator))))
     else
       builder.sealedTrait(name)
     builder.emptyLine()
@@ -681,9 +736,10 @@ class CodeGenerator(config: GeneratorConfig) {
     discriminator.variants.foreach { case (variantName, variantType) =>
       val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
       val discCtor = if (discAsCtor) List(discriminator.fieldName -> FieldDef(StringType(), optional = false)) else Nil
-      val fieldList = (discCtor ++ variantCtorFields(variantType)).map { case (fieldName, fieldDef) =>
-        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
-      }
+      val fieldList =
+        (discCtor ++ variantCtorFields(variantType)).map { case (fieldName, fieldDef) =>
+          (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = true))
+        }
       val body = if (discFixed) List(discOverrideVal(discriminator, variantName)) else Nil
       builder.caseClass(caseClassName, fieldList, Some(name), body)
       builder.emptyLine()
@@ -693,10 +749,12 @@ class CodeGenerator(config: GeneratorConfig) {
     // unknown variant can be read and re-emitted verbatim (forward compatibility). With a
     // discriminatorEnum the value is held as the enum's open-ended Unknown member.
     discriminator.fallbackVariant.foreach { fb =>
-      builder.caseClass(fb, List(
-        (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator)),
-        ("raw", "dev.cjfravel.nomos.json.JsonObject")
-      ), Some(name))
+      builder.caseClass(
+        fb,
+        List(
+          (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator)),
+          ("raw", "dev.cjfravel.nomos.json.JsonObject")),
+        Some(name))
       builder.emptyLine()
     }
 
@@ -706,9 +764,10 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
 
-    val variantMap = discriminator.variants.map { case (variantName, vt) =>
-      (variantName, ScalaCodeBuilder.toPascalCase(variantName), vt)
-    }.toList
+    val variantMap =
+      discriminator.variants.map { case (variantName, vt) =>
+        (variantName, ScalaCodeBuilder.toPascalCase(variantName), vt)
+      }.toList
     val fieldKeyLit = ScalaCodeBuilder.escapeStringLiteral(discriminator.fieldName)
 
     builder.companionObject(name) {
@@ -729,7 +788,9 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
       variantMap.foreach { case (variantKey, className, vt) =>
         val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
-        val matchPat = if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>""" else s"""case "$keyLit" =>"""
+        val matchPat =
+          if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>"""
+          else s"""case "$keyLit" =>"""
         builder.line(matchPat)
         builder.indent()
         // Prefix variants keep the (parameterized) matched value as a constructor arg; exact
@@ -762,15 +823,16 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line(s"def encode(obj: $name): JsonValue = obj match {")
       builder.indent()
       variantMap.foreach { case (_, className, vt) =>
-        val discEntry = if (discriminator.includeInOutput)
-          List(s"""Some("$fieldKeyLit" -> ${discEncodeExpr(discriminator, "v." + ScalaCodeBuilder.escapeKeyword(discriminator.fieldName))})""")
+        val discEntry =
+          if (discriminator.includeInOutput)
+            List(s"""Some("$fieldKeyLit" -> ${discEncodeExpr(
+                discriminator,
+                "v." + ScalaCodeBuilder.escapeKeyword(discriminator.fieldName))})""")
           else Nil
         val entries = discEntry ++ variantCtorFields(vt).map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
       }
-      discriminator.fallbackVariant.foreach { fb =>
-        builder.line(s"case v: $fb => v.raw")
-      }
+      discriminator.fallbackVariant.foreach(fb => builder.line(s"case v: $fb => v.raw"))
       builder.dedent()
       builder.line("}")
       builder.emptyLine()
@@ -783,18 +845,16 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Emits the body of a variant's decode branch: binds the non-discriminator fields and constructs
-   * the variant case class. `discCtorArg` is the discriminator constructor argument for prefix
-   * variants (the matched value); for exact variants the discriminator is a fixed override, so it
-   * is not a constructor argument.
+   * Emits the body of a variant's decode branch: binds the non-discriminator fields and constructs the variant case
+   * class. `discCtorArg` is the discriminator constructor argument for prefix variants (the matched value); for exact
+   * variants the discriminator is a fixed override, so it is not a constructor argument.
    */
   private def emitVariantDecode(
-    builder: ScalaCodeBuilder,
-    className: String,
-    discriminator: TypeDiscriminator,
-    variantType: ObjectType,
-    discCtorArg: Option[String]
-  ): Unit = {
+      builder: ScalaCodeBuilder,
+      className: String,
+      discriminator: TypeDiscriminator,
+      variantType: ObjectType,
+      discCtorArg: Option[String]): Unit = {
     val nonDisc = discriminator.commonFields.toList ++ variantType.fields.toList
     val discArgs = discCtorArg.toList
     if (nonDisc.isEmpty) {
@@ -810,35 +870,41 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Generates discriminator with custom variant names
-   * Groups variants by their mapped names and puts common fields on the trait
+   * Generates discriminator with custom variant names Groups variants by their mapped names and puts common fields on
+   * the trait
    */
   private def generateDiscriminatorWithVariantNames(
-    name: String,
-    discriminator: TypeDiscriminator,
-    builder: ScalaCodeBuilder,
-    definitionsMap: Map[String, TemplateDefinition],
-    basePackage: String,
-    currentPackage: String
-  ): Unit = {
+      name: String,
+      discriminator: TypeDiscriminator,
+      builder: ScalaCodeBuilder,
+      definitionsMap: Map[String, TemplateDefinition],
+      basePackage: String,
+      currentPackage: String): Unit = {
     // Generate sealed trait with common fields as abstract vals
     if (discriminator.commonFields.nonEmpty) {
-      val commonFieldList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
-        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false))
-      }.toList
-      
+      val commonFieldList =
+        discriminator.commonFields.map { case (fieldName, fieldDef) =>
+          (
+            ScalaCodeBuilder.escapeKeyword(fieldName),
+            renderFieldType(fieldDef, definitionsMap, withNullDefault = false))
+        }.toList
+
       // Always include discriminator field on trait
-      val allTraitFields = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator)) :: commonFieldList
+      val allTraitFields =
+        (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator)) :: commonFieldList
       builder.sealedTraitWithFields(name, allTraitFields)
     } else {
       // Just discriminator field on trait
-      builder.sealedTraitWithFields(name, List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator))))
+      builder.sealedTraitWithFields(
+        name,
+        List((ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator))))
     }
     builder.emptyLine()
-    
+
     // Group variants by their mapped class names, preserving first-appearance order and merging
     // each class's variant fields in order (so generated case classes, decode, and encode agree).
-    var classFields = scala.collection.immutable.ListMap.empty[String, scala.collection.immutable.ListMap[String, FieldDef]]
+    var classFields =
+      scala.collection.immutable.ListMap.empty[String, scala.collection.immutable.ListMap[String, FieldDef]]
     var classKeys = scala.collection.immutable.ListMap.empty[String, List[String]]
     discriminator.variants.foreach { case (variantKey, vt) =>
       val cn = discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey))
@@ -864,19 +930,33 @@ class CodeGenerator(config: GeneratorConfig) {
     // discriminator as a fixed `override val` (out of the constructor / unapply); a grouped class
     // keeps it as an override constructor field.
     classFields.foreach { case (caseClassName, variantFields) =>
-      val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
-        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)  // override = true
-      }.toList
-      val variantFieldsList = variantFields.map { case (fieldName, fieldDef) =>
-        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), false)  // override = false
-      }.toList
+      val commonFieldsList =
+        discriminator.commonFields.map { case (fieldName, fieldDef) =>
+          (
+            ScalaCodeBuilder.escapeKeyword(fieldName),
+            renderFieldType(fieldDef, definitionsMap, withNullDefault = false),
+            true
+          ) // override = true
+        }.toList
+      val variantFieldsList =
+        variantFields.map { case (fieldName, fieldDef) =>
+          (
+            ScalaCodeBuilder.escapeKeyword(fieldName),
+            renderFieldType(fieldDef, definitionsMap, withNullDefault = false),
+            false
+          ) // override = false
+        }.toList
 
       if (classIsFixed(caseClassName)) {
         val body = List(discOverrideVal(discriminator, classKeys(caseClassName).head))
         builder.caseClassWithOverride(caseClassName, commonFieldsList ++ variantFieldsList, Some(name), body)
       } else {
-        val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)
-        builder.caseClassWithOverride(caseClassName, discriminatorField :: (commonFieldsList ++ variantFieldsList), Some(name))
+        val discriminatorField =
+          (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)
+        builder.caseClassWithOverride(
+          caseClassName,
+          discriminatorField :: (commonFieldsList ++ variantFieldsList),
+          Some(name))
       }
       builder.emptyLine()
     }
@@ -884,10 +964,15 @@ class CodeGenerator(config: GeneratorConfig) {
     // Catch-all variant: overrides the trait's discriminator (and any common fields, which every
     // variant shares) and preserves the raw object so an unknown variant round-trips verbatim.
     discriminator.fallbackVariant.foreach { fb =>
-      val discriminatorField = (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)
-      val commonFieldsList = discriminator.commonFields.map { case (fieldName, fieldDef) =>
-        (ScalaCodeBuilder.escapeKeyword(fieldName), renderFieldType(fieldDef, definitionsMap, withNullDefault = false), true)
-      }.toList
+      val discriminatorField =
+        (ScalaCodeBuilder.escapeKeyword(discriminator.fieldName), discScalaType(discriminator), true)
+      val commonFieldsList =
+        discriminator.commonFields.map { case (fieldName, fieldDef) =>
+          (
+            ScalaCodeBuilder.escapeKeyword(fieldName),
+            renderFieldType(fieldDef, definitionsMap, withNullDefault = false),
+            true)
+        }.toList
       val rawField = ("raw", "dev.cjfravel.nomos.json.JsonObject", false)
       builder.caseClassWithOverride(fb, discriminatorField :: (commonFieldsList :+ rawField), Some(name))
       builder.emptyLine()
@@ -899,9 +984,10 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.emptyLine()
     }
     // Map each discriminator key to its mapped class name (order preserved)
-    val variantMap = discriminator.variants.toList.map { case (variantKey, _) =>
-      (variantKey, discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey)))
-    }
+    val variantMap =
+      discriminator.variants.toList.map { case (variantKey, _) =>
+        (variantKey, discriminator.variantNames.getOrElse(variantKey, ScalaCodeBuilder.toPascalCase(variantKey)))
+      }
     val fieldKeyLit = ScalaCodeBuilder.escapeStringLiteral(discriminator.fieldName)
 
     builder.companionObject(name) {
@@ -922,10 +1008,15 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
       variantMap.foreach { case (variantKey, className) =>
         val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
-        val matchPat = if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>""" else s"""case "$keyLit" =>"""
+        val matchPat =
+          if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>"""
+          else s"""case "$keyLit" =>"""
         builder.line(matchPat)
         builder.indent()
-        val nonDisc = discriminator.commonFields.toList ++ classFields.getOrElse(className, scala.collection.immutable.ListMap.empty[String, FieldDef]).toList
+        val nonDisc =
+          discriminator.commonFields.toList ++ classFields
+            .getOrElse(className, scala.collection.immutable.ListMap.empty[String, FieldDef])
+            .toList
         // A grouped class carries the discriminator as a constructor field, so pass the matched
         // value; a single-value class fixes it via an override, so it is not a constructor arg.
         val discArgs = if (classIsFixed(className)) Nil else List(discDecodeArg(discriminator, variantKey))
@@ -954,7 +1045,9 @@ class CodeGenerator(config: GeneratorConfig) {
             builder.indent()
             common.foreach { case (fn, fd) => builder.line(fieldDecodeBinding(fn, fd)) }
             builder.dedent()
-            val args = (discArg :: common.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) } ::: List("o")).mkString(", ")
+            val args =
+              (discArg :: common.map { case (fn, _) => ScalaCodeBuilder.escapeKeyword(fn) } ::: List("o"))
+                .mkString(", ")
             builder.line(s"} yield $fb($args)")
             builder.dedent()
           }
@@ -978,15 +1071,16 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.line(s"def encode(obj: $name): JsonValue = obj match {")
       builder.indent()
       classFields.foreach { case (className, variantFields) =>
-        val discEntry = s"""Some("$fieldKeyLit" -> ${discEncodeExpr(discriminator, "v." + ScalaCodeBuilder.escapeKeyword(discriminator.fieldName))})"""
+        val discEntry =
+          s"""Some("$fieldKeyLit" -> ${discEncodeExpr(
+              discriminator,
+              "v." + ScalaCodeBuilder.escapeKeyword(discriminator.fieldName))})"""
         val commonEntries = discriminator.commonFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         val variantEntries = variantFields.toList.map { case (fn, fd) => fieldEncodeEntry(fn, fd, "v") }
         val entries = (discEntry :: commonEntries) ++ variantEntries
         builder.line(s"case v: $className => JsonObject.fromFields(List(${entries.mkString(", ")}).flatten)")
       }
-      discriminator.fallbackVariant.foreach { fb =>
-        builder.line(s"case v: $fb => v.raw")
-      }
+      discriminator.fallbackVariant.foreach(fb => builder.line(s"case v: $fb => v.raw"))
       builder.dedent()
       builder.line("}")
       builder.emptyLine()
@@ -1002,37 +1096,37 @@ class CodeGenerator(config: GeneratorConfig) {
    * Converts a TemplateType to Scala type for multi-definition mode
    */
   private def scalaTypeForDefinition(
-    templateType: TemplateType,
-    optional: Boolean,
-    definitionsMap: Map[String, TemplateDefinition]
-  ): String = {
-    val baseType = templateType match {
-      case StringType(_) => "String"
-      case NumberType(_) => "Double"
-      case IntType(_) => "Int"
-      case LongType(_) => "Long"
-      case DecimalType(_) => "BigDecimal"
-      case BooleanType() => "Boolean"
-      case DateType() => config.dateType
-      case DateTimeType() => config.dateTimeType
-      case ArrayType(elementType, _) =>
-        s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
-      case MapType(valueType) =>
-        mapScalaType(scalaTypeForDefinition(valueType, optional = false, definitionsMap))
-      case UnionType(_) => "Any"
-      case ReferenceType(typeName) => typeName
-      case RecursiveRef(typeName) => typeName
-      case ExternalType(qn, _) => qn
-      case EnumType(enumName, _) => enumName
-      case ObjectType(fields, AllowExtra) if fields.isEmpty => mapScalaType("Any")
-      case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
-        mapScalaType(scalaTypeForDefinition(vt, optional = false, definitionsMap))
-      case ObjectType(_, _) =>
-        "???" // Inline objects not supported in multi-definition mode
-      case TypeDiscriminator(_, _, _, _, _, _, _, _, _) =>
-        "???" // Inline discriminators not supported in multi-definition mode
-    }
-    
+      templateType: TemplateType,
+      optional: Boolean,
+      definitionsMap: Map[String, TemplateDefinition]): String = {
+    val baseType =
+      templateType match {
+        case StringType(_) => "String"
+        case NumberType(_) => "Double"
+        case IntType(_) => "Int"
+        case LongType(_) => "Long"
+        case DecimalType(_) => "BigDecimal"
+        case BooleanType() => "Boolean"
+        case DateType() => config.dateType
+        case DateTimeType() => config.dateTimeType
+        case ArrayType(elementType, _) =>
+          s"${config.listType}[${scalaTypeForDefinition(elementType, optional = false, definitionsMap)}]"
+        case MapType(valueType) =>
+          mapScalaType(scalaTypeForDefinition(valueType, optional = false, definitionsMap))
+        case UnionType(_) => "Any"
+        case ReferenceType(typeName) => typeName
+        case RecursiveRef(typeName) => typeName
+        case ExternalType(qn, _) => qn
+        case EnumType(enumName, _) => enumName
+        case ObjectType(fields, AllowExtra) if fields.isEmpty => mapScalaType("Any")
+        case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
+          mapScalaType(scalaTypeForDefinition(vt, optional = false, definitionsMap))
+        case ObjectType(_, _) =>
+          "???" // Inline objects not supported in multi-definition mode
+        case TypeDiscriminator(_, _, _, _, _, _, _, _, _) =>
+          "???" // Inline discriminators not supported in multi-definition mode
+      }
+
     if (optional) {
       s"Option[$baseType]"
     } else {
@@ -1041,11 +1135,11 @@ class CodeGenerator(config: GeneratorConfig) {
   }
 
   /**
-   * Collects all enum (name, values, openEnded) declarations from a template type. `openEnded`
-   * marks a discriminator enum whose union also has a `fallbackVariant`, so the enum needs an
-   * `Unknown(value)` member to carry an unrecognized discriminator value.
+   * Collects all enum (name, values, openEnded) declarations from a template type. `openEnded` marks a discriminator
+   * enum whose union also has a `fallbackVariant`, so the enum needs an `Unknown(value)` member to carry an
+   * unrecognized discriminator value.
    */
-  private def collectEnums(templateType: TemplateType): List[(String, List[String], Boolean)] = {
+  private def collectEnums(templateType: TemplateType): List[(String, List[String], Boolean)] =
     templateType match {
       case EnumType(name, values) => List((name, values, false))
       case ArrayType(elementType, _) => collectEnums(elementType)
@@ -1061,48 +1155,57 @@ class CodeGenerator(config: GeneratorConfig) {
         (v ++ c).toList ++ d
       case _ => Nil
     }
-  }
 
   /**
-   * Errors for inline (anonymous) objects or discriminators used as a field's type. Multi-definition
-   * codegen cannot name them, so they would otherwise emit uncompilable `???`. An empty object with
-   * an `$additionalProperties` policy (an open map) is allowed.
+   * Errors for inline (anonymous) objects or discriminators used as a field's type. Multi-definition codegen cannot
+   * name them, so they would otherwise emit uncompilable `???`. An empty object with an `$additionalProperties` policy
+   * (an open map) is allowed.
    */
   private def collectInlineTypeErrors(multiTemplate: MultiTemplate): List[String] = {
-    def fieldTypeError(tt: TemplateType, ctx: String): List[String] = tt match {
-      case ObjectType(fields, AllowExtra) if fields.isEmpty => Nil
-      case ObjectType(fields, TypedExtra(_)) if fields.isEmpty => Nil
-      case _: ObjectType =>
-        List(s"$ctx: inline nested objects are not supported as a field type; define a separate type and reference it with $$ref")
-      case _: TypeDiscriminator =>
-        List(s"$ctx: inline discriminators are not supported as a field type; define a separate type and reference it with $$ref")
-      case ArrayType(elem, _) => fieldTypeError(elem, ctx)
-      case MapType(v) => fieldTypeError(v, ctx)
-      case _ => Nil
-    }
-    def walkFields(tt: TemplateType, ctx: String): List[String] = tt match {
-      case ObjectType(fields, _) =>
-        fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") }
-      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
-        commonFields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") } ++
-          variants.toList.flatMap { case (k, obj) =>
-            obj.fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx[$k].$n") }
-          }
-      case _ => Nil
-    }
+    def fieldTypeError(tt: TemplateType, ctx: String): List[String] =
+      tt match {
+        case ObjectType(fields, AllowExtra) if fields.isEmpty => Nil
+        case ObjectType(fields, TypedExtra(_)) if fields.isEmpty => Nil
+        case _: ObjectType =>
+          List(
+            s"$ctx: inline nested objects are not supported as a field type; define a separate type and reference it with $$ref")
+        case _: TypeDiscriminator =>
+          List(
+            s"$ctx: inline discriminators are not supported as a field type; define a separate type and reference it with $$ref")
+        case ArrayType(elem, _) => fieldTypeError(elem, ctx)
+        case MapType(v) => fieldTypeError(v, ctx)
+        case _ => Nil
+      }
+    def walkFields(tt: TemplateType, ctx: String): List[String] =
+      tt match {
+        case ObjectType(fields, _) =>
+          fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") }
+        case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
+          commonFields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") } ++
+            variants.toList.flatMap { case (k, obj) =>
+              obj.fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx[$k].$n") }
+            }
+        case _ => Nil
+      }
     multiTemplate.definitions.flatMap(d => walkFields(d.templateType, s"Definition '${d.name}'"))
   }
 
   /**
-   * Generates a sealed-trait enum type whose case objects (de)serialize via the on-the-wire
-   * string values, using only the first-party JSON model. When `withUnknown` is set the enum is
-   * open-ended: it also gets a `case class Unknown(value: String)` member so an unrecognized
-   * string can be represented (used by a union's `fallbackVariant`), and `fromString` is total.
+   * Generates a sealed-trait enum type whose case objects (de)serialize via the on-the-wire string values, using only
+   * the first-party JSON model. When `withUnknown` is set the enum is open-ended: it also gets a
+   * `case class Unknown(value: String)` member so an unrecognized string can be represented (used by a union's
+   * `fallbackVariant`), and `fromString` is total.
    */
-  private def generateEnum(packageName: String, enumName: String, values: List[String], withUnknown: Boolean = false, sourcePath: Option[String] = None, visibility: String = ""): GeneratedFile = {
+  private def generateEnum(
+      packageName: String,
+      enumName: String,
+      values: List[String],
+      withUnknown: Boolean = false,
+      sourcePath: Option[String] = None,
+      visibility: String = ""): GeneratedFile = {
     val builder = ScalaCodeBuilder(visibility)
     val cases = values.map(v => (v, ScalaCodeBuilder.toPascalCase(v)))
-    
+
     headerLines(sourcePath).foreach(builder.line)
     builder.line(s"package $packageName")
     builder.emptyLine()
@@ -1119,14 +1222,18 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.emptyLine()
     builder.line(s"def fromString(s: String): Option[$enumName] = s match {")
     builder.indent()
-    cases.foreach { case (raw, obj) => builder.line("case \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\" => Some(" + obj + ")") }
+    cases.foreach { case (raw, obj) =>
+      builder.line("case \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\" => Some(" + obj + ")")
+    }
     builder.line(if (withUnknown) "case other => Some(Unknown(other))" else "case _ => None")
     builder.dedent()
     builder.line("}")
     builder.emptyLine()
     builder.line(s"def asString(v: $enumName): String = v match {")
     builder.indent()
-    cases.foreach { case (raw, obj) => builder.line("case " + obj + " => \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\"") }
+    cases.foreach { case (raw, obj) =>
+      builder.line("case " + obj + " => \"" + ScalaCodeBuilder.escapeStringLiteral(raw) + "\"")
+    }
     if (withUnknown) builder.line("case Unknown(value) => value")
     builder.dedent()
     builder.line("}")
@@ -1141,14 +1248,14 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"def encode(v: $enumName): JsonValue = JsonString(asString(v))")
     builder.dedent()
     builder.line("}")
-    
+
     GeneratedFile(packageName, enumName, builder.build())
   }
 
   /**
    * Collects all ReferenceType names from a template type
    */
-  private def collectReferences(templateType: TemplateType): Set[String] = {
+  private def collectReferences(templateType: TemplateType): Set[String] =
     templateType match {
       case ReferenceType(typeName) => Set(typeName)
       case ArrayType(elementType, _) => collectReferences(elementType)
@@ -1160,45 +1267,49 @@ class CodeGenerator(config: GeneratorConfig) {
         variantRefs.toSet ++ commonRefs
       case _ => Set.empty
     }
-  }
 
   /**
-   * Generates import statements for referenced types in different packages. A simple-name
-   * reference resolves to a definition in the referrer's own package when one exists (no import
-   * needed); otherwise to the unique definition with that name elsewhere. Identical simple names
-   * in distinct packages are therefore supported as long as each is referenced from its own
-   * package (ambiguous references are rejected earlier by `MultiTemplate.validate`).
+   * Generates import statements for referenced types in different packages. A simple-name reference resolves to a
+   * definition in the referrer's own package when one exists (no import needed); otherwise to the unique definition
+   * with that name elsewhere. Identical simple names in distinct packages are therefore supported as long as each is
+   * referenced from its own package (ambiguous references are rejected earlier by `MultiTemplate.validate`).
    */
   private def generateImports(
-    currentPackage: String,
-    basePackage: String,
-    referencedTypes: Set[String],
-    allDefinitions: List[TemplateDefinition]
-  ): List[String] = {
+      currentPackage: String,
+      basePackage: String,
+      referencedTypes: Set[String],
+      allDefinitions: List[TemplateDefinition]): List[String] = {
     val byName = allDefinitions.groupBy(_.name)
-    referencedTypes.flatMap { refTypeName =>
-      val candidates = byName.getOrElse(refTypeName, Nil)
-      val resolved =
-        candidates.find(_.fullPackage(basePackage) == currentPackage)
-          .orElse(if (candidates.lengthCompare(1) == 0) candidates.headOption else None)
-      resolved.flatMap { refDef =>
-        val refPackage = refDef.fullPackage(basePackage)
-        if (refPackage != currentPackage) {
-          Some(s"import $refPackage.$refTypeName")
-        } else {
-          None
+    referencedTypes
+      .flatMap { refTypeName =>
+        val candidates = byName.getOrElse(refTypeName, Nil)
+        val resolved =
+          candidates
+            .find(_.fullPackage(basePackage) == currentPackage)
+            .orElse(if (candidates.lengthCompare(1) == 0) candidates.headOption else None)
+        resolved.flatMap { refDef =>
+          val refPackage = refDef.fullPackage(basePackage)
+          if (refPackage != currentPackage) {
+            Some(s"import $refPackage.$refTypeName")
+          } else {
+            None
+          }
         }
       }
-    }.toList.sorted
+      .toList
+      .sorted
   }
 
   /**
-   * Generates the NomosFormats object: the embedded MultiTemplate and a MultiValidator built from
-   * it for runtime validation.
+   * Generates the NomosFormats object: the embedded MultiTemplate and a MultiValidator built from it for runtime
+   * validation.
    */
-  private def generateNomosFormats(basePackage: String, multiTemplate: MultiTemplate, visibility: String): GeneratedFile = {
+  private def generateNomosFormats(
+      basePackage: String,
+      multiTemplate: MultiTemplate,
+      visibility: String): GeneratedFile = {
     val builder = ScalaCodeBuilder(visibility)
-    
+
     headerLines(None).foreach(builder.line)
     builder.line(s"package $basePackage")
     builder.emptyLine()
@@ -1224,7 +1335,7 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line("lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate)")
     builder.dedent()
     builder.line("}")
-    
+
     GeneratedFile(basePackage, "NomosFormats", builder.build())
   }
 }

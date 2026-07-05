@@ -1,12 +1,12 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
 import dev.cjfravel.nomos.validation.MultiValidator
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class EscapedKeySpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -16,7 +16,7 @@ class EscapedKeySpec extends AnyFlatSpec with Matchers with EitherValues {
   "parser" should "treat a backtick-quoted key as a literal field name" in {
     val d = parse("""{"name":"Guid","template":{"name":"string","`type`":"string"}}""").value.definitions.head
     val fields = d.templateType.asInstanceOf[ObjectType].fields
-    fields.keySet should contain ("type")
+    fields.keySet should contain("type")
     fields.keySet should not contain "`type`"
   }
 
@@ -28,6 +28,10 @@ class EscapedKeySpec extends AnyFlatSpec with Matchers with EitherValues {
   "generator" should "escape the reserved-keyword field name in generated code" in {
     val t = parse("""{"name":"Guid","template":{"name":"string","`type`":"string"}}""").value
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(t).value.find(_.fileName == "Guid.scala").get.content should include("`type`: String")
+      .generateMulti(t)
+      .value
+      .find(_.fileName == "Guid.scala")
+      .get
+      .content should include("`type`: String")
   }
 }

@@ -3,16 +3,18 @@ package dev.cjfravel.nomos.json
 /**
  * A dependency-free, recursive-descent JSON parser.
  *
- * Returns `Either[String, JsonValue]` so callers never deal with exceptions. The parser
- * enforces a maximum nesting depth and input size to bound resource use on hostile input.
+ * Returns `Either[String, JsonValue]` so callers never deal with exceptions. The parser enforces a maximum nesting
+ * depth and input size to bound resource use on hostile input.
  */
 object JsonParser {
 
   /**
    * Parser limits.
    *
-   * @param maxDepth maximum nesting depth of objects/arrays (guards against stack overflow / DoS)
-   * @param maxInputChars maximum accepted input length in characters
+   * @param maxDepth
+   *   maximum nesting depth of objects/arrays (guards against stack overflow / DoS)
+   * @param maxInputChars
+   *   maximum accepted input length in characters
    */
   final case class Config(maxDepth: Int = 512, maxInputChars: Int = 16 * 1024 * 1024)
 
@@ -20,7 +22,7 @@ object JsonParser {
 
   def parse(input: String): Either[String, JsonValue] = parse(input, defaultConfig)
 
-  def parse(input: String, config: Config): Either[String, JsonValue] = {
+  def parse(input: String, config: Config): Either[String, JsonValue] =
     if (input == null) Left("JSON input is null")
     else if (input.length > config.maxInputChars)
       Left(s"JSON input exceeds maximum size ${config.maxInputChars} characters")
@@ -28,11 +30,10 @@ object JsonParser {
       try Right(new Parser(input, config).parseTopLevel())
       catch { case e: JsonParseException => Left(e.getMessage) }
     }
-  }
 
-  private final class JsonParseException(msg: String) extends RuntimeException(msg)
+  final private class JsonParseException(msg: String) extends RuntimeException(msg)
 
-  private final class Parser(input: String, config: Config) {
+  final private class Parser(input: String, config: Config) {
     private var pos = 0
     private val len = input.length
 
@@ -53,7 +54,7 @@ object JsonParser {
         case 't' => parseLiteral("true", JsonBoolean(true))
         case 'f' => parseLiteral("false", JsonBoolean(false))
         case 'n' => parseLiteral("null", JsonNull)
-        case c if c == '-' || (c >= '0' && c <= '9') => parseNumber()
+        case c if c == '-' || c >= '0' && c <= '9' => parseNumber()
         case c => error(s"Unexpected character '$c'")
       }
     }
@@ -74,7 +75,7 @@ object JsonParser {
         pos += 1 // consume ':'
         skipWhitespace()
         val value = parseValue(depth + 1)
-        fields += (key -> value)
+        fields += key -> value
         skipWhitespace()
         peek() match {
           case ',' => pos += 1
@@ -135,16 +136,16 @@ object JsonParser {
         case 't' => sb.append('\t')
         case 'u' =>
           val hi = parseHex4()
-          if (hi >= 0xD800 && hi <= 0xDBFF) {
+          if (hi >= 0xd800 && hi <= 0xdbff) {
             // High surrogate: must be followed by a low-surrogate escape
             if (pos + 1 >= len || input.charAt(pos) != '\\' || input.charAt(pos + 1) != 'u')
               error("High surrogate must be followed by low surrogate")
             pos += 2 // consume the backslash and the 'u'
             val lo = parseHex4()
-            if (lo < 0xDC00 || lo > 0xDFFF) error("Invalid low surrogate")
+            if (lo < 0xdc00 || lo > 0xdfff) error("Invalid low surrogate")
             sb.append(hi.toChar)
             sb.append(lo.toChar)
-          } else if (hi >= 0xDC00 && hi <= 0xDFFF) {
+          } else if (hi >= 0xdc00 && hi <= 0xdfff) {
             error("Unexpected low surrogate")
           } else {
             sb.append(hi.toChar)
@@ -164,7 +165,7 @@ object JsonParser {
           else if (c >= 'a' && c <= 'f') c - 'a' + 10
           else if (c >= 'A' && c <= 'F') c - 'A' + 10
           else error("Invalid unicode escape")
-        value = (value << 4) | digit
+        value = value << 4 | digit
         i += 1
       }
       pos += 4
@@ -194,9 +195,8 @@ object JsonParser {
       JsonNumber(input.substring(start, pos))
     }
 
-    private def consumeDigits(): Unit = {
+    private def consumeDigits(): Unit =
       while (pos < len && isDigit(input.charAt(pos))) pos += 1
-    }
 
     private def isDigit(c: Char): Boolean = c >= '0' && c <= '9'
 
@@ -209,14 +209,13 @@ object JsonParser {
 
     private def peek(): Char = if (pos < len) input.charAt(pos) else '\u0000'
 
-    private def skipWhitespace(): Unit = {
+    private def skipWhitespace(): Unit =
       while (pos < len) {
         input.charAt(pos) match {
           case ' ' | '\t' | '\n' | '\r' => pos += 1
           case _ => return
         }
       }
-    }
 
     private def enterDepth(depth: Int): Unit =
       if (depth >= config.maxDepth)
@@ -233,7 +232,8 @@ object JsonParser {
       var i = 0
       val bound = math.min(pos, len)
       while (i < bound) {
-        if (input.charAt(i) == '\n') { line += 1; col = 1 } else col += 1
+        if (input.charAt(i) == '\n') { line += 1; col = 1 }
+        else col += 1
         i += 1
       }
       (line, col)

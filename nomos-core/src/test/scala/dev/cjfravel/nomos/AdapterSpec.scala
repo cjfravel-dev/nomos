@@ -1,12 +1,12 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation._
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.serialization.AdapterRegistry
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class AdapterSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -14,10 +14,13 @@ class AdapterSpec extends AnyFlatSpec with Matchers with EitherValues with Compi
   def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
   private def generate(template: String): List[GeneratedFile] =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(parser.parseMultiTemplate(template, "com.example").value).value
+      .generateMulti(parser.parseMultiTemplate(template, "com.example").value)
+      .value
 
   "parser" should "carry a per-field adapter name" in {
-    val d = parse("""{"name":"N","template":{"createdAt":{"type":"string","adapter":"epochMillis"}}}""").value.definitions.head
+    val d =
+      parse(
+        """{"name":"N","template":{"createdAt":{"type":"string","adapter":"epochMillis"}}}""").value.definitions.head
     d.templateType.asInstanceOf[ObjectType].fields("createdAt").adapter shouldBe Some("epochMillis")
   }
 
@@ -27,7 +30,8 @@ class AdapterSpec extends AnyFlatSpec with Matchers with EitherValues with Compi
   }
 
   "serializer" should "round-trip a field adapter" in {
-    TemplateSerializer.serializeFieldDef(FieldDef(StringType(), false, None, Some("epochMillis"))) should include("adapter = Some")
+    TemplateSerializer.serializeFieldDef(FieldDef(StringType(), false, None, Some("epochMillis"))) should include(
+      "adapter = Some")
   }
 
   "AdapterRegistry" should "transform values on encode/decode" in {

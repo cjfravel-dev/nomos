@@ -3,8 +3,8 @@ package dev.cjfravel.nomos.serialization
 import dev.cjfravel.nomos.json._
 
 /**
- * Decoder combinators used by generated `decode` methods. Keeping these in the runtime keeps
- * generated code compact while remaining free of any third-party JSON library.
+ * Decoder combinators used by generated `decode` methods. Keeping these in the runtime keeps generated code compact
+ * while remaining free of any third-party JSON library.
  *
  * A `Decoder[A]` turns a [[JsonValue]] into either an error message or a value of type `A`.
  */
@@ -55,7 +55,8 @@ object Codecs {
   /** Builds a decoder for a temporal type from a parse function (e.g. `LocalDate.parse`). */
   def temporal[A](label: String, parse: String => A): Decoder[A] = {
     case JsonString(s) =>
-      try Right(parse(s)) catch { case _: Exception => Left(s"invalid $label: $s") }
+      try Right(parse(s))
+      catch { case _: Exception => Left(s"invalid $label: $s") }
     case other => Left(s"expected $label string, got ${other.typeName}")
   }
 
@@ -84,7 +85,7 @@ object Codecs {
       while (it.hasNext && err.isEmpty) {
         val (k, v) = it.next()
         value(v) match {
-          case Right(a) => b += (k -> a)
+          case Right(a) => b += k -> a
           case Left(e) => err = Some(s"$k: $e")
         }
       }
@@ -92,16 +93,19 @@ object Codecs {
     case other => Left(s"expected object, got ${other.typeName}")
   }
 
-  /** Converts a decoded string-keyed map into an insertion-ordered `java.util.Map` (for the
-   *  `mapType = "java.util.Map"` generation option). */
+  /**
+   * Converts a decoded string-keyed map into an insertion-ordered `java.util.Map` (for the `mapType = "java.util.Map"`
+   * generation option).
+   */
   def toJavaMap[A](m: Map[String, A]): java.util.Map[String, A] = {
     val jm = new java.util.LinkedHashMap[String, A]()
     m.foreach { case (k, v) => jm.put(k, v) }
     jm
   }
 
-  /** Iterates a `java.util.Map`'s entries as key/value tuples, for encoding a `java.util.Map`
-   *  field back to JSON. */
+  /**
+   * Iterates a `java.util.Map`'s entries as key/value tuples, for encoding a `java.util.Map` field back to JSON.
+   */
   def javaMapEntries[A](m: java.util.Map[String, A]): Iterator[(String, A)] = {
     val it = m.entrySet().iterator()
     new Iterator[(String, A)] {
@@ -133,10 +137,11 @@ object Codecs {
 
   /** Decodes a JSON string then maps it through the named adapter (wire -> model). */
   def adapted(name: String): Decoder[String] =
-    (j: JsonValue) => string(j).right.flatMap { s =>
-      if (AdapterRegistry.isRegistered(name)) Right(AdapterRegistry.decode(name, s))
-      else Left(s"no adapter registered for '$name'")
-    }
+    (j: JsonValue) =>
+      string(j).right.flatMap { s =>
+        if (AdapterRegistry.isRegistered(name)) Right(AdapterRegistry.decode(name, s))
+        else Left(s"no adapter registered for '$name'")
+      }
 
   /** Encodes a model string as JSON, mapping it through the named adapter first (model -> wire). */
   def adaptedEncode(name: String, value: String): JsonValue =

@@ -1,16 +1,16 @@
 package dev.cjfravel.nomos
 
+import java.io.File
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
+
 import dev.cjfravel.nomos.generation.{FileWriter, GeneratedFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import java.io.File
-import java.nio.file.Files
-import java.nio.charset.StandardCharsets.UTF_8
 
 /**
- * Regenerating byte-identical files on every build updates their mtime and defeats incremental
- * compilation. FileWriter skips writing when the target is already byte-identical, preserving mtime;
- * changed content is still written.
+ * Regenerating byte-identical files on every build updates their mtime and defeats incremental compilation. FileWriter
+ * skips writing when the target is already byte-identical, preserving mtime; changed content is still written.
  */
 class FileWriterIncrementalSpec extends AnyFlatSpec with Matchers {
 

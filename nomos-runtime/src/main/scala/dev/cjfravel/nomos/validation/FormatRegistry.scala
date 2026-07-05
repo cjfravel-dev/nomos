@@ -1,8 +1,8 @@
 package dev.cjfravel.nomos.validation
 
 /**
- * Registry of string format validators. Built-in formats are seeded; applications may
- * register additional named formats. A format predicate returns true when the value is valid.
+ * Registry of string format validators. Built-in formats are seeded; applications may register additional named
+ * formats. A format predicate returns true when the value is valid.
  */
 object FormatRegistry {
   private val formats = scala.collection.concurrent.TrieMap.empty[String, String => Boolean]

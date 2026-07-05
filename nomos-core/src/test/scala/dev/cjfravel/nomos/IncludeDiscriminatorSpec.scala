@@ -1,16 +1,16 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation._
+import dev.cjfravel.nomos.parser.TemplateParser
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * With `includeDiscriminator: false` the discriminator was dropped from the model and from encode
- * output, yet decode still required it — so `fromJson(toJson(x))` could not decode a union's own
- * output. That mode is rejected at generation with a clear message; the supported (included)
- * discriminator round-trips its own output, which `runDriver` compiles and executes to prove.
+ * With `includeDiscriminator: false` the discriminator was dropped from the model and from encode output, yet decode
+ * still required it — so `fromJson(toJson(x))` could not decode a union's own output. That mode is rejected at
+ * generation with a clear message; the supported (included) discriminator round-trips its own output, which `runDriver`
+ * compiles and executes to prove.
  */
 class IncludeDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -25,11 +25,14 @@ class IncludeDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValu
       |"discriminator":"kind","variants":{"circle":{"radius":"int"},"square":{"side":"int"}}}}}]}""".stripMargin
 
   "generateMulti" should "reject a discriminator with includeDiscriminator=false" in {
-    val t = parser.parseMultiTemplate(
-      """{"definitions":[{"name":"Shape","template":{"$type":{
+    val t =
+      parser
+        .parseMultiTemplate(
+          """{"definitions":[{"name":"Shape","template":{"$type":{
         |"discriminator":"kind","includeDiscriminator":false,
         |"variants":{"circle":{"radius":"int"},"square":{"side":"int"}}}}}]}""".stripMargin,
-      "com.example").value
+          "com.example")
+        .value
     val err = gen.generateMulti(t).left.value
     err shouldBe a[GeneratorError.TemplateError]
     err.message should include("includeDiscriminator")
