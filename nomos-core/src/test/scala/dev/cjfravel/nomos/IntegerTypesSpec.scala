@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,7 +13,8 @@ import org.scalatest.matchers.should.Matchers
 class IntegerTypesSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "parse int/long/decimal scalar types" in {
     val d = parse("""{"name":"N","template":{"a":"int","b":"long","c":"decimal"}}""").value.definitions.head
@@ -29,7 +30,7 @@ class IntegerTypesSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-  def multi =
+  def multi: MultiTemplate =
     MultiTemplate(
       "com.example",
       List(

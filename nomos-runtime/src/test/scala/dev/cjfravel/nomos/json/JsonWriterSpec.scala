@@ -147,7 +147,7 @@ class JsonObjectSpec extends AnyFlatSpec with Matchers {
     o.remove("a").keys shouldBe Vector("b")
     o.remove("missing") shouldBe o
     // mapKeys (runtime key rewriting), order preserved
-    o.mapKeys(_.toUpperCase).keys shouldBe Vector("A", "B")
+    o.mapKeys(_.toUpperCase(java.util.Locale.ROOT)).keys shouldBe Vector("A", "B")
     // original is unchanged (immutable)
     o.keys shouldBe Vector("a", "b")
   }

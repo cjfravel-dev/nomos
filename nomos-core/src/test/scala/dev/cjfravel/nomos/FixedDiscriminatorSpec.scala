@@ -21,13 +21,14 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
       .generateMulti(parser.parseMultiTemplate(template, "com.example").value)
       .value
 
-  "an exact string-discriminator variant" should "put the discriminator out of the ctor/unapply as a fixed override" in {
-    val tmpl =
-      """{"definitions":[{"name":"Condition","template":{"$type":{
+  "an exact string-discriminator variant" should
+    "put the discriminator out of the ctor/unapply as a fixed override" in {
+      val tmpl =
+        """{"definitions":[{"name":"Condition","template":{"$type":{
       |"discriminator":"type",
       |"variants":{"OtherColumnIsEqualTo":{"other_column":"string","is_equal_to":"string"}}}}}]}""".stripMargin
-    val driver =
-      """package com.example
+      val driver =
+        """package com.example
         |object CondDriver {
         |  def run(): String = {
         |    // construct WITHOUT the discriminator (it is a fixed override, not a ctor param)
@@ -41,10 +42,10 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
         |  }
         |}
         |""".stripMargin
-    val files = GeneratedFile("com/example/CondDriver.scala", driver) :: generate(tmpl)
-    runDriver(files, "com.example.CondDriver") shouldBe
-      """true|a,b|{"type":"OtherColumnIsEqualTo","other_column":"a","is_equal_to":"b"}|true"""
-  }
+      val files = GeneratedFile("com/example/CondDriver.scala", driver) :: generate(tmpl)
+      runDriver(files, "com.example.CondDriver") shouldBe
+        """true|a,b|{"type":"OtherColumnIsEqualTo","other_column":"a","is_equal_to":"b"}|true"""
+    }
 
   "an exact enum-discriminator variant (variantNames)" should "fix the enum value out of the ctor/unapply" in {
     val tmpl =
@@ -70,13 +71,14 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
       """true|mylake|{"type":"DataLake","name":"mylake"}|true"""
   }
 
-  "a grouped class (several discriminator values -> one class)" should "keep the discriminator as a ctor field to round-trip which value it was" in {
-    val tmpl =
-      """{"definitions":[{"name":"U","template":{"$type":{
+  "a grouped class (several discriminator values -> one class)" should
+    "keep the discriminator as a ctor field to round-trip which value it was" in {
+      val tmpl =
+        """{"definitions":[{"name":"U","template":{"$type":{
       |"discriminator":"type","variantNames":{"a":"Foo","b":"Foo"},
       |"variants":{"a":{"x":"string"},"b":{"x":"string"}}}}}]}""".stripMargin
-    val driver =
-      """package com.example
+      val driver =
+        """package com.example
         |object UDriver {
         |  def run(): String = {
         |    val fa = U.fromJson("{\"type\":\"a\",\"x\":\"v\"}").toOption.get
@@ -86,18 +88,19 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
         |  }
         |}
         |""".stripMargin
-    val files = GeneratedFile("com/example/UDriver.scala", driver) :: generate(tmpl)
-    runDriver(files, "com.example.UDriver") shouldBe
-      """a|b|{"type":"a","x":"v"}|{"type":"b","x":"v"}"""
-  }
+      val files = GeneratedFile("com/example/UDriver.scala", driver) :: generate(tmpl)
+      runDriver(files, "com.example.UDriver") shouldBe
+        """a|b|{"type":"a","x":"v"}|{"type":"b","x":"v"}"""
+    }
 
-  "an exact discriminator with common fields" should "keep common+variant fields in the ctor and fix the discriminator" in {
-    val tmpl =
-      """{"definitions":[{"name":"Shape","template":{"$type":{
+  "an exact discriminator with common fields" should
+    "keep common+variant fields in the ctor and fix the discriminator" in {
+      val tmpl =
+        """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"shapeType","commonFields":{"color":"string"},
       |"variants":{"circle":{"radius":"number"}}}}}]}""".stripMargin
-    val driver =
-      """package com.example
+      val driver =
+        """package com.example
         |object ShapeDriver {
         |  def run(): String = {
         |    val c = Circle("red", 2.0)                 // (color, radius) — no discriminator
@@ -108,8 +111,8 @@ class FixedDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues
         |  }
         |}
         |""".stripMargin
-    val files = GeneratedFile("com/example/ShapeDriver.scala", driver) :: generate(tmpl)
-    runDriver(files, "com.example.ShapeDriver") shouldBe
-      """true|red,2.0|{"shapeType":"circle","color":"red","radius":2.0}"""
-  }
+      val files = GeneratedFile("com/example/ShapeDriver.scala", driver) :: generate(tmpl)
+      runDriver(files, "com.example.ShapeDriver") shouldBe
+        """true|red,2.0|{"shapeType":"circle","color":"red","radius":2.0}"""
+    }
 }

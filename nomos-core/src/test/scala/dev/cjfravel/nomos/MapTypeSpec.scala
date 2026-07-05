@@ -49,7 +49,8 @@ class MapTypeSpec extends AnyFlatSpec with Matchers with EitherValues with Compi
         """package com.example
         |object Drv {
         |  def run(): String = N.fromJson("{\"m\":{\"a\":\"1\",\"b\":\"2\"}}") match {
-        |    case Right(n) => val m: java.util.Map[String, String] = n.m; s"${m.get("a")},${m.get("b")},${N.toJson(n).contains("\"b\"")}"
+        |    case Right(n) => val m: java.util.Map[String, String] = n.m;
+        |      s"${m.get("a")},${m.get("b")},${N.toJson(n).contains("\"b\"")}"
         |    case Left(e) => "err:" + e
         |  }
         |}

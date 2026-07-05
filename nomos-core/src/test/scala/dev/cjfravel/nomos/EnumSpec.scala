@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,7 +13,8 @@ import org.scalatest.matchers.should.Matchers
 class EnumSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "parse a scalar string enum" in {
     val d =
@@ -25,12 +26,13 @@ class EnumSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "parse an array with enum-constrained items" in {
     val d =
       parse(
-        """{"name":"N","template":{"colors":{"type":"array","items":"string","enum":["red","blue"]}}}""").value.definitions.head
+        """{"name":"N","template":{"colors":{"type":"array","items":"string",""" +
+          """"enum":["red","blue"]}}}""").value.definitions.head
     d.templateType.asInstanceOf[ObjectType].fields("colors").fieldType shouldBe ArrayType(
       StringType(List(Enum(List("red", "blue")))))
   }
 
-  def multi =
+  def multi: MultiTemplate =
     MultiTemplate(
       "com.example",
       List(

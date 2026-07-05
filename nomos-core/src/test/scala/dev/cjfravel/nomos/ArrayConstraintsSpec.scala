@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation.TemplateSerializer
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,17 +13,19 @@ import org.scalatest.matchers.should.Matchers
 class ArrayConstraintsSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "parse array min/max/unique item constraints" in {
     val d =
       parse(
-        """{"name":"N","template":{"scores":{"type":"array","items":"number","minItems":1,"maxItems":3,"uniqueItems":true}}}""").value.definitions.head
+        """{"name":"N","template":{"scores":{"type":"array","items":"number",""" +
+          """"minItems":1,"maxItems":3,"uniqueItems":true}}}""").value.definitions.head
     val arr = d.templateType.asInstanceOf[ObjectType].fields("scores").fieldType.asInstanceOf[ArrayType]
     arr.constraints should contain allOf (MinItems(1), MaxItems(3), UniqueItems(true))
   }
 
-  def multi =
+  def multi: MultiTemplate =
     MultiTemplate(
       "com.example",
       List(

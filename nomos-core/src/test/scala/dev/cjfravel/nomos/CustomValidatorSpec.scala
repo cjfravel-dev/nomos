@@ -16,7 +16,8 @@ class CustomValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "parser" should "parse definition-level validators list" in {
     val json =
-      """{"definitions":[{"name":"Reservation","validators":["dates.startBeforeEnd"],"template":{"startDate":"string","endDate":"string"}}]}"""
+      """{"definitions":[{"name":"Reservation","validators":["dates.startBeforeEnd"],""" +
+        """"template":{"startDate":"string","endDate":"string"}}]}"""
     parser.parseMultiTemplate(json, "com.example").value.definitions.head.validators shouldBe List(
       "dates.startBeforeEnd")
   }
@@ -30,7 +31,7 @@ class CustomValidatorSpec extends AnyFlatSpec with Matchers with EitherValues {
       .validators shouldBe Nil
   }
 
-  def multi =
+  def multi: MultiTemplate =
     MultiTemplate(
       "com.example",
       List(

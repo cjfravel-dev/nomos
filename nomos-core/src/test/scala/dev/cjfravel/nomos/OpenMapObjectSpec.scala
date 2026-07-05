@@ -1,6 +1,7 @@
 package dev.cjfravel.nomos
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.model.MultiTemplate
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +10,8 @@ import org.scalatest.matchers.should.Matchers
 class OpenMapObjectSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "generator" should "emit Map[String, Any] for an open object (additionalProperties true)" in {
     val t = parse("""{"name":"N","template":{"extras":{"$additionalProperties":true}}}""").value

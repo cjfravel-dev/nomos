@@ -2,7 +2,7 @@ package dev.cjfravel.nomos
 
 import dev.cjfravel.nomos.generation._
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.serialization.AdapterRegistry
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +11,8 @@ import org.scalatest.matchers.should.Matchers
 class AdapterSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
   private def generate(template: String): List[GeneratedFile] =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
       .generateMulti(parser.parseMultiTemplate(template, "com.example").value)

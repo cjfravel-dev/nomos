@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class ConfigurableDateSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def content(t: String, cfg: GeneratorConfig) =
+  def content(t: String, cfg: GeneratorConfig): String =
     new CodeGenerator(cfg)
       .generateMulti(parser.parseMultiTemplate(t, "com.example").value)
       .value
@@ -30,7 +30,8 @@ class ConfigurableDateSpec extends AnyFlatSpec with Matchers with EitherValues {
     val t =
       parser
         .parseMultiTemplate(
-          """{"dateType":"java.util.Date","dateTimeType":"java.util.Date","definitions":[{"name":"N","template":{"d":"date"}}]}""",
+          """{"dateType":"java.util.Date","dateTimeType":"java.util.Date",""" +
+            """"definitions":[{"name":"N","template":{"d":"date"}}]}""",
           "com.example")
         .value
     t.dateType shouldBe "java.util.Date"

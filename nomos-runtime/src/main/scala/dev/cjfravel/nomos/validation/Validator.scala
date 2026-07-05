@@ -82,7 +82,9 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       else (s: String) => { java.time.Instant.parse(s); () }
     } else {
       try {
+        // scalastyle:off classforname
         val method = Class.forName(typeName).getMethod("parse", classOf[CharSequence])
+        // scalastyle:on classforname
         (s: String) => { method.invoke(null, s); () }
       } catch {
         case _: Throwable =>

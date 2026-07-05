@@ -80,6 +80,10 @@
                 <groupId>io.github.evis</groupId>
                 <artifactId>scalafix-maven-plugin_${scala.binary.version}</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.scalastyle</groupId>
+                <artifactId>scalastyle-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 </project>

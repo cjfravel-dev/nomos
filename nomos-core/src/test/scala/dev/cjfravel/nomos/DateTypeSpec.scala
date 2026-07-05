@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,7 +13,8 @@ import org.scalatest.matchers.should.Matchers
 class DateTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "parse date and datetime types" in {
     val d = parse("""{"name":"N","template":{"d":"date","ts":"datetime"}}""").value.definitions.head

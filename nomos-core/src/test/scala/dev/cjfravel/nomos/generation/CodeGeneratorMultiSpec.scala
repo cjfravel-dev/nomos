@@ -12,7 +12,7 @@ class CodeGeneratorMultiSpec extends AnyFlatSpec with Matchers with EitherValues
   val cfg = GeneratorConfig("com.example", "target/test-gen")
   val gen = new CodeGenerator(cfg)
 
-  def multi(defs: TemplateDefinition*) = MultiTemplate("com.example", defs.toList)
+  def multi(defs: TemplateDefinition*): MultiTemplate = MultiTemplate("com.example", defs.toList)
 
   "generateMulti" should "emit NomosFormats plus one file per definition" in {
     val t =

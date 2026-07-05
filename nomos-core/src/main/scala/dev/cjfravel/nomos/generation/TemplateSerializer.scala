@@ -74,7 +74,8 @@ object TemplateSerializer {
       case DateTimeType() => "DateTimeType()"
 
       case ArrayType(elementType, constraints) =>
-        s"ArrayType(${serializeTemplateType(elementType)}, List(${constraints.map(serializeConstraint).mkString(", ")}))"
+        val cs = constraints.map(serializeConstraint).mkString(", ")
+        s"ArrayType(${serializeTemplateType(elementType)}, List($cs))"
 
       case MapType(valueType) =>
         s"MapType(${serializeTemplateType(valueType)})"

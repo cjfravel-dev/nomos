@@ -93,13 +93,14 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
     enumFile.get.content should include("case object Circle extends ShapeType")
   }
 
-  "an unknown value with discriminatorEnum + fallbackVariant" should "decode into the fallback as Enum.Unknown and round-trip" in {
-    val tmpl =
-      """{"definitions":[{"name":"Shape","template":{"$type":{
+  "an unknown value with discriminatorEnum + fallbackVariant" should
+    "decode into the fallback as Enum.Unknown and round-trip" in {
+      val tmpl =
+        """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","fallbackVariant":"UnknownShape",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
-    val driver =
-      """package com.example
+      val driver =
+        """package com.example
         |import dev.cjfravel.nomos.json._
         |object FbEnumDriver {
         |  def run(): String = {
@@ -119,9 +120,9 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
         |  }
         |}
         |""".stripMargin
-    val files = GeneratedFile("com/example/FbEnumDriver.scala", driver) :: generate(tmpl)
-    runDriver(files, "com.example.FbEnumDriver") shouldBe """true:{"kind":"hexagon","sides":6}|true"""
-  }
+      val files = GeneratedFile("com/example/FbEnumDriver.scala", driver) :: generate(tmpl)
+      runDriver(files, "com.example.FbEnumDriver") shouldBe """true:{"kind":"hexagon","sides":6}|true"""
+    }
 
   "validation" should "still reject discriminatorEnum combined with prefix matching" in {
     val withPrefix =

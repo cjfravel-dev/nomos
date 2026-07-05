@@ -14,7 +14,8 @@ class FieldOrderSpec extends AnyFlatSpec with Matchers with EitherValues {
     val t =
       parser
         .parseMultiTemplate(
-          """{"definitions":[{"name":"N","template":{"zebra":"string","alpha":"string","middle":"number","beta":"boolean"}}]}""",
+          """{"definitions":[{"name":"N","template":{"zebra":"string","alpha":"string",""" +
+            """"middle":"number","beta":"boolean"}}]}""",
           "com.example")
         .value
     val content =

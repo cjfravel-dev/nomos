@@ -22,7 +22,8 @@ class TypedDefaultSpec extends AnyFlatSpec with Matchers with EitherValues with 
   "an enum default" should "render as EnumName.Value and compile" in {
     val t =
       parse(
-        """{"name":"Order","template":{"status":{"type":"string","enum":["active","closed"],"as":"enumType","name":"Status","default":"active"}}}""").value
+        """{"name":"Order","template":{"status":{"type":"string","enum":["active","closed"],""" +
+          """"as":"enumType","name":"Status","default":"active"}}}""").value
     val fd = t.definitions.head.templateType.asInstanceOf[ObjectType].fields("status")
     fd.default shouldBe Some("Status.Active")
     compileErrors(gen.generateMulti(t).value) shouldBe empty
@@ -30,8 +31,8 @@ class TypedDefaultSpec extends AnyFlatSpec with Matchers with EitherValues with 
 
   "an enum default that is not one of the values" should "be a parse error" in {
     parse(
-      """{"name":"Order","template":{"status":{"type":"string","enum":["active","closed"],"as":"enumType","name":"Status","default":"nope"}}}""") shouldBe a[
-      Left[_, _]]
+      """{"name":"Order","template":{"status":{"type":"string","enum":["active","closed"],""" +
+        """"as":"enumType","name":"Status","default":"nope"}}}""") shouldBe a[Left[_, _]]
   }
 
   "a default on a date field" should "be rejected with a clear error" in {
@@ -45,7 +46,8 @@ class TypedDefaultSpec extends AnyFlatSpec with Matchers with EitherValues with 
   "string, numeric and boolean defaults" should "still render as literals" in {
     val t =
       parse(
-        """{"name":"N","template":{"s":{"type":"string","default":"x"},"i":{"type":"int","default":3},"b":{"type":"boolean","default":true}}}""").value
+        """{"name":"N","template":{"s":{"type":"string","default":"x"},"i":{"type":"int","default":3},""" +
+          """"b":{"type":"boolean","default":true}}}""").value
     val f = t.definitions.head.templateType.asInstanceOf[ObjectType].fields
     f("s").default shouldBe Some("\"x\"")
     f("i").default shouldBe Some("3")

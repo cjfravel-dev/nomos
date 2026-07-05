@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 
 class FormatRegistrySpec extends AnyFlatSpec with Matchers {
 
-  def multi(fmt: String) =
+  def multi(fmt: String): MultiTemplate =
     MultiTemplate(
       "com.example",
       List(TemplateDefinition("N", ObjectType(ListMap("code" -> FieldDef(StringType(List(Format(fmt))), false))))))

@@ -26,11 +26,14 @@ coverage, the release artifacts, and the end-to-end example build.
 
 ## Code style
 
-Scala sources are formatted with [scalafmt](https://scalameta.org/scalafmt/) (`.scalafmt.conf`)
-and linted with [scalafix](https://scalacenter.github.io/scalafix/) (`.scalafix.conf`:
-`RemoveUnused` + `OrganizeImports`). Both are enforced on the `nomos-runtime` and `nomos-core`
-modules and run as part of the build — formatting is checked in the `validate` phase and the
-scalafix lint in the `verify` phase, so `mvn clean install` (and CI) fail on any violation.
+Scala sources are formatted with [scalafmt](https://scalameta.org/scalafmt/) (`.scalafmt.conf`),
+linted with [scalafix](https://scalacenter.github.io/scalafix/) (`.scalafix.conf`:
+`RemoveUnused` + `OrganizeImports`), and checked with [scalastyle](http://www.scalastyle.org/)
+(`scalastyle-config.xml`, adapted from Apache Spark). All three are enforced on the
+`nomos-runtime` and `nomos-core` modules and run as part of the build — scalafmt formatting is
+checked in the `validate` phase, and scalafix and scalastyle in the `verify` phase, so
+`mvn clean install` (and CI) fail on any violation. All three cover both the main and test
+sources.
 
 Apply them locally before opening a PR:
 
@@ -38,6 +41,7 @@ Apply them locally before opening a PR:
 mvn scalafmt:format                                   # reformat Scala sources in place
 mvn -pl nomos-runtime,nomos-core \
   test-compile io.github.evis:scalafix-maven-plugin_2.12:scalafix -Dscalafix.mode=IN_PLACE
+mvn -pl nomos-runtime,nomos-core scalastyle:check     # run the scalastyle checks
 ```
 
 Comments and scaladoc must describe current behavior only — not history, and not removed code.
