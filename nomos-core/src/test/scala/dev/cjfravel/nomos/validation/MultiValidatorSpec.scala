@@ -57,7 +57,7 @@ class MultiValidatorSpec extends AnyFlatSpec with Matchers {
     v.validate("not json", "User") shouldBe a[Left[_, _]]
   }
 
-  def fmt(format: String) =
+  def fmt(format: String): MultiValidator =
     new MultiValidator(
       MultiTemplate(
         "com.example",

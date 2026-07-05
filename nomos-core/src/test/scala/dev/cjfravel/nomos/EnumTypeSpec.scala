@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,10 +13,12 @@ import org.scalatest.matchers.should.Matchers
 class EnumTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   val tmpl =
-    """{"name":"User","template":{"status":{"type":"string","enum":["active","inactive"],"as":"enumType","name":"Status"}}}"""
+    """{"name":"User","template":{"status":{"type":"string","enum":["active","inactive"],""" +
+      """"as":"enumType","name":"Status"}}}"""
 
   "parser" should "produce an EnumType when as=enumType" in {
     val d = parse(tmpl).value.definitions.head

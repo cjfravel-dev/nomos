@@ -19,7 +19,12 @@ class EnumNameCollisionSpec extends AnyFlatSpec with Matchers with EitherValues 
 
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
 
-  def defWithEnum(name: String, field: String, enumName: String, values: List[String], sub: Option[String] = None) =
+  def defWithEnum(
+      name: String,
+      field: String,
+      enumName: String,
+      values: List[String],
+      sub: Option[String] = None): TemplateDefinition =
     TemplateDefinition(
       name,
       ObjectType(ListMap(field -> FieldDef(EnumType(enumName, values), optional = false))),

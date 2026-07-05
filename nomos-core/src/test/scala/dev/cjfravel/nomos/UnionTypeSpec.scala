@@ -2,7 +2,7 @@ package dev.cjfravel.nomos
 
 import dev.cjfravel.nomos.generation.TemplateSerializer
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -11,7 +11,8 @@ import org.scalatest.matchers.should.Matchers
 class UnionTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "parse a map value union" in {
     val d = parse("""{"name":"N","template":{"settings":{"$map":["string",["string"]]}}}""").value.definitions.head

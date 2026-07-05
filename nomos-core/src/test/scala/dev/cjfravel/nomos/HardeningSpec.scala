@@ -18,7 +18,7 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
   val parser = new TemplateParser()
-  def multi(defs: TemplateDefinition*) = MultiTemplate("com.example", defs.toList)
+  def multi(defs: TemplateDefinition*): MultiTemplate = MultiTemplate("com.example", defs.toList)
 
   "escapeStringLiteral" should "escape quotes, backslashes, and control characters" in {
     ScalaCodeBuilder.escapeStringLiteral("he\"llo\\\n\t") shouldBe "he\\\"llo\\\\\\n\\t"
@@ -141,7 +141,8 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "an inline nested object used as a field type" should "be rejected with a clear message, not emit ???" in {
     val tmpl =
-      """{"definitions":[{"name":"Person","template":{"name":"string","address":{"street":"string","city":"string"}}}]}"""
+      """{"definitions":[{"name":"Person","template":{"name":"string",""" +
+        """"address":{"street":"string","city":"string"}}}]}"""
     val t = parser.parseMultiTemplate(tmpl, "com.example").value
     val err = gen.generateMulti(t).left.value.toString
     err should include("inline nested objects are not supported")

@@ -39,7 +39,8 @@ class OrphanPruneSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "generateCode" should "remove a generated file whose definition was removed" in {
     val dir = Files.createTempDirectory("nomos-gen-prune").toFile
-    def defn(n: String) = TemplateDefinition(n, ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false))))
+    def defn(n: String): TemplateDefinition =
+      TemplateDefinition(n, ObjectType(ListMap("x" -> FieldDef(StringType(), optional = false))))
 
     Nomos.generateCode(MultiTemplate("com.example", List(defn("A"), defn("B"))), dir.getPath) shouldBe a[Right[_, _]]
     new File(dir, "com/example/A.scala").exists shouldBe true

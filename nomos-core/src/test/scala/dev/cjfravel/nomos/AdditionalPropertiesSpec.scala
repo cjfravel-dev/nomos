@@ -1,5 +1,6 @@
 package dev.cjfravel.nomos
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.model.MultiTemplate
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +9,8 @@ import org.scalatest.matchers.should.Matchers
 class AdditionalPropertiesSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "default" should "reject unknown keys" in {
     val t = parse("""{"name":"N","template":{"id":"string"}}""").value

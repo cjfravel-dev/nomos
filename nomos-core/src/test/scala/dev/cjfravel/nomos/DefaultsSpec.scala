@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation._
 import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
+import dev.cjfravel.nomos.parser.{ParseError, TemplateParser}
 import dev.cjfravel.nomos.validation.MultiValidator
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,18 +13,20 @@ import org.scalatest.matchers.should.Matchers
 class DefaultsSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
+  def parse(json: String): Either[ParseError, MultiTemplate] =
+    parser.parseMultiTemplate(s"""{"definitions":[$json]}""", "com.example")
 
   "parser" should "parse boolean and string defaults" in {
     val d =
       parse(
-        """{"name":"N","template":{"verbose":{"type":"boolean","default":false},"name":{"type":"string","default":"report"}}}""").value.definitions.head
+        """{"name":"N","template":{"verbose":{"type":"boolean","default":false},""" +
+          """"name":{"type":"string","default":"report"}}}""").value.definitions.head
     val f = d.templateType.asInstanceOf[ObjectType].fields
     f("verbose").default shouldBe Some("false")
     f("name").default shouldBe Some("\"report\"")
   }
 
-  def multi =
+  def multi: MultiTemplate =
     MultiTemplate(
       "com.example",
       List(
@@ -77,7 +79,8 @@ class DefaultsSpec extends AnyFlatSpec with Matchers with EitherValues with Comp
 
   "generated code with a defaulted field" should "decode the default when absent and validate" in {
     val tmpl =
-      """{"definitions":[{"name":"N","template":{"id":"string","exclude_from_ad":{"type":"boolean","default":false}}}]}"""
+      """{"definitions":[{"name":"N","template":{"id":"string",""" +
+        """"exclude_from_ad":{"type":"boolean","default":false}}}]}"""
     val driver =
       """package com.example
         |object DefDriver {

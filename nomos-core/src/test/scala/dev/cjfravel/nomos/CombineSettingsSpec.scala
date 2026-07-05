@@ -15,7 +15,7 @@ class CombineSettingsSpec extends AnyFlatSpec with Matchers with EitherValues {
       fromJsonStyle: String = "either",
       dateType: String = "java.time.LocalDate",
       dateTimeType: String = "java.time.LocalDateTime",
-      visibility: Option[String] = None) =
+      visibility: Option[String] = None): MultiTemplate =
     MultiTemplate(
       pkg,
       List(TemplateDefinition("D" + pkg.last, ObjectType(ListMap("id" -> FieldDef(StringType(), false))))),

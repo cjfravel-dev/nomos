@@ -51,21 +51,22 @@ class VisibilitySpec extends AnyFlatSpec with Matchers with EitherValues with Co
     runDriver(files, "com.example.VisDriver") shouldBe """u1|{"id":"u1","age":7}|true"""
   }
 
-  "visibility on a discriminated union with a discriminatorEnum" should "apply to the trait, variants, enum, and companions and compile" in {
-    val tmpl =
-      """{"visibility":"private[example]","definitions":[
+  "visibility on a discriminated union with a discriminatorEnum" should
+    "apply to the trait, variants, enum, and companions and compile" in {
+      val tmpl =
+        """{"visibility":"private[example]","definitions":[
       |{"name":"Shape","template":{"$type":{"discriminator":"kind","discriminatorEnum":"ShapeType",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
-    val files = generate(tmpl)
-    val shape = files.find(_.fileName == "Shape.scala").get.content
-    shape should include("private[example] sealed trait Shape")
-    shape should include("private[example] case class Circle(")
-    shape should include("private[example] object Shape {")
-    val enumFile = files.find(_.fileName == "ShapeType.scala").get.content
-    enumFile should include("private[example] sealed trait ShapeType")
-    enumFile should include("private[example] object ShapeType {")
-    compileErrors(files) shouldBe empty
-  }
+      val files = generate(tmpl)
+      val shape = files.find(_.fileName == "Shape.scala").get.content
+      shape should include("private[example] sealed trait Shape")
+      shape should include("private[example] case class Circle(")
+      shape should include("private[example] object Shape {")
+      val enumFile = files.find(_.fileName == "ShapeType.scala").get.content
+      enumFile should include("private[example] sealed trait ShapeType")
+      enumFile should include("private[example] object ShapeType {")
+      compileErrors(files) shouldBe empty
+    }
 
   "an unsafe visibility modifier" should "be rejected (cannot inject into generated source)" in {
     val bad =

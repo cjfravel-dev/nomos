@@ -15,7 +15,8 @@ class RefVariantSpec extends AnyFlatSpec with Matchers with EitherValues {
       |{"definitions":[
       |  {"name":"Circle","template":{"radius":"number"}},
       |  {"name":"Square","template":{"side":"number"}},
-      |  {"name":"Shape","template":{"$type":{"discriminator":"kind","variants":{"circle":"$ref:Circle","square":"$ref:Square"}}}}
+      |  {"name":"Shape","template":{"$type":{"discriminator":"kind",
+      |    "variants":{"circle":"$ref:Circle","square":"$ref:Square"}}}}
       |]}
     """.stripMargin
 

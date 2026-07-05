@@ -257,9 +257,7 @@
                         <verbose>false</verbose>
                         <failOnViolation>true</failOnViolation>
                         <failOnWarning>false</failOnWarning>
-                        <!-- Check main sources only; test sources are governed by scalafmt
-                             (formatting + line length) and scalafix (imports + unused). -->
-                        <includeTestSourceDirectory>false</includeTestSourceDirectory>
+                        <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         <sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
                         <testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
                         <configLocation>${project.basedir}/../scalastyle-config.xml</configLocation>

@@ -10,8 +10,11 @@ import org.scalatest.matchers.should.Matchers
 class P7Spec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def parse(json: String) = parser.parseMultiTemplate(json, "com.example").value
-  def file(t: MultiTemplate, name: String, cfg: GeneratorConfig = GeneratorConfig("com.example", "target/test-gen")) =
+  def parse(json: String): MultiTemplate = parser.parseMultiTemplate(json, "com.example").value
+  def file(
+      t: MultiTemplate,
+      name: String,
+      cfg: GeneratorConfig = GeneratorConfig("com.example", "target/test-gen")): String =
     new CodeGenerator(cfg).generateMulti(t).value.find(_.fileName == name).get.content
 
   // ---- P7-1: boxed nullable numerics ----

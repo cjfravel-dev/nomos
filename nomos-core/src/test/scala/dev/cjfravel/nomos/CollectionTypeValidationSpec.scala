@@ -19,7 +19,7 @@ class CollectionTypeValidationSpec extends AnyFlatSpec with Matchers with Either
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
   val parser = new TemplateParser()
 
-  def arrayDef =
+  def arrayDef: TemplateDefinition =
     TemplateDefinition("N", ObjectType(ListMap("xs" -> FieldDef(ArrayType(StringType()), optional = false))))
 
   "generateMulti" should "reject an unsupported listType with an actionable message" in {

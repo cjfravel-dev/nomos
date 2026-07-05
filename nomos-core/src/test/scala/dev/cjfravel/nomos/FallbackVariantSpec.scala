@@ -24,7 +24,8 @@ class FallbackVariantSpec extends AnyFlatSpec with Matchers with EitherValues wi
 
   private val shapeTmpl =
     """{"definitions":[{"name":"Shape","template":{"$type":{
-      |"discriminator":"kind","fallbackVariant":"UnknownShape","variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
+      |"discriminator":"kind",
+      |"fallbackVariant":"UnknownShape","variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
 
   "parser" should "capture fallbackVariant" in {
     val disc =
@@ -56,13 +57,14 @@ class FallbackVariantSpec extends AnyFlatSpec with Matchers with EitherValues wi
     runDriver(files, "com.example.ShapeDriver") shouldBe """ok:hexagon:{"kind":"hexagon","sides":6}"""
   }
 
-  "an unknown variant (variantNames + common fields)" should "decode the common field and round-trip the raw payload" in {
-    val tmpl =
-      """{"definitions":[{"name":"Condition","template":{"$type":{
+  "an unknown variant (variantNames + common fields)" should
+    "decode the common field and round-trip the raw payload" in {
+      val tmpl =
+        """{"definitions":[{"name":"Condition","template":{"$type":{
         |"discriminator":"type","fallbackVariant":"UnknownCondition","commonFields":{"id":"string"},
         |"variants":{"threshold":{"limit":"int"}},"variantNames":{"threshold":"ThresholdCondition"}}}}]}""".stripMargin
-    val driver =
-      """package com.example
+      val driver =
+        """package com.example
         |import dev.cjfravel.nomos.json._
         |object CondDriver {
         |  def run(): String = {
@@ -74,9 +76,9 @@ class FallbackVariantSpec extends AnyFlatSpec with Matchers with EitherValues wi
         |  }
         |}
         |""".stripMargin
-    val files = GeneratedFile("com/example/CondDriver.scala", driver) :: generate(tmpl)
-    runDriver(files, "com.example.CondDriver") shouldBe """ok:c1:{"type":"velocity","id":"c1","speed":9}"""
-  }
+      val files = GeneratedFile("com/example/CondDriver.scala", driver) :: generate(tmpl)
+      runDriver(files, "com.example.CondDriver") shouldBe """ok:c1:{"type":"velocity","id":"c1","speed":9}"""
+    }
 
   "validation" should "accept an unknown variant when a fallback is configured and reject it otherwise" in {
     val withoutFb =

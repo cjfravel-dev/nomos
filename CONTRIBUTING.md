@@ -32,9 +32,8 @@ linted with [scalafix](https://scalacenter.github.io/scalafix/) (`.scalafix.conf
 (`scalastyle-config.xml`, adapted from Apache Spark). All three are enforced on the
 `nomos-runtime` and `nomos-core` modules and run as part of the build — scalafmt formatting is
 checked in the `validate` phase, and scalafix and scalastyle in the `verify` phase, so
-`mvn clean install` (and CI) fail on any violation. scalafmt and scalafix cover both main and
-test sources; scalastyle checks main sources (line length and imports on tests are already
-covered by scalafmt and scalafix).
+`mvn clean install` (and CI) fail on any violation. All three cover both the main and test
+sources.
 
 Apply them locally before opening a PR:
 

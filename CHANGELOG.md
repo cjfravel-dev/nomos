@@ -12,7 +12,7 @@ All notable changes to this project are documented here. The format is based on
   scalafmt (`.scalafmt.conf`), linted with scalafix (`.scalafix.conf`: `RemoveUnused` +
   `OrganizeImports`), and checked with scalastyle (`scalastyle-config.xml`, adapted from Apache
   Spark). All run in the build (`validate`/`verify`) and CI, so a violation fails the build.
-  scalastyle checks main sources; scalafmt and scalafix cover main and test sources. Run
+  All three cover the main and test sources. Run
   `mvn scalafmt:format` to reformat.
 
 ### Fixed

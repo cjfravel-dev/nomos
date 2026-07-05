@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 
 class MultiTemplateSpec extends AnyFlatSpec with Matchers {
 
-  def userDef =
+  def userDef: TemplateDefinition =
     TemplateDefinition(
       name = "User",
       templateType = ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))),

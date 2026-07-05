@@ -45,7 +45,9 @@ trait CompileHarness {
    */
   protected def runDriver(files: List[GeneratedFile], driverFqn: String): String = {
     val (errs, outDir) = compile(files)
+    // scalastyle:off throwerror
     if (errs.nonEmpty) throw new AssertionError("compilation failed:\n" + errs.mkString("\n"))
+    // scalastyle:on throwerror
     val loader = new java.net.URLClassLoader(Array(new java.io.File(outDir).toURI.toURL), getClass.getClassLoader)
     loader.loadClass(driverFqn).getMethod("run").invoke(null).asInstanceOf[String]
   }

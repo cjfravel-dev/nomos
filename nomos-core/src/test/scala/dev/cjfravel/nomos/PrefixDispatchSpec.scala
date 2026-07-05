@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class PrefixDispatchSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def gen(t: String) = {
+  def gen(t: String): String = {
     val tpl = parser.parseMultiTemplate(t, "com.example").value
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
       .generateMulti(tpl)

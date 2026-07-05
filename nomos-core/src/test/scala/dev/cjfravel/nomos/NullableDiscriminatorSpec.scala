@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
 class NullableDiscriminatorSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val parser = new TemplateParser()
-  def gen(t: String) =
+  def gen(t: String): String =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
       .generateMulti(parser.parseMultiTemplate(t, "com.example").value)
       .value

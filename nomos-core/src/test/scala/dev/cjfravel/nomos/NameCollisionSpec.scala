@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
 class NameCollisionSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-  def multi(defs: TemplateDefinition*) = MultiTemplate("com.example", defs.toList)
+  def multi(defs: TemplateDefinition*): MultiTemplate = MultiTemplate("com.example", defs.toList)
 
   "generateMulti" should "reject enum values that normalize to the same case-object name" in {
     val d =

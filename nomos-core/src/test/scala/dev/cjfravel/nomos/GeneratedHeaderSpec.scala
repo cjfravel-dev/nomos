@@ -12,7 +12,7 @@ class GeneratedHeaderSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   val gen = new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
 
-  def withSource(sp: Option[String]) =
+  def withSource(sp: Option[String]): MultiTemplate =
     MultiTemplate(
       "com.example",
       List(
