@@ -1,27 +1,29 @@
 package dev.cjfravel.nomos
 
+import java.nio.file.Files
+
+import scala.tools.nsc.reporters.StoreReporter
+import scala.tools.nsc.{Global, Settings}
+
 import dev.cjfravel.nomos.generation.GeneratedFile
 
-import java.nio.file.Files
-import scala.tools.nsc.{Global, Settings}
-import scala.tools.nsc.reporters.StoreReporter
-
 /**
- * Shared harness for tests that compile (and optionally execute) generated output in-process.
- * String-only assertions on generated source can let type errors slip through, so these tests
- * compile the emitted code against nomos-runtime, and `runDriver` additionally runs it.
+ * Shared harness for tests that compile (and optionally execute) generated output in-process. String-only assertions on
+ * generated source can let type errors slip through, so these tests compile the emitted code against nomos-runtime, and
+ * `runDriver` additionally runs it.
  */
 trait CompileHarness {
 
   /** Compiles the given sources to a fresh out dir, returning (compiler error messages, outDir). */
   protected def compile(files: List[GeneratedFile]): (Seq[String], String) = {
     val srcDir = Files.createTempDirectory("nomos-compile-src")
-    val paths = files.map { f =>
-      val p = srcDir.resolve(f.relativePath)
-      Files.createDirectories(p.getParent)
-      Files.write(p, f.content.getBytes("UTF-8"))
-      p.toString
-    }
+    val paths =
+      files.map { f =>
+        val p = srcDir.resolve(f.relativePath)
+        Files.createDirectories(p.getParent)
+        Files.write(p, f.content.getBytes("UTF-8"))
+        p.toString
+      }
     val outDir = Files.createTempDirectory("nomos-compile-out").toString
     val settings = new Settings()
     settings.usejavacp.value = true
@@ -38,8 +40,8 @@ trait CompileHarness {
   protected def compileErrors(files: List[GeneratedFile]): Seq[String] = compile(files)._1
 
   /**
-   * Compiles sources + a driver object, then invokes `<driverFqn>.run()` (a no-arg method that
-   * returns a String) and returns its result. Throws if compilation fails.
+   * Compiles sources + a driver object, then invokes `<driverFqn>.run()` (a no-arg method that returns a String) and
+   * returns its result. Throws if compilation fails.
    */
   protected def runDriver(files: List[GeneratedFile], driverFqn: String): String = {
     val (errs, outDir) = compile(files)

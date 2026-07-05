@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Enforced code style: Scala sources in `nomos-runtime` and `nomos-core` are formatted with
+  scalafmt (`.scalafmt.conf`) and linted with scalafix (`.scalafix.conf`: `RemoveUnused` +
+  `OrganizeImports`). Both run in the build (`validate`/`verify`) and CI, so a violation fails
+  the build. Run `mvn scalafmt:format` to reformat.
+
 ### Fixed
 
 - Validation performance: the custom-validator phase now runs only for definitions whose reachable

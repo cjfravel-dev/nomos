@@ -1,18 +1,18 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 import scala.collection.immutable.ListMap
 
+import dev.cjfravel.nomos.generation._
+import dev.cjfravel.nomos.model._
+import dev.cjfravel.nomos.parser.TemplateParser
+import org.scalatest.EitherValues
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 /**
- * Field types honor the project-wide listType, but the generator only emits decoders for List/Array.
- * Any other value produces a case-class field whose type does not match the decoder's result, so
- * the generated code does not compile. These specs pin that unsupported values are rejected up
- * front with an actionable message, and supported values pass.
+ * Field types honor the project-wide listType, but the generator only emits decoders for List/Array. Any other value
+ * produces a case-class field whose type does not match the decoder's result, so the generated code does not compile.
+ * These specs pin that unsupported values are rejected up front with an actionable message, and supported values pass.
  */
 class CollectionTypeValidationSpec extends AnyFlatSpec with Matchers with EitherValues {
 

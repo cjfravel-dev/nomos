@@ -1,9 +1,10 @@
 package dev.cjfravel.nomos.generation
 
+import java.io.File
+
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import java.io.File
 
 class GeneratedFileSpec extends AnyFlatSpec with Matchers with EitherValues {
 

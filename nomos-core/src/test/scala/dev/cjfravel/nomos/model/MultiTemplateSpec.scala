@@ -1,16 +1,17 @@
 package dev.cjfravel.nomos.model
 
+import scala.collection.immutable.ListMap
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.collection.immutable.ListMap
 
 class MultiTemplateSpec extends AnyFlatSpec with Matchers {
 
-  def userDef = TemplateDefinition(
-    name = "User",
-    templateType = ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))),
-    subPackage = Some("user")
-  )
+  def userDef =
+    TemplateDefinition(
+      name = "User",
+      templateType = ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))),
+      subPackage = Some("user"))
 
   "MultiTemplate" should "construct from basePackage and definitions only" in {
     val t = MultiTemplate("com.example.models", List(userDef))

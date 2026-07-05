@@ -1,21 +1,23 @@
 package dev.cjfravel.nomos.validation
 
+import scala.collection.immutable.ListMap
+
 import dev.cjfravel.nomos.model._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.collection.immutable.ListMap
 
 /**
- * Numeric constraints (multipleOf/min/max) must be evaluated with exact decimal arithmetic; in
- * Double, `0.3 % 0.1` is nonzero, so a valid cent/tenth value would be falsely rejected. These
- * specs pin exact-decimal behavior on the precise-decimal use cases a data-contract library must
- * get right.
+ * Numeric constraints (multipleOf/min/max) must be evaluated with exact decimal arithmetic; in Double, `0.3 % 0.1` is
+ * nonzero, so a valid cent/tenth value would be falsely rejected. These specs pin exact-decimal behavior on the
+ * precise-decimal use cases a data-contract library must get right.
  */
 class NumericConstraintSpec extends AnyFlatSpec with Matchers {
 
   private def validatorFor(t: TemplateType): MultiValidator =
-    new MultiValidator(MultiTemplate("com.example",
-      List(TemplateDefinition("M", ObjectType(ListMap("n" -> FieldDef(t, optional = false)))))))
+    new MultiValidator(
+      MultiTemplate(
+        "com.example",
+        List(TemplateDefinition("M", ObjectType(ListMap("n" -> FieldDef(t, optional = false)))))))
 
   "MultiValidator" should "accept a decimal that is an exact multiple of a decimal multipleOf" in {
     val v = validatorFor(NumberType(List(MultipleOf(0.1))))

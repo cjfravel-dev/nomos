@@ -1,10 +1,9 @@
 package dev.cjfravel.nomos.validation
 
 /**
- * Registry of named custom validators. Applications register checks by name; each receives a
- * [[ValidatorContext]] (the node at its definition level, the whole document root, and the JSON
- * path) and returns errors. Templates reference them in their `validators` list, and errors carry
- * the validator name.
+ * Registry of named custom validators. Applications register checks by name; each receives a [[ValidatorContext]] (the
+ * node at its definition level, the whole document root, and the JSON path) and returns errors. Templates reference
+ * them in their `validators` list, and errors carry the validator name.
  */
 object ValidatorRegistry {
   private val validators = scala.collection.concurrent.TrieMap.empty[String, ValidatorContext => List[ValidationError]]

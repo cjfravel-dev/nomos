@@ -1,15 +1,16 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.generation.TemplateSerializer
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import scala.collection.immutable.ListMap
 
+import dev.cjfravel.nomos.generation.TemplateSerializer
+import dev.cjfravel.nomos.model._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
 /**
- * `variantNames` is a plain `Map`; with 5+ entries Scala uses a `HashMap` whose iteration order is
- * unspecified, so the embedded template it is serialized into is not byte-stable. Entries are now
- * emitted in a deterministic (sorted) order so generated `NomosFormats.scala` is reproducible.
+ * `variantNames` is a plain `Map`; with 5+ entries Scala uses a `HashMap` whose iteration order is unspecified, so the
+ * embedded template it is serialized into is not byte-stable. Entries are now emitted in a deterministic (sorted) order
+ * so generated `NomosFormats.scala` is reproducible.
  */
 class DeterministicOutputSpec extends AnyFlatSpec with Matchers {
 

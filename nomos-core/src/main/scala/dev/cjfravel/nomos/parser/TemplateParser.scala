@@ -1,9 +1,10 @@
 package dev.cjfravel.nomos.parser
 
-import dev.cjfravel.nomos.model._
-import dev.cjfravel.nomos.generation.ScalaCodeBuilder
-import dev.cjfravel.nomos.json.{Json, JsonValue, JsonString, JsonBoolean, JsonNumber}
 import scala.collection.immutable.ListMap
+
+import dev.cjfravel.nomos.generation.ScalaCodeBuilder
+import dev.cjfravel.nomos.json._
+import dev.cjfravel.nomos.model._
 
 /**
  * Parses JSON template definitions into Template objects using the first-party JSON parser.
@@ -13,7 +14,7 @@ class TemplateParser {
   /**
    * Parses a type definition
    */
-  private def parseType(json: JsonValue, path: String): Either[ParseError, TemplateType] = {
+  private def parseType(json: JsonValue, path: String): Either[ParseError, TemplateType] =
     json.asString match {
       case Some(text) =>
         text match {
@@ -82,12 +83,11 @@ class TemplateParser {
             }
         }
     }
-  }
 
   /**
    * Parses a complex type definition with constraints
    */
-  private def parseComplexType(json: JsonValue, path: String): Either[ParseError, TemplateType] = {
+  private def parseComplexType(json: JsonValue, path: String): Either[ParseError, TemplateType] =
     extractString(json, "type", path).flatMap {
       case "string" =>
         if (has(json, "enum") && extractOptionalString(json, "as").contains("enumType")) {
@@ -127,24 +127,23 @@ class TemplateParser {
       case other =>
         Left(ParseError.InvalidType(other, path))
     }
-  }
 
   /**
    * Returns an Enum constraint if the node carries a string "enum" array.
    */
-  private def parseEnum(json: JsonValue): Option[Enum] = {
+  private def parseEnum(json: JsonValue): Option[Enum] =
     json.asObject.flatMap(_.field("enum")).flatMap(_.asArray).map { arr =>
       Enum(arr.values.collect { case JsonString(s) => s }.toList)
     }
-  }
 
   /**
    * Appends a constraint to a scalar type's constraint list.
    */
-  private def withConstraint(t: TemplateType, c: Constraint): TemplateType = t match {
-    case StringType(cs) => StringType(cs :+ c)
-    case other => other
-  }
+  private def withConstraint(t: TemplateType, c: Constraint): TemplateType =
+    t match {
+      case StringType(cs) => StringType(cs :+ c)
+      case other => other
+    }
 
   /**
    * Parses string constraints
@@ -188,14 +187,15 @@ class TemplateParser {
   /**
    * Parses an object type
    */
-  private def parseObjectType(json: JsonValue, path: String): Either[ParseError, ObjectType] = {
+  private def parseObjectType(json: JsonValue, path: String): Either[ParseError, ObjectType] =
     json.asObject match {
       case Some(obj) =>
         val fields = obj.fields.toList.filterNot(_._1 == "$additionalProperties")
-        val fieldResults = fields.map { case (key, fieldValue) =>
-          val fieldName = unescapeKey(key)
-          parseFieldDef(fieldValue, s"$path.$fieldName").map(fieldName -> _)
-        }
+        val fieldResults =
+          fields.map { case (key, fieldValue) =>
+            val fieldName = unescapeKey(key)
+            parseFieldDef(fieldValue, s"$path.$fieldName").map(fieldName -> _)
+          }
 
         val errors = fieldResults.collect { case Left(err) => err }
         if (errors.nonEmpty) {
@@ -209,7 +209,6 @@ class TemplateParser {
       case None =>
         Left(ParseError.InvalidType("object", path, "Expected JSON object"))
     }
-  }
 
   /**
    * Strips surrounding backticks so a quoted key like `type` becomes the literal field name "type".
@@ -218,21 +217,20 @@ class TemplateParser {
     if (key.length >= 2 && key.startsWith("`") && key.endsWith("`")) key.substring(1, key.length - 1) else key
 
   /**
-   * Parses the $additionalProperties policy: true allows extras, false forbids, a type validates
-   * extras. An invalid type value is reported as a parse error rather than silently forbidding.
+   * Parses the $additionalProperties policy: true allows extras, false forbids, a type validates extras. An invalid
+   * type value is reported as a parse error rather than silently forbidding.
    */
-  private def parseAdditional(json: JsonValue, path: String): Either[ParseError, AdditionalProperties] = {
+  private def parseAdditional(json: JsonValue, path: String): Either[ParseError, AdditionalProperties] =
     json.asObject.flatMap(_.field("$additionalProperties")) match {
       case None => Right(ForbidExtra)
       case Some(JsonBoolean(b)) => Right(if (b) AllowExtra else ForbidExtra)
       case Some(node) => parseType(node, s"$path.$$additionalProperties").map(TypedExtra)
     }
-  }
 
   /**
    * Parses a field definition
    */
-  private def parseFieldDef(json: JsonValue, path: String): Either[ParseError, FieldDef] = {
+  private def parseFieldDef(json: JsonValue, path: String): Either[ParseError, FieldDef] =
     if (has(json, "$optional")) {
       for {
         innerType <- extractField(json, "$optional", path)
@@ -242,21 +240,20 @@ class TemplateParser {
       parseType(json, path).flatMap { tpe =>
         extractOptionalString(json, "adapter") match {
           case Some(_) if !tpe.isInstanceOf[StringType] =>
-            Left(ParseError.InvalidFieldValue("adapter", "a string-typed field", "adapter is only supported on string fields", path))
+            Left(ParseError
+              .InvalidFieldValue("adapter", "a string-typed field", "adapter is only supported on string fields", path))
           case adapter =>
             renderDefault(json, tpe, path).right.map(default =>
               FieldDef(tpe, optional = false, default = default, adapter = adapter))
         }
       }
     }
-  }
 
   /**
-   * Renders a field's "default" as a Scala literal of the field's type, and validates it is
-   * representable: string/numeric/boolean/enum defaults are supported (an enum default becomes
-   * `EnumName.Value`); a default of the wrong shape, an out-of-set enum value, or a default on any
-   * other type (date, datetime, reference, collection, object) is a clear parse error rather than
-   * uncompilable generated source.
+   * Renders a field's "default" as a Scala literal of the field's type, and validates it is representable:
+   * string/numeric/boolean/enum defaults are supported (an enum default becomes `EnumName.Value`); a default of the
+   * wrong shape, an out-of-set enum value, or a default on any other type (date, datetime, reference, collection,
+   * object) is a clear parse error rather than uncompilable generated source.
    */
   private def renderDefault(json: JsonValue, tpe: TemplateType, path: String): Either[ParseError, Option[String]] =
     json.asObject.flatMap(_.field("default")) match {
@@ -265,24 +262,34 @@ class TemplateParser {
     }
 
   private def renderDefaultLiteral(d: JsonValue, tpe: TemplateType, path: String): Either[ParseError, String] = {
-    def number: Either[ParseError, JsonNumber] = d match {
-      case n: JsonNumber => Right(n)
-      case _ => Left(ParseError.InvalidFieldValue("default", "a number", "default must be a number for a numeric field", path))
-    }
+    def number: Either[ParseError, JsonNumber] =
+      d match {
+        case n: JsonNumber => Right(n)
+        case _ =>
+          Left(
+            ParseError.InvalidFieldValue("default", "a number", "default must be a number for a numeric field", path))
+      }
     tpe match {
       case StringType(_) =>
         d.asString match {
           case Some(s) => Right("\"" + ScalaCodeBuilder.escapeStringLiteral(s) + "\"")
-          case None => Left(ParseError.InvalidFieldValue("default", "a string", "default must be a string for a string field", path))
+          case None =>
+            Left(
+              ParseError.InvalidFieldValue("default", "a string", "default must be a string for a string field", path))
         }
       case IntType(_) =>
-        number.right.flatMap(n => n.asInt.map(_.toString).toRight(
-          ParseError.InvalidFieldValue("default", "an Int", s"'${n.raw}' is not a valid Int default", path)))
+        number.right.flatMap(n =>
+          n.asInt
+            .map(_.toString)
+            .toRight(ParseError.InvalidFieldValue("default", "an Int", s"'${n.raw}' is not a valid Int default", path)))
       case LongType(_) =>
         // A whole-number default outside Int range is a bare Int literal in Scala and overflows, so
         // a Long default must carry an `L` suffix.
-        number.right.flatMap(n => n.asLong.map(l => s"${l}L").toRight(
-          ParseError.InvalidFieldValue("default", "a Long", s"'${n.raw}' is not a valid Long default", path)))
+        number.right.flatMap(n =>
+          n.asLong
+            .map(l => s"${l}L")
+            .toRight(
+              ParseError.InvalidFieldValue("default", "a Long", s"'${n.raw}' is not a valid Long default", path)))
       case NumberType(_) =>
         // A bare integer lexeme is an Int literal and can overflow; make it a floating literal.
         // A lexeme with a fraction/exponent is already a valid Double literal.
@@ -293,24 +300,43 @@ class TemplateParser {
       case BooleanType() =>
         d match {
           case _: JsonBoolean => Right(Json.write(d))
-          case _ => Left(ParseError.InvalidFieldValue("default", "a boolean", "default must be a boolean for a boolean field", path))
+          case _ =>
+            Left(
+              ParseError
+                .InvalidFieldValue("default", "a boolean", "default must be a boolean for a boolean field", path))
         }
       case EnumType(enumName, values) =>
         d.asString match {
           case Some(s) if values.contains(s) => Right(s"$enumName.${ScalaCodeBuilder.toPascalCase(s)}")
-          case Some(s) => Left(ParseError.InvalidFieldValue("default", s"one of: ${values.mkString(", ")}", s"'$s' is not a value of enum '$enumName'", path))
-          case None => Left(ParseError.InvalidFieldValue("default", "an enum value (string)", "default must be a string naming an enum value", path))
+          case Some(s) =>
+            Left(
+              ParseError.InvalidFieldValue(
+                "default",
+                s"one of: ${values.mkString(", ")}",
+                s"'$s' is not a value of enum '$enumName'",
+                path))
+          case None =>
+            Left(
+              ParseError.InvalidFieldValue(
+                "default",
+                "an enum value (string)",
+                "default must be a string naming an enum value",
+                path))
         }
       case _ =>
-        Left(ParseError.InvalidFieldValue("default", "a string, numeric, boolean, or enum field",
-          "default values are only supported on string, numeric, boolean, and enum fields", path))
+        Left(
+          ParseError.InvalidFieldValue(
+            "default",
+            "a string, numeric, boolean, or enum field",
+            "default values are only supported on string, numeric, boolean, and enum fields",
+            path))
     }
   }
 
   /**
    * Parses a type discriminator
    */
-  private def parseDiscriminator(json: JsonValue, path: String): Either[ParseError, TypeDiscriminator] = {
+  private def parseDiscriminator(json: JsonValue, path: String): Either[ParseError, TypeDiscriminator] =
     for {
       typeObj <- extractField(json, "$type", path)
       fieldName <- extractString(typeObj, "discriminator", s"$path.$$type")
@@ -323,23 +349,32 @@ class TemplateParser {
       variantSubPackage = extractOptionalString(typeObj, "variantSubPackage")
       fallbackVariant = extractOptionalString(typeObj, "fallbackVariant")
       discriminatorEnum = extractOptionalString(typeObj, "discriminatorEnum")
-    } yield TypeDiscriminator(fieldName, variants, commonFields, includeInOutput, variantNames, variantMatch, variantSubPackage, fallbackVariant, discriminatorEnum)
-  }
+    } yield TypeDiscriminator(
+      fieldName,
+      variants,
+      commonFields,
+      includeInOutput,
+      variantNames,
+      variantMatch,
+      variantSubPackage,
+      fallbackVariant,
+      discriminatorEnum)
 
   /**
    * Parses discriminator variants
    */
-  private def parseVariants(json: JsonValue, path: String): Either[ParseError, ListMap[String, ObjectType]] = {
+  private def parseVariants(json: JsonValue, path: String): Either[ParseError, ListMap[String, ObjectType]] =
     json.asObject match {
       case Some(obj) =>
-        val variantResults = obj.fields.toList.map { case (variantName, variantJson) =>
-          variantJson.asString match {
-            case Some(s) if s.startsWith("$ref:") =>
-              Right(variantName -> ObjectType(ListMap("$ref" -> FieldDef(ReferenceType(s.substring(5))))))
-            case _ =>
-              parseObjectType(variantJson, s"$path.$variantName").map(variantName -> _)
+        val variantResults =
+          obj.fields.toList.map { case (variantName, variantJson) =>
+            variantJson.asString match {
+              case Some(s) if s.startsWith("$ref:") =>
+                Right(variantName -> ObjectType(ListMap("$ref" -> FieldDef(ReferenceType(s.substring(5))))))
+              case _ =>
+                parseObjectType(variantJson, s"$path.$variantName").map(variantName -> _)
+            }
           }
-        }
 
         val errors = variantResults.collect { case Left(err) => err }
         if (errors.nonEmpty) {
@@ -351,31 +386,28 @@ class TemplateParser {
       case None =>
         Left(ParseError.InvalidDiscriminator("variants must be an object", path))
     }
-  }
 
   /**
    * Parses common fields for discriminator
    */
-  private def parseCommonFields(json: JsonValue, path: String): Either[ParseError, ListMap[String, FieldDef]] = {
+  private def parseCommonFields(json: JsonValue, path: String): Either[ParseError, ListMap[String, FieldDef]] =
     extractOptionalField(json, "commonFields") match {
       case Some(commonJson) =>
         parseObjectType(commonJson, s"$path.commonFields").map(_.fields)
       case None =>
         Right(ListMap.empty)
     }
-  }
 
   /**
    * Parses variant names mapping for discriminator
    */
-  private def parseVariantNames(json: JsonValue, path: String): Map[String, String] = {
+  private def parseVariantNames(json: JsonValue, path: String): Map[String, String] =
     extractOptionalField(json, "variantNames").flatMap(_.asObject) match {
       case Some(obj) =>
         obj.fields.collect { case (k, JsonString(v)) => k -> v }.toMap
       case None =>
         Map.empty
     }
-  }
 
   // Helper methods for extracting JSON fields
 
@@ -422,11 +454,12 @@ class TemplateParser {
    */
   private def resolveRefVariants(definitions: List[TemplateDefinition]): List[TemplateDefinition] = {
     val byName = definitions.map(d => d.name -> d).toMap
-    def resolveVariant(v: ObjectType): ObjectType = v.fields.get("$ref") match {
-      case Some(FieldDef(ReferenceType(name), _, _, _, _)) =>
-        byName.get(name).map(_.templateType).collect { case o: ObjectType => o }.getOrElse(v)
-      case _ => v
-    }
+    def resolveVariant(v: ObjectType): ObjectType =
+      v.fields.get("$ref") match {
+        case Some(FieldDef(ReferenceType(name), _, _, _, _)) =>
+          byName.get(name).map(_.templateType).collect { case o: ObjectType => o }.getOrElse(v)
+        case _ => v
+      }
     definitions.map { d =>
       d.templateType match {
         case td: TypeDiscriminator =>
@@ -439,32 +472,38 @@ class TemplateParser {
   /**
    * Parses a JSON string into a MultiTemplate. basePackage is supplied by the caller.
    */
-  def parseMultiTemplate(jsonString: String, basePackage: String, validateRefs: Boolean = true): Either[ParseError, MultiTemplate] = {
+  def parseMultiTemplate(
+      jsonString: String,
+      basePackage: String,
+      validateRefs: Boolean = true): Either[ParseError, MultiTemplate] =
     Json.parse(jsonString) match {
       case Right(json) => parseMultiTemplateJson(json, basePackage, validateRefs)
       case Left(msg) => Left(ParseError.JsonSyntaxError(msg))
     }
-  }
 
   /**
    * Parses a multi-template JSON structure. basePackage is supplied by the caller.
    */
-  private def parseMultiTemplateJson(json: JsonValue, basePackage: String, validateRefs: Boolean): Either[ParseError, MultiTemplate] = {
+  private def parseMultiTemplateJson(
+      json: JsonValue,
+      basePackage: String,
+      validateRefs: Boolean): Either[ParseError, MultiTemplate] = {
     val path = "root"
 
-    val allowedKeys = Set(
-      "definitions", "listType", "fromJsonStyle", "dateType", "dateTimeType", "mapType", "visibility")
+    val allowedKeys =
+      Set("definitions", "listType", "fromJsonStyle", "dateType", "dateTimeType", "mapType", "visibility")
     val unknownKeys = json.asObject.map(_.keys).getOrElse(Vector.empty).filterNot(allowedKeys.contains)
 
     for {
-      _ <- Either.cond[ParseError, Unit](
-        unknownKeys.isEmpty,
-        (),
-        ParseError.StructureError(
-          s"Unknown top-level ${if (unknownKeys.size == 1) "key" else "keys"}: " +
-            unknownKeys.map(k => s"'$k'").mkString(", ") +
-            s". Supported settings: ${allowedKeys.toList.sorted.mkString(", ")}.",
-          path))
+      _ <-
+        Either.cond[ParseError, Unit](
+          unknownKeys.isEmpty,
+          (),
+          ParseError.StructureError(
+            s"Unknown top-level ${if (unknownKeys.size == 1) "key" else "keys"}: " +
+              unknownKeys.map(k => s"'$k'").mkString(", ") +
+              s". Supported settings: ${allowedKeys.toList.sorted.mkString(", ")}.",
+            path))
       definitionsJson <- extractField(json, "definitions", path)
       parsed <- parseDefinitions(definitionsJson, s"$path.definitions")
     } yield {
@@ -475,11 +514,14 @@ class TemplateParser {
       val dateTimeType = extractOptionalString(json, "dateTimeType").getOrElse("java.time.LocalDateTime")
       val mapType = extractOptionalString(json, "mapType").getOrElse("Map")
       val visibility = extractOptionalString(json, "visibility")
-      val multiTemplate = MultiTemplate(basePackage, definitions, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
+      val multiTemplate =
+        MultiTemplate(basePackage, definitions, listType, fromJsonStyle, dateType, dateTimeType, mapType, visibility)
 
       multiTemplate.validate(validateRefs) match {
         case Nil => multiTemplate
-        case errors => return Left(ParseError.MultipleErrors(errors.map(err => ParseError.InvalidFieldValue("template", "valid", err, path))))
+        case errors =>
+          return Left(
+            ParseError.MultipleErrors(errors.map(err => ParseError.InvalidFieldValue("template", "valid", err, path))))
       }
 
       multiTemplate
@@ -489,12 +531,13 @@ class TemplateParser {
   /**
    * Parses the definitions array
    */
-  private def parseDefinitions(json: JsonValue, path: String): Either[ParseError, List[TemplateDefinition]] = {
+  private def parseDefinitions(json: JsonValue, path: String): Either[ParseError, List[TemplateDefinition]] =
     json.asArray match {
       case Some(array) =>
-        val definitionResults = array.values.toList.zipWithIndex.map { case (defJson, idx) =>
-          parseDefinition(defJson, s"$path[$idx]")
-        }
+        val definitionResults =
+          array.values.toList.zipWithIndex.map { case (defJson, idx) =>
+            parseDefinition(defJson, s"$path[$idx]")
+          }
 
         val errors = definitionResults.collect { case Left(err) => err }
         if (errors.nonEmpty) {
@@ -505,12 +548,11 @@ class TemplateParser {
       case None =>
         Left(ParseError.InvalidType("array", path, "definitions must be an array"))
     }
-  }
 
   /**
    * Parses a single definition
    */
-  private def parseDefinition(json: JsonValue, path: String): Either[ParseError, TemplateDefinition] = {
+  private def parseDefinition(json: JsonValue, path: String): Either[ParseError, TemplateDefinition] =
     for {
       name <- extractString(json, "name", path)
       subPackage = extractOptionalString(json, "subPackage")
@@ -519,7 +561,6 @@ class TemplateParser {
       templateJson <- extractField(json, "template", path)
       templateType <- parseType(templateJson, s"$path.template")
     } yield TemplateDefinition(name, templateType, subPackage, description, validators)
-  }
 }
 
 object TemplateParser {
@@ -528,7 +569,9 @@ object TemplateParser {
   /**
    * Convenience method to parse multi-template from string
    */
-  def parseMultiTemplateString(jsonString: String, basePackage: String, validateRefs: Boolean = true): Either[ParseError, MultiTemplate] = {
+  def parseMultiTemplateString(
+      jsonString: String,
+      basePackage: String,
+      validateRefs: Boolean = true): Either[ParseError, MultiTemplate] =
     new TemplateParser().parseMultiTemplate(jsonString, basePackage, validateRefs)
-  }
 }

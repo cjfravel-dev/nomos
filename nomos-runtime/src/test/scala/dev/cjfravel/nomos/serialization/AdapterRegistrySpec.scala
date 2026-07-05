@@ -5,9 +5,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Adapters guarantee wire/model compatibility, so a missing adapter must fail closed (like
- * CodecRegistry) rather than silently passing the value through unchanged, and a registration must
- * make decode and encode available together (no window where only one is visible).
+ * Adapters guarantee wire/model compatibility, so a missing adapter must fail closed (like CodecRegistry) rather than
+ * silently passing the value through unchanged, and a registration must make decode and encode available together (no
+ * window where only one is visible).
  */
 class AdapterRegistrySpec extends AnyFlatSpec with Matchers {
 

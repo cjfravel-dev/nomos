@@ -1,9 +1,9 @@
 package dev.cjfravel.nomos.serialization
 
 /**
- * Registry of named (de)serialization adapters. A field may declare an adapter to convert
- * between its on-the-wire representation and its in-model representation, keeping output
- * byte-compatible with existing payloads. Decode runs on parse, encode on output.
+ * Registry of named (de)serialization adapters. A field may declare an adapter to convert between its on-the-wire
+ * representation and its in-model representation, keeping output byte-compatible with existing payloads. Decode runs on
+ * parse, encode on output.
  */
 object AdapterRegistry {
   // Decode/encode are stored as one value so a registration is atomic: a concurrent reader never

@@ -9,6 +9,7 @@ sealed trait ParseError {
 }
 
 object ParseError {
+
   /**
    * JSON syntax error
    */

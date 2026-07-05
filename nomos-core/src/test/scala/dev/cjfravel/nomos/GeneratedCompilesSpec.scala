@@ -1,15 +1,15 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
+import dev.cjfravel.nomos.parser.TemplateParser
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * Compiles generated output in-process with the Scala compiler. String-only assertions on
- * generated source have let type errors (e.g. an unconfigurable temporal `parse`) slip through;
- * these tests actually compile the emitted code against nomos-runtime.
+ * Compiles generated output in-process with the Scala compiler. String-only assertions on generated source have let
+ * type errors (e.g. an unconfigurable temporal `parse`) slip through; these tests actually compile the emitted code
+ * against nomos-runtime.
  */
 class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -20,8 +20,10 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
 
   "generated code with dateType = java.util.Date" should "compile" in {
     val tmpl = """{"definitions":[{"name":"N","template":{"d":"date","ts":"datetime"}}]}"""
-    val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen",
-      dateType = "java.util.Date", dateTimeType = "java.util.Date"))
+    val files =
+      generate(
+        tmpl,
+        GeneratorConfig("com.example", "target/test-gen", dateType = "java.util.Date", dateTimeType = "java.util.Date"))
     compileErrors(files) shouldBe empty
   }
 
@@ -56,7 +58,7 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
     compileErrors(generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))) shouldBe empty
   }
 
-  "generated code with a $gen reference to another generated type" should "compile against that type's decode/encode" in {    // A stand-in for a nomos-generated type defined in another module: a companion with the
+  "generated code with a $gen reference to another generated type" should "compile against that type's decode/encode" in { // A stand-in for a nomos-generated type defined in another module: a companion with the
     // same decode/encode shape the generator emits.
     val ownerStub =
       """package com.other.models
@@ -73,8 +75,12 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
         |  def encode(obj: Owner): JsonValue = JsonObject("team" -> JsonString(obj.team))
         |}
         |""".stripMargin
-    val tmpl = """{"definitions":[{"name":"Holder","template":{"id":"string","owner":"$gen:com.other.models.Owner"}}]}"""
-    val files = GeneratedFile("com/other/models/Owner.scala", ownerStub) :: generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
+    val tmpl =
+      """{"definitions":[{"name":"Holder","template":{"id":"string","owner":"$gen:com.other.models.Owner"}}]}"""
+    val files =
+      GeneratedFile("com/other/models/Owner.scala", ownerStub) :: generate(
+        tmpl,
+        GeneratorConfig("com.example", "target/test-gen"))
     compileErrors(files) shouldBe empty
   }
 

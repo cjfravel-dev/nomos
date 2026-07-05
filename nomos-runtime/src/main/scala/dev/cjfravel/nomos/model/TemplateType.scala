@@ -73,61 +73,73 @@ case class TypedExtra(valueType: TemplateType) extends AdditionalProperties
 /**
  * Object type with named fields
  *
- * @param fields The fields in this object (order-preserving)
- * @param additional Policy for keys not declared in fields (default: forbid)
+ * @param fields
+ *   The fields in this object (order-preserving)
+ * @param additional
+ *   Policy for keys not declared in fields (default: forbid)
  */
-case class ObjectType(
-  fields: ListMap[String, FieldDef],
-  additional: AdditionalProperties = ForbidExtra
-) extends TemplateType
+case class ObjectType(fields: ListMap[String, FieldDef], additional: AdditionalProperties = ForbidExtra)
+    extends TemplateType
 
 /**
- * Type discriminator that allows different object structures based on a discriminator field value.
- * This creates a sealed trait with case class variants in the generated code.
+ * Type discriminator that allows different object structures based on a discriminator field value. This creates a
+ * sealed trait with case class variants in the generated code.
  *
- * @param fieldName The name of the discriminator field (e.g., "type", "kind")
- * @param variants Map of discriminator values to their respective object types (order-preserving)
- * @param commonFields Fields that are common across all variants (order-preserving)
- * @param includeInOutput Whether to include the discriminator field in generated case classes
- * @param variantNames Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
- * @param variantMatch How a discriminator value is matched to a variant (default "exact")
- * @param variantSubPackage Optional sub-package (relative to the trait's package) for the generated variant case classes; the trait stays in its own package
- * @param fallbackVariant Optional name for a catch-all variant: an unrecognized discriminator value decodes into this case class (carrying the value and the raw object) and re-emits the preserved payload on encode, instead of failing
- * @param discriminatorEnum Optional name for a generated enum over the discriminator values; when set, the discriminator field (on the trait and every variant) is typed as that enum instead of a raw String, and codecs map it to/from its JSON string
+ * @param fieldName
+ *   The name of the discriminator field (e.g., "type", "kind")
+ * @param variants
+ *   Map of discriminator values to their respective object types (order-preserving)
+ * @param commonFields
+ *   Fields that are common across all variants (order-preserving)
+ * @param includeInOutput
+ *   Whether to include the discriminator field in generated case classes
+ * @param variantNames
+ *   Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
+ * @param variantMatch
+ *   How a discriminator value is matched to a variant (default "exact")
+ * @param variantSubPackage
+ *   Optional sub-package (relative to the trait's package) for the generated variant case classes; the trait stays in
+ *   its own package
+ * @param fallbackVariant
+ *   Optional name for a catch-all variant: an unrecognized discriminator value decodes into this case class (carrying
+ *   the value and the raw object) and re-emits the preserved payload on encode, instead of failing
+ * @param discriminatorEnum
+ *   Optional name for a generated enum over the discriminator values; when set, the discriminator field (on the trait
+ *   and every variant) is typed as that enum instead of a raw String, and codecs map it to/from its JSON string
  */
 case class TypeDiscriminator(
-  fieldName: String,
-  variants: ListMap[String, ObjectType],
-  commonFields: ListMap[String, FieldDef] = ListMap.empty,
-  includeInOutput: Boolean = true,
-  variantNames: Map[String, String] = Map.empty,
-  variantMatch: String = "exact",
-  variantSubPackage: Option[String] = None,
-  fallbackVariant: Option[String] = None,
-  discriminatorEnum: Option[String] = None
-) extends TemplateType
+    fieldName: String,
+    variants: ListMap[String, ObjectType],
+    commonFields: ListMap[String, FieldDef] = ListMap.empty,
+    includeInOutput: Boolean = true,
+    variantNames: Map[String, String] = Map.empty,
+    variantMatch: String = "exact",
+    variantSubPackage: Option[String] = None,
+    fallbackVariant: Option[String] = None,
+    discriminatorEnum: Option[String] = None)
+    extends TemplateType
 
 /**
- * Reference to another named type definition in the same template file.
- * Used for $ref:TypeName syntax to enable type reuse and composition.
+ * Reference to another named type definition in the same template file. Used for $ref:TypeName syntax to enable type
+ * reuse and composition.
  */
 case class ReferenceType(typeName: String) extends TemplateType
 
 /**
- * Reference to a recursive type (self-reference).
- * Used for recursive structures like trees.
+ * Reference to a recursive type (self-reference). Used for recursive structures like trees.
  */
 case class RecursiveRef(typeName: String) extends TemplateType
 
 /**
- * Reference to an external, hand-written type that nomos does not generate or validate.
- * Used for $extern:fully.qualified.Name syntax.
+ * Reference to an external, hand-written type that nomos does not generate or validate. Used for
+ * $extern:fully.qualified.Name syntax.
  *
- * @param qualifiedName the fully-qualified Scala type name, emitted verbatim
- * @param generated when true, the target is another nomos-generated type (referenced via
- *   `$gen:`): its companion's `decode`/`encode` are called directly, so no runtime codec
- *   registration is needed. When false (`$extern:`), the type is opaque and (de)serialized
- *   through the runtime CodecRegistry.
+ * @param qualifiedName
+ *   the fully-qualified Scala type name, emitted verbatim
+ * @param generated
+ *   when true, the target is another nomos-generated type (referenced via `$gen:`): its companion's `decode`/`encode`
+ *   are called directly, so no runtime codec registration is needed. When false (`$extern:`), the type is opaque and
+ *   (de)serialized through the runtime CodecRegistry.
  */
 case class ExternalType(qualifiedName: String, generated: Boolean = false) extends TemplateType
 
@@ -139,30 +151,35 @@ case class EnumType(name: String, values: List[String]) extends TemplateType
 /**
  * Represents a field definition in an object type
  *
- * @param fieldType The type of the field
- * @param optional Whether the field is optional (becomes Option[T] in Scala)
- * @param default Optional default value rendered as a Scala literal (e.g. "false", "\"x\"")
- * @param adapter Optional named (de)serialization adapter for the field
- * @param nullable When true, an optional field generates a raw nullable type (no Option wrapper)
+ * @param fieldType
+ *   The type of the field
+ * @param optional
+ *   Whether the field is optional (becomes Option[T] in Scala)
+ * @param default
+ *   Optional default value rendered as a Scala literal (e.g. "false", "\"x\"")
+ * @param adapter
+ *   Optional named (de)serialization adapter for the field
+ * @param nullable
+ *   When true, an optional field generates a raw nullable type (no Option wrapper)
  */
 case class FieldDef(
-  fieldType: TemplateType,
-  optional: Boolean = false,
-  default: Option[String] = None,
-  adapter: Option[String] = None,
-  nullable: Boolean = false
-) {
+    fieldType: TemplateType,
+    optional: Boolean = false,
+    default: Option[String] = None,
+    adapter: Option[String] = None,
+    nullable: Boolean = false) {
+
   /**
-   * Whether the field must be present in the JSON. A field with a default is not required (it is
-   * defaulted when absent), matching the lenient decode; `optional` also relaxes it. This keeps
-   * validation consistent with (de)serialization.
+   * Whether the field must be present in the JSON. A field with a default is not required (it is defaulted when
+   * absent), matching the lenient decode; `optional` also relaxes it. This keeps validation consistent with
+   * (de)serialization.
    */
   def required: Boolean = !optional && default.isEmpty
 
   /**
-   * Whether a present JSON `null` is acceptable for this field. Decode treats null the same as
-   * absent for optional/defaulted fields (yielding None / the default) and as `null` for nullable
-   * fields, so validation must not reject a present null in those cases.
+   * Whether a present JSON `null` is acceptable for this field. Decode treats null the same as absent for
+   * optional/defaulted fields (yielding None / the default) and as `null` for nullable fields, so validation must not
+   * reject a present null in those cases.
    */
   def acceptsNull: Boolean = optional || nullable || default.isDefined
 }

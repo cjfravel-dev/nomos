@@ -1,15 +1,15 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.parser.TemplateParser
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
+import dev.cjfravel.nomos.parser.TemplateParser
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * Identical simple definition names are allowed in distinct sub-packages of one module (matching
- * normal Scala/Java package semantics); only collisions within a single package, or genuinely
- * ambiguous simple-name references, are rejected.
+ * Identical simple definition names are allowed in distinct sub-packages of one module (matching normal Scala/Java
+ * package semantics); only collisions within a single package, or genuinely ambiguous simple-name references, are
+ * rejected.
  */
 class CrossPackageNamesSpec extends AnyFlatSpec with Matchers with EitherValues {
 

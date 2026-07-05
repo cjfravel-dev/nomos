@@ -1,9 +1,9 @@
 package dev.cjfravel.nomos.parser
 
 import dev.cjfravel.nomos.model._
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -235,7 +235,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
     discType.variants should have size 2
     discType.variants.contains("circle") shouldBe true
     discType.variants.contains("rectangle") shouldBe true
-    
+
     val circleType = discType.variants("circle")
     circleType.fields should have size 1
     circleType.fields("radius").fieldType shouldBe NumberType()
@@ -351,7 +351,7 @@ class TemplateParserSpec extends AnyFlatSpec with Matchers with EitherValues {
 
     val objType = result.value.templateType.asInstanceOf[ObjectType]
     objType.fields("address").fieldType shouldBe a[ObjectType]
-    
+
     val addressType = objType.fields("address").fieldType.asInstanceOf[ObjectType]
     addressType.fields should have size 3
     addressType.fields("street").fieldType shouldBe StringType()

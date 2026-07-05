@@ -1,13 +1,14 @@
 package dev.cjfravel.nomos
 
+import scala.collection.immutable.ListMap
+
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig, TemplateSerializer}
 import dev.cjfravel.nomos.validation.MultiValidator
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import scala.collection.immutable.ListMap
 
 class MapSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -19,12 +20,18 @@ class MapSpec extends AnyFlatSpec with Matchers with EitherValues {
     d.templateType.asInstanceOf[ObjectType].fields("settings").fieldType shouldBe MapType(StringType())
   }
 
-  def multi = MultiTemplate("com.example", List(TemplateDefinition("N", ObjectType(ListMap(
-    "settings" -> FieldDef(MapType(StringType()), false))))))
+  def multi =
+    MultiTemplate(
+      "com.example",
+      List(TemplateDefinition("N", ObjectType(ListMap("settings" -> FieldDef(MapType(StringType()), false))))))
 
   "generator" should "map $map to Map[String, T]" in {
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(multi).value.find(_.fileName == "N.scala").get.content should include("settings: Map[String, String]")
+      .generateMulti(multi)
+      .value
+      .find(_.fileName == "N.scala")
+      .get
+      .content should include("settings: Map[String, String]")
   }
 
   "validator" should "accept any keys and validate values, rejecting wrong value types" in {

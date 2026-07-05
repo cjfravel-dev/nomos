@@ -1,17 +1,17 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
 import dev.cjfravel.nomos.model.TypeDiscriminator
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratedFile, GeneratorConfig}
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 /**
- * `discriminatorEnum` generates a sealed-trait enum over a union's discriminator values and types
- * the discriminator field (trait + every variant) as that enum, so call sites compare against
- * named constants (`x.kind == ShapeType.Circle`) instead of string literals. These tests compile
- * AND execute the generated code to prove the enum typing and the JSON round-trip.
+ * `discriminatorEnum` generates a sealed-trait enum over a union's discriminator values and types the discriminator
+ * field (trait + every variant) as that enum, so call sites compare against named constants (`x.kind ==
+ * ShapeType.Circle`) instead of string literals. These tests compile AND execute the generated code to prove the enum
+ * typing and the JSON round-trip.
  */
 class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues with CompileHarness {
 
@@ -19,18 +19,21 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
 
   private def generate(template: String): List[GeneratedFile] =
     new CodeGenerator(GeneratorConfig("com.example", "target/test-gen"))
-      .generateMulti(parser.parseMultiTemplate(template, "com.example").value).value
+      .generateMulti(parser.parseMultiTemplate(template, "com.example").value)
+      .value
 
   "parser" should "capture discriminatorEnum" in {
-    val tmpl = """{"definitions":[{"name":"Shape","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
-    val disc = parser.parseMultiTemplate(tmpl, "com.example").value
-      .definitions.head.templateType.asInstanceOf[TypeDiscriminator]
+    val disc =
+      parser.parseMultiTemplate(tmpl, "com.example").value.definitions.head.templateType.asInstanceOf[TypeDiscriminator]
     disc.discriminatorEnum shouldBe Some("ShapeType")
   }
 
   "a discriminatorEnum union (inline variants)" should "type the field as the enum and round-trip" in {
-    val tmpl = """{"definitions":[{"name":"Shape","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType",
       |"variants":{"circle":{"radius":"int"},"square":{"side":"int"}}}}}]}""".stripMargin
     val driver =
@@ -54,7 +57,8 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
   }
 
   "a discriminatorEnum union (variantNames + common fields)" should "type the trait val as the enum and round-trip" in {
-    val tmpl = """{"definitions":[{"name":"Condition","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Condition","template":{"$type":{
       |"discriminator":"type","discriminatorEnum":"ConditionType","commonFields":{"id":"string"},
       |"variantNames":{"threshold":"ThresholdCondition"},
       |"variants":{"threshold":{"limit":"int"},"window":{"seconds":"int"}}}}}]}""".stripMargin
@@ -79,7 +83,8 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
   }
 
   "discriminatorEnum" should "generate the enum file in the trait's package" in {
-    val tmpl = """{"definitions":[{"name":"Shape","subPackage":"shapes","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Shape","subPackage":"shapes","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
     val files = generate(tmpl)
     val enumFile = files.find(_.fileName == "ShapeType.scala")
@@ -89,7 +94,8 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
   }
 
   "an unknown value with discriminatorEnum + fallbackVariant" should "decode into the fallback as Enum.Unknown and round-trip" in {
-    val tmpl = """{"definitions":[{"name":"Shape","template":{"$type":{
+    val tmpl =
+      """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","fallbackVariant":"UnknownShape",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
     val driver =
@@ -118,9 +124,11 @@ class DiscriminatorEnumSpec extends AnyFlatSpec with Matchers with EitherValues 
   }
 
   "validation" should "still reject discriminatorEnum combined with prefix matching" in {
-    val withPrefix = """{"definitions":[{"name":"Shape","template":{"$type":{
+    val withPrefix =
+      """{"definitions":[{"name":"Shape","template":{"$type":{
       |"discriminator":"kind","discriminatorEnum":"ShapeType","variantMatch":"prefix",
       |"variants":{"circle":{"radius":"int"}}}}}]}""".stripMargin
-    parser.parseMultiTemplate(withPrefix, "com.example").left.value.toString should include("incompatible with variantMatch")
+    parser.parseMultiTemplate(withPrefix, "com.example").left.value.toString should include(
+      "incompatible with variantMatch")
   }
 }

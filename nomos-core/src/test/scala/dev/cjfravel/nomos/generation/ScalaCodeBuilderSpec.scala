@@ -2,7 +2,6 @@ package dev.cjfravel.nomos.generation
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.collection.immutable.ListMap
 
 class ScalaCodeBuilderSpec extends AnyFlatSpec with Matchers {
 

@@ -1,7 +1,8 @@
 package dev.cjfravel.nomos.generation
 
 import java.io.File
-import scala.util.{Try, Success, Failure}
+
+import scala.util.{Failure, Success, Try}
 
 /**
  * Handles writing generated files to the filesystem
@@ -10,12 +11,15 @@ class FileWriter {
 
   /**
    * Writes a single generated file to disk
-   * 
-   * @param file The generated file to write
-   * @param outputDir The base output directory
-   * @return Either an error message or the written file
+   *
+   * @param file
+   *   The generated file to write
+   * @param outputDir
+   *   The base output directory
+   * @return
+   *   Either an error message or the written file
    */
-  def writeFile(file: GeneratedFile, outputDir: File): Either[WriteError, File] = {
+  def writeFile(file: GeneratedFile, outputDir: File): Either[WriteError, File] =
     Try {
       val targetFile = new File(outputDir, file.relativePath)
 
@@ -23,10 +27,11 @@ class FileWriter {
       // path slips a traversal segment past name validation.
       val canonicalDir = outputDir.getCanonicalFile
       val canonicalTarget = targetFile.getCanonicalFile
-      if (canonicalTarget != canonicalDir &&
-          !canonicalTarget.getPath.startsWith(canonicalDir.getPath + File.separator)) {
-        throw new SecurityException(
-          s"Refusing to write outside output directory: ${file.relativePath}")
+      if (
+        canonicalTarget != canonicalDir &&
+        !canonicalTarget.getPath.startsWith(canonicalDir.getPath + File.separator)
+      ) {
+        throw new SecurityException(s"Refusing to write outside output directory: ${file.relativePath}")
       }
 
       // Create parent directories if they don't exist
@@ -36,29 +41,32 @@ class FileWriter {
       // Skip rewriting a byte-identical file so its mtime is preserved and incremental compilation
       // isn't defeated by regenerating unchanged content on every build.
       val bytes = file.content.getBytes(java.nio.charset.StandardCharsets.UTF_8)
-      val unchanged = targetFile.isFile &&
-        java.util.Arrays.equals(java.nio.file.Files.readAllBytes(targetFile.toPath), bytes)
+      val unchanged =
+        targetFile.isFile &&
+          java.util.Arrays.equals(java.nio.file.Files.readAllBytes(targetFile.toPath), bytes)
       if (!unchanged) java.nio.file.Files.write(targetFile.toPath, bytes)
       targetFile
     } match {
       case Success(f) => Right(f)
       case Failure(e) => Left(WriteError.IOError(file.relativePath, e.getMessage))
     }
-  }
 
   /**
    * Writes multiple generated files to disk
-   * 
-   * @param files The list of generated files to write
-   * @param outputDir The base output directory
-   * @return Either a list of errors or a list of written files
+   *
+   * @param files
+   *   The list of generated files to write
+   * @param outputDir
+   *   The base output directory
+   * @return
+   *   Either a list of errors or a list of written files
    */
   def writeFiles(files: List[GeneratedFile], outputDir: File): Either[List[WriteError], List[File]] = {
     val results = files.map(file => writeFile(file, outputDir))
-    
+
     val errors = results.collect { case Left(error) => error }
     val successes = results.collect { case Right(file) => file }
-    
+
     if (errors.nonEmpty) {
       Left(errors)
     } else {
@@ -68,36 +76,41 @@ class FileWriter {
 
   /**
    * Writes files and returns a report of what was written
-   * 
-   * @param files The list of generated files to write
-   * @param outputDir The base output directory
-   * @return A write report containing successes and failures
+   *
+   * @param files
+   *   The list of generated files to write
+   * @param outputDir
+   *   The base output directory
+   * @return
+   *   A write report containing successes and failures
    */
   def writeFilesWithReport(files: List[GeneratedFile], outputDir: File): WriteReport = {
-    val results = files.map { file =>
-      writeFile(file, outputDir) match {
-        case Right(writtenFile) => (file, Some(writtenFile), None)
-        case Left(error) => (file, None, Some(error))
+    val results =
+      files.map { file =>
+        writeFile(file, outputDir) match {
+          case Right(writtenFile) => (file, Some(writtenFile), None)
+          case Left(error) => (file, None, Some(error))
+        }
       }
-    }
-    
+
     val successes = results.collect { case (gen, Some(written), _) => (gen, written) }
     val failures = results.collect { case (gen, _, Some(error)) => (gen, error) }
-    
+
     WriteReport(successes, failures)
   }
 
   /**
-   * Deletes orphaned generated files under `outputDir`: `.scala` files that carry the nomos
-   * generated-header but were not part of this generation (`kept`) — i.e. left behind when a
-   * definition or template was removed. Only files with the header are removed, so hand-written
-   * sources are never touched even when the output directory is shared. Returns the deleted files.
+   * Deletes orphaned generated files under `outputDir`: `.scala` files that carry the nomos generated-header but were
+   * not part of this generation (`kept`) — i.e. left behind when a definition or template was removed. Only files with
+   * the header are removed, so hand-written sources are never touched even when the output directory is shared. Returns
+   * the deleted files.
    */
   def pruneOrphans(outputDir: File, kept: Set[File]): List[File] = {
     val keptPaths = kept.map(_.getCanonicalFile)
     def isGenerated(f: File): Boolean =
-      try new String(java.nio.file.Files.readAllBytes(f.toPath), java.nio.charset.StandardCharsets.UTF_8)
-        .contains("Code generated by Nomos. DO NOT EDIT.")
+      try
+        new String(java.nio.file.Files.readAllBytes(f.toPath), java.nio.charset.StandardCharsets.UTF_8)
+          .contains("Code generated by Nomos. DO NOT EDIT.")
       catch { case _: Exception => false }
     def scan(dir: File): List[File] =
       Option(dir.listFiles()).toList.flatten.flatMap { f =>
@@ -112,7 +125,7 @@ class FileWriter {
   /**
    * Ensures the output directory exists
    */
-  def ensureOutputDirectory(outputDir: File): Either[WriteError, File] = {
+  def ensureOutputDirectory(outputDir: File): Either[WriteError, File] =
     Try {
       if (!outputDir.exists()) {
         outputDir.mkdirs()
@@ -125,35 +138,31 @@ class FileWriter {
       case Success(dir) => Right(dir)
       case Failure(e) => Left(WriteError.DirectoryError(outputDir.getAbsolutePath, e.getMessage))
     }
-  }
 }
 
 /**
  * Report of write operations
  */
-case class WriteReport(
-  successes: List[(GeneratedFile, File)],
-  failures: List[(GeneratedFile, WriteError)]
-) {
+case class WriteReport(successes: List[(GeneratedFile, File)], failures: List[(GeneratedFile, WriteError)]) {
   def successCount: Int = successes.length
   def failureCount: Int = failures.length
   def totalCount: Int = successCount + failureCount
-  
+
   def isSuccess: Boolean = failures.isEmpty
   def isFailure: Boolean = failures.nonEmpty
-  
-  def summary: String = {
+
+  def summary: String =
     if (isSuccess) {
       s"Successfully wrote $successCount file(s)"
     } else {
       s"Wrote $successCount file(s), failed to write $failureCount file(s)"
     }
-  }
-  
+
   def successPaths: List[String] = successes.map(_._2.getAbsolutePath)
-  def failureMessages: List[String] = failures.map { case (gen, err) =>
-    s"${gen.relativePath}: ${err.message}"
-  }
+  def failureMessages: List[String] =
+    failures.map { case (gen, err) =>
+      s"${gen.relativePath}: ${err.message}"
+    }
 }
 
 /**
@@ -167,11 +176,11 @@ object WriteError {
   case class IOError(path: String, details: String) extends WriteError {
     def message: String = s"Failed to write file $path: $details"
   }
-  
+
   case class DirectoryError(path: String, details: String) extends WriteError {
     def message: String = s"Failed to create/access directory $path: $details"
   }
-  
+
   case class PermissionError(path: String) extends WriteError {
     def message: String = s"Permission denied writing to $path"
   }

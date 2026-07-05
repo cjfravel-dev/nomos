@@ -54,6 +54,11 @@
         <maven.plugin.api.version>3.9.16</maven.plugin.api.version>
         <maven.plugin.annotations.version>3.15.2</maven.plugin.annotations.version>
         <plexus.utils.version>4.0.3</plexus.utils.version>
+        <!-- Formatting (scalafmt) and linting (scalafix) tooling. scalafmt reads .scalafmt.conf;
+             scalafix reads .scalafix.conf and needs SemanticDB, pinned to scalafix's scalameta. -->
+        <mvn.scalafmt.version>1.1.1640084764.9f463a9</mvn.scalafmt.version>
+        <scalafix.plugin.version>0.1.12_0.14.6</scalafix.plugin.version>
+        <semanticdb.version>4.15.2</semanticdb.version>
     </properties>
 
     <dependencyManagement>
@@ -133,7 +138,17 @@
                             <arg>-feature</arg>
                             <arg>-unchecked</arg>
                             <arg>-release:8</arg>
+                            <!-- SemanticDB for scalafix semantic rules (RemoveUnused/OrganizeImports). -->
+                            <arg>-Yrangepos</arg>
+                            <arg>-Ywarn-unused</arg>
                         </args>
+                        <compilerPlugins>
+                            <compilerPlugin>
+                                <groupId>org.scalameta</groupId>
+                                <artifactId>semanticdb-scalac_${scala.version}</artifactId>
+                                <version>${semanticdb.version}</version>
+                            </compilerPlugin>
+                        </compilerPlugins>
                     </configuration>
                 </plugin>
 
@@ -182,6 +197,53 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-plugin-plugin</artifactId>
                     <version>3.15.2</version>
+                </plugin>
+
+                <!-- scalafmt: format check bound to `validate` (fails the build if a Scala source is
+                     not formatted per .scalafmt.conf). Run `mvn scalafmt:format` to reformat. -->
+                <plugin>
+                    <groupId>org.antipathy</groupId>
+                    <artifactId>mvn-scalafmt_${scala.binary.version}</artifactId>
+                    <version>${mvn.scalafmt.version}</version>
+                    <configuration>
+                        <configLocation>${project.basedir}/../.scalafmt.conf</configLocation>
+                        <skipSources>false</skipSources>
+                        <skipTestSources>false</skipTestSources>
+                        <validateOnly>false</validateOnly>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>scalafmt-check</id>
+                            <phase>validate</phase>
+                            <goals>
+                                <goal>format</goal>
+                            </goals>
+                            <configuration>
+                                <validateOnly>true</validateOnly>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- scalafix: lint check (RemoveUnused + OrganizeImports) bound to `verify`, after
+                     test-compile has produced SemanticDB. Run with -Dscalafix.mode=IN_PLACE to fix. -->
+                <plugin>
+                    <groupId>io.github.evis</groupId>
+                    <artifactId>scalafix-maven-plugin_${scala.binary.version}</artifactId>
+                    <version>${scalafix.plugin.version}</version>
+                    <configuration>
+                        <config>${project.basedir}/../.scalafix.conf</config>
+                        <mode>CHECK</mode>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>scalafix-check</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>scalafix</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>

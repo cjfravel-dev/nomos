@@ -5,41 +5,46 @@ import java.io.File
 /**
  * Configuration for code generation
  *
- * @param basePackage The base package for generated code (e.g., "com.myapp")
- * @param outputDir The directory where generated code will be written
- * @param listType The collection type to use for arrays: "List" or "Array" (default: "List")
- * @param mapType The collection type to use for `$map` fields: "Map" or "java.util.Map"
- *   (default: "Map")
+ * @param basePackage
+ *   The base package for generated code (e.g., "com.myapp")
+ * @param outputDir
+ *   The directory where generated code will be written
+ * @param listType
+ *   The collection type to use for arrays: "List" or "Array" (default: "List")
+ * @param mapType
+ *   The collection type to use for `$map` fields: "Map" or "java.util.Map" (default: "Map")
  */
 case class GeneratorConfig(
-  basePackage: String,
-  outputDir: String,
-  listType: String = "List",
-  throwingFromJson: Boolean = false,
-  dateType: String = "java.time.LocalDate",
-  dateTimeType: String = "java.time.LocalDateTime",
-  mapType: String = "Map"
-) {
+    basePackage: String,
+    outputDir: String,
+    listType: String = "List",
+    throwingFromJson: Boolean = false,
+    dateType: String = "java.time.LocalDate",
+    dateTimeType: String = "java.time.LocalDateTime",
+    mapType: String = "Map") {
+
   /**
    * Validates the configuration
    */
   def validate(): List[String] = {
     var errors = List.empty[String]
-    
+
     if (basePackage.isEmpty) {
       errors = "Base package cannot be empty" :: errors
     }
-    
-    if (!basePackage.split('.').forall(part => 
-      part.nonEmpty && part.head.isLower && part.forall(c => c.isLetterOrDigit || c == '_')
-    )) {
+
+    if (
+      !basePackage
+        .split('.')
+        .forall(part => part.nonEmpty && part.head.isLower && part.forall(c => c.isLetterOrDigit || c == '_'))
+    ) {
       errors = s"Invalid base package format: $basePackage" :: errors
     }
-    
+
     if (outputDir.isEmpty) {
       errors = "Output directory cannot be empty" :: errors
     }
-    
+
     errors.reverse
   }
 
@@ -58,17 +63,16 @@ case class GeneratorConfig(
 }
 
 object GeneratorConfig {
+
   /**
    * Creates a default configuration with standard Maven structure
    */
-  def default(basePackage: String): GeneratorConfig = {
+  def default(basePackage: String): GeneratorConfig =
     GeneratorConfig(basePackage, "src/main/scala")
-  }
-  
+
   /**
    * Creates a configuration that uses Array instead of List for collections
    */
-  def withArrayType(basePackage: String, outputDir: String): GeneratorConfig = {
+  def withArrayType(basePackage: String, outputDir: String): GeneratorConfig =
     GeneratorConfig(basePackage, outputDir, listType = "Array")
-  }
 }

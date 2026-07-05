@@ -1,9 +1,10 @@
 package dev.cjfravel.nomos
 
+import java.io.File
+
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import java.io.File
 
 class FromJsonStylePluginPathSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -22,7 +23,8 @@ class FromJsonStylePluginPathSpec extends AnyFlatSpec with Matchers with EitherV
   }
 
   it should "honor throwing style even when a non-styled template is processed first" in {
-    val plain = Nomos.parseTemplateDeferred("""{"definitions":[{"name":"A","template":{"id":"string"}}]}""", "com.example").value
+    val plain =
+      Nomos.parseTemplateDeferred("""{"definitions":[{"name":"A","template":{"id":"string"}}]}""", "com.example").value
     val styled = Nomos.parseTemplateDeferred(tmplJson, "com.example").value
     val templates = new java.util.ArrayList[dev.cjfravel.nomos.model.MultiTemplate]()
     templates.add(plain)
@@ -35,9 +37,14 @@ class FromJsonStylePluginPathSpec extends AnyFlatSpec with Matchers with EitherV
   }
 
   it should "carry visibility through generateAll (combine) even when a non-visibility template is first" in {
-    val plain = Nomos.parseTemplateDeferred("""{"definitions":[{"name":"A","template":{"id":"string"}}]}""", "com.example").value
-    val vis = Nomos.parseTemplateDeferred(
-      """{"visibility":"private[example]","definitions":[{"name":"V","template":{"id":"string"}}]}""", "com.example").value
+    val plain =
+      Nomos.parseTemplateDeferred("""{"definitions":[{"name":"A","template":{"id":"string"}}]}""", "com.example").value
+    val vis =
+      Nomos
+        .parseTemplateDeferred(
+          """{"visibility":"private[example]","definitions":[{"name":"V","template":{"id":"string"}}]}""",
+          "com.example")
+        .value
     val templates = new java.util.ArrayList[dev.cjfravel.nomos.model.MultiTemplate]()
     templates.add(plain)
     templates.add(vis)

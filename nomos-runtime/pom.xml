@@ -70,6 +70,16 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Enforce scalafmt formatting and scalafix linting on this Scala module -->
+            <plugin>
+                <groupId>org.antipathy</groupId>
+                <artifactId>mvn-scalafmt_${scala.binary.version}</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>io.github.evis</groupId>
+                <artifactId>scalafix-maven-plugin_${scala.binary.version}</artifactId>
+            </plugin>
         </plugins>
     </build>
 </project>

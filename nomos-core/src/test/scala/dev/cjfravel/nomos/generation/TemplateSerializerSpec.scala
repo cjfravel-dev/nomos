@@ -1,16 +1,18 @@
 package dev.cjfravel.nomos.generation
 
+import scala.collection.immutable.ListMap
+
 import dev.cjfravel.nomos.model._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.collection.immutable.ListMap
 
 class TemplateSerializerSpec extends AnyFlatSpec with Matchers {
 
   "serializeMultiTemplate" should "emit basePackage but not outputDir or mainClass" in {
-    val t = MultiTemplate("com.example", List(
-      TemplateDefinition("User", ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))))
-    ))
+    val t =
+      MultiTemplate(
+        "com.example",
+        List(TemplateDefinition("User", ObjectType(ListMap("id" -> FieldDef(StringType(), optional = false))))))
     val out = TemplateSerializer.serializeMultiTemplate(t)
     out should include("basePackage = \"com.example\"")
     out should not include "outputDir"
@@ -35,9 +37,13 @@ class TemplateSerializerSpec extends AnyFlatSpec with Matchers {
     TemplateSerializer.serializeTemplateType(ArrayType(StringType())) should include("ArrayType")
     TemplateSerializer.serializeTemplateType(ReferenceType("X")) should include("ReferenceType")
     TemplateSerializer.serializeTemplateType(RecursiveRef("X")) should include("RecursiveRef")
-    val disc = TypeDiscriminator("t",
-      ListMap("a" -> ObjectType(ListMap("x" -> FieldDef(NumberType(), optional = false)))),
-      ListMap("c" -> FieldDef(StringType(), optional = true)), true, Map("a" -> "A"))
+    val disc =
+      TypeDiscriminator(
+        "t",
+        ListMap("a" -> ObjectType(ListMap("x" -> FieldDef(NumberType(), optional = false)))),
+        ListMap("c" -> FieldDef(StringType(), optional = true)),
+        true,
+        Map("a" -> "A"))
     val s = TemplateSerializer.serializeTemplateType(disc)
     s should include("TypeDiscriminator")
     s should include("variantNames")

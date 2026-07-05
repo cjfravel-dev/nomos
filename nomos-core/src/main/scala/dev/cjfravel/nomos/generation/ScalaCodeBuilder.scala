@@ -44,7 +44,7 @@ class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
     }
     this
   }
-  
+
   /**
    * Alias for dedent()
    */
@@ -73,10 +73,14 @@ class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
   /**
    * Appends a case class definition
    */
-  def caseClass(name: String, fields: List[(String, String)], parent: Option[String] = None, body: List[String] = Nil): ScalaCodeBuilder = {
+  def caseClass(
+      name: String,
+      fields: List[(String, String)],
+      parent: Option[String] = None,
+      body: List[String] = Nil): ScalaCodeBuilder = {
     val extendsClause = parent.map(p => s" extends $p").getOrElse("")
     val open = if (body.nonEmpty) " {" else ""
-    
+
     if (fields.isEmpty) {
       line(s"${visibility}case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
@@ -102,13 +106,16 @@ class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
   }
 
   /**
-   * Appends a case class definition with override support
-   * Fields are (name, type, isOverride)
+   * Appends a case class definition with override support Fields are (name, type, isOverride)
    */
-  def caseClassWithOverride(name: String, fields: List[(String, String, Boolean)], parent: Option[String] = None, body: List[String] = Nil): ScalaCodeBuilder = {
+  def caseClassWithOverride(
+      name: String,
+      fields: List[(String, String, Boolean)],
+      parent: Option[String] = None,
+      body: List[String] = Nil): ScalaCodeBuilder = {
     val extendsClause = parent.map(p => s" extends $p").getOrElse("")
     val open = if (body.nonEmpty) " {" else ""
-    
+
     if (fields.isEmpty) {
       line(s"${visibility}case class $name()$extendsClause$open")
     } else if (fields.length == 1) {
@@ -178,7 +185,7 @@ class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
     line(s"implicit val $name: $typeName = $value")
     this
   }
-  
+
   /**
    * Returns the built code as a string
    */
@@ -197,42 +204,76 @@ class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
 object ScalaCodeBuilder {
   def apply(): ScalaCodeBuilder = new ScalaCodeBuilder()
   def apply(visibility: String): ScalaCodeBuilder = new ScalaCodeBuilder(visibility = visibility)
-  
+
   /** Reserved Scala 2 keywords that must be backtick-escaped when used as identifiers. */
-  val scalaKeywords: Set[String] = Set(
-    "abstract", "case", "catch", "class", "def", "do", "else", "extends",
-    "false", "final", "finally", "for", "forSome", "if", "implicit", "import",
-    "lazy", "macro", "match", "new", "null", "object", "override", "package",
-    "private", "protected", "return", "sealed", "super", "this", "throw", "trait",
-    "true", "try", "type", "val", "var", "while", "with", "yield"
-  )
+  val scalaKeywords: Set[String] =
+    Set(
+      "abstract",
+      "case",
+      "catch",
+      "class",
+      "def",
+      "do",
+      "else",
+      "extends",
+      "false",
+      "final",
+      "finally",
+      "for",
+      "forSome",
+      "if",
+      "implicit",
+      "import",
+      "lazy",
+      "macro",
+      "match",
+      "new",
+      "null",
+      "object",
+      "override",
+      "package",
+      "private",
+      "protected",
+      "return",
+      "sealed",
+      "super",
+      "this",
+      "throw",
+      "trait",
+      "true",
+      "try",
+      "type",
+      "val",
+      "var",
+      "while",
+      "with",
+      "yield")
 
   /**
    * Escapes a field name if it's a Scala keyword
    */
-  def escapeKeyword(name: String): String = {
+  def escapeKeyword(name: String): String =
     if (scalaKeywords.contains(name)) {
       s"`$name`"
     } else {
       name
     }
-  }
 
   /**
-   * Escapes a string so it is safe to embed inside a Scala double-quoted string literal.
-   * Handles backslash, double quote, and the CR/LF/tab control characters. Backslash is
-   * escaped first so the other replacements are not double-escaped.
+   * Escapes a string so it is safe to embed inside a Scala double-quoted string literal. Handles backslash, double
+   * quote, and the CR/LF/tab control characters. Backslash is escaped first so the other replacements are not
+   * double-escaped.
    */
   def escapeStringLiteral(s: String): String =
     s.replace("\\", "\\\\")
-     .replace("\"", "\\\"")
-     .replace("\n", "\\n")
-     .replace("\r", "\\r")
-     .replace("\t", "\\t")
+      .replace("\"", "\\\"")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+      .replace("\t", "\\t")
 
   /**
-   * True when the name is a plain Scala identifier: a letter or underscore followed by
-   * letters, digits, or underscores. Keyword-ness is handled separately by escapeKeyword.
+   * True when the name is a plain Scala identifier: a letter or underscore followed by letters, digits, or underscores.
+   * Keyword-ness is handled separately by escapeKeyword.
    */
   def isSimpleIdentifier(name: String): Boolean =
     name.nonEmpty &&
@@ -240,8 +281,8 @@ object ScalaCodeBuilder {
       name.forall(c => c.isLetterOrDigit || c == '_')
 
   /**
-   * True when the name is a dot-separated sequence of simple identifiers (e.g. a package
-   * or fully-qualified type name). Empty segments are rejected.
+   * True when the name is a dot-separated sequence of simple identifiers (e.g. a package or fully-qualified type name).
+   * Empty segments are rejected.
    */
   def isQualifiedName(name: String): Boolean =
     name.nonEmpty && name.split("\\.", -1).forall(isSimpleIdentifier)

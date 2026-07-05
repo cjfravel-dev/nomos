@@ -5,9 +5,9 @@ import dev.cjfravel.nomos.json.JsonValue
 /**
  * Registry of codecs for externally-defined types referenced by templates via `$extern:`.
  *
- * Generated code decodes/encodes an external field by looking up the codec registered under the
- * type's fully-qualified name. Applications register a codec at startup; an unregistered name
- * fails closed with a descriptive error rather than guessing.
+ * Generated code decodes/encodes an external field by looking up the codec registered under the type's fully-qualified
+ * name. Applications register a codec at startup; an unregistered name fails closed with a descriptive error rather
+ * than guessing.
  */
 object CodecRegistry {
   private val codecs = scala.collection.concurrent.TrieMap.empty[String, JsonCodec[Any]]

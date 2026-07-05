@@ -1,18 +1,23 @@
 package dev.cjfravel.nomos
 
-import dev.cjfravel.nomos.model._
+import scala.collection.immutable.ListMap
+
 import dev.cjfravel.nomos.generation.{CodeGenerator, GeneratorConfig}
+import dev.cjfravel.nomos.model._
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
-import scala.collection.immutable.ListMap
 
 class CrossTemplateRefSpec extends AnyFlatSpec with Matchers with EitherValues {
 
-  val rootT = MultiTemplate("com.example.a", List(TemplateDefinition("Root",
-    ObjectType(ListMap("child" -> FieldDef(ReferenceType("Child"), false))))))
-  val childT = MultiTemplate("com.example.b", List(TemplateDefinition("Child",
-    ObjectType(ListMap("id" -> FieldDef(StringType(), false))))))
+  val rootT =
+    MultiTemplate(
+      "com.example.a",
+      List(TemplateDefinition("Root", ObjectType(ListMap("child" -> FieldDef(ReferenceType("Child"), false))))))
+  val childT =
+    MultiTemplate(
+      "com.example.b",
+      List(TemplateDefinition("Child", ObjectType(ListMap("id" -> FieldDef(StringType(), false))))))
 
   "combine" should "merge definitions into a shared space preserving packages" in {
     val merged = MultiTemplate.combine(List(rootT, childT)).value
@@ -31,8 +36,12 @@ class CrossTemplateRefSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "combine of one template" should "keep its base package for NomosFormats" in {
-    val merged = MultiTemplate.combine(List(MultiTemplate("com.example.models",
-      List(TemplateDefinition("User", ObjectType(ListMap("id" -> FieldDef(StringType(), false))), Some("user")))))).value
+    val merged =
+      MultiTemplate
+        .combine(List(MultiTemplate(
+          "com.example.models",
+          List(TemplateDefinition("User", ObjectType(ListMap("id" -> FieldDef(StringType(), false))), Some("user"))))))
+        .value
     merged.basePackage shouldBe "com.example.models"
     merged.fqn(merged.definitions.head) shouldBe "com.example.models.user.User"
   }

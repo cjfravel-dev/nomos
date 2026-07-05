@@ -1,8 +1,8 @@
 package dev.cjfravel.nomos.json
 
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class JsonNumberSpec extends AnyFlatSpec with Matchers {
 
@@ -98,16 +98,14 @@ class JsonWriterSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   it should "round-trip parse->write byte-for-byte" in {
-    val samples = List(
-      """{"id":"123","username":"john","email":"j@x.com","age":30.0,"roles":["admin","user"]}""",
-      """{"nested":{"a":[1,2,3],"b":null},"flag":true}""",
-      """[]""",
-      """{}""",
-      """{"unicode":"caf\u00e9 \uD83D\uDE00","neg":-1.5e10}"""
-    )
-    samples.foreach { s =>
-      Json.write(Json.parse(s).value) shouldBe s
-    }
+    val samples =
+      List(
+        """{"id":"123","username":"john","email":"j@x.com","age":30.0,"roles":["admin","user"]}""",
+        """{"nested":{"a":[1,2,3],"b":null},"flag":true}""",
+        """[]""",
+        """{}""",
+        """{"unicode":"caf\u00e9 \uD83D\uDE00","neg":-1.5e10}""")
+    samples.foreach(s => Json.write(Json.parse(s).value) shouldBe s)
   }
 
   it should "pretty-print nested structures" in {

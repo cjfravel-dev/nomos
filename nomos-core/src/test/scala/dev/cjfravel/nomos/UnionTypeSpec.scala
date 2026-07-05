@@ -1,12 +1,12 @@
 package dev.cjfravel.nomos
 
+import dev.cjfravel.nomos.generation.TemplateSerializer
 import dev.cjfravel.nomos.model._
 import dev.cjfravel.nomos.parser.TemplateParser
-import dev.cjfravel.nomos.generation.TemplateSerializer
 import dev.cjfravel.nomos.validation.MultiValidator
+import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.EitherValues
 
 class UnionTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
 
@@ -15,7 +15,8 @@ class UnionTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   "parser" should "parse a map value union" in {
     val d = parse("""{"name":"N","template":{"settings":{"$map":["string",["string"]]}}}""").value.definitions.head
-    d.templateType.asInstanceOf[ObjectType].fields("settings").fieldType shouldBe MapType(UnionType(List(StringType(), ArrayType(StringType()))))
+    d.templateType.asInstanceOf[ObjectType].fields("settings").fieldType shouldBe MapType(
+      UnionType(List(StringType(), ArrayType(StringType()))))
   }
 
   "validator" should "accept any member of the union and reject others" in {
@@ -26,6 +27,7 @@ class UnionTypeSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   "serializer" should "round-trip a union" in {
-    TemplateSerializer.serializeTemplateType(UnionType(List(StringType(), NumberType()))) shouldBe "UnionType(List(StringType(List()), NumberType(List())))"
+    TemplateSerializer.serializeTemplateType(
+      UnionType(List(StringType(), NumberType()))) shouldBe "UnionType(List(StringType(List()), NumberType(List())))"
   }
 }
