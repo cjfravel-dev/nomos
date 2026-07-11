@@ -114,7 +114,8 @@ class FileWriter {
       catch { case _: Exception => false }
     def scan(dir: File): List[File] =
       Option(dir.listFiles()).toList.flatten.flatMap { f =>
-        if (f.isDirectory) scan(f)
+        if (java.nio.file.Files.isSymbolicLink(f.toPath)) Nil
+        else if (f.isDirectory) scan(f)
         else if (f.getName.endsWith(".scala") && !keptPaths.contains(f.getCanonicalFile) && isGenerated(f)) {
           if (f.delete()) List(f) else Nil
         } else Nil

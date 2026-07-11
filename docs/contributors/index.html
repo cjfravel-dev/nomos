@@ -19,7 +19,7 @@
       <a href="../index.html" data-section="home">Home</a>
       <a href="../users/getting-started.html" data-section="users">User Guide</a>
       <a href="index.html" data-section="contributors">Contributors</a>
-      <a href="../api/dev/cjfravel/nomos/Nomos$.html" data-section="api">API</a>
+      <a href="../api-reference.html" data-section="api">API</a>
       <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
     </nav>
   </div>
@@ -53,27 +53,25 @@
 
     <h2 id="setup">Prerequisites</h2>
     <ul>
-      <li><b>JDK 9+</b> — the build targets Java 8 bytecode via <code>--release 8</code>, which requires a JDK 9 or newer to compile. CI verifies the build on Java 11 and Java 17.</li>
+      <li><b>JDK 11+</b> — the build targets Java 8 bytecode via <code>--release 8</code>. CI verifies the build on Java 11 and Java 17.</li>
       <li><b>Maven 3.9+</b></li>
-      <li><b>Scala 2.12.18</b> — managed by the build; no separate install needed.</li>
+      <li><b>Scala 2.12.21</b> — managed by the build; no separate install needed.</li>
     </ul>
 
     <h2 id="build">Build &amp; test</h2>
-<pre><code class="language-bash"># build and install all modules
-mvn -DskipTests -Dgpg.skip=true install
+<pre><code class="language-bash"># build, test, verify, and install all reactor modules
+mvn clean install -Dgpg.skip=true
 
-# run the core test suite
-mvn -pl nomos-core test
-
-# rebuild the example end-to-end (regenerates from templates, then compiles + tests)
-cd nomos-example &amp;&amp; mvn test</code></pre>
+# rebuild the example end-to-end against the locally installed artifacts
+mvn -f nomos-example/pom.xml clean test</code></pre>
     <div class="callout note"><p>The <code>nomos-example</code> module is the end-to-end proof: the plugin regenerates real models from templates, then a test suite round-trips JSON through the generated code.</p></div>
 
     <h2 id="coverage">Coverage</h2>
-    <p>Statement coverage for <code>nomos-core</code> runs via scoverage:</p>
-<pre><code class="language-bash">mvn -pl nomos-core scoverage:report
-# HTML report: nomos-core/target/site/scoverage/index.html</code></pre>
-    <p>CI enforces a floor with <code>scoverage:check</code>: the build fails if <code>nomos-core</code> statement coverage drops below 80%.</p>
+    <p>Statement coverage for <code>nomos-runtime</code> and <code>nomos-core</code> runs via scoverage:</p>
+<pre><code class="language-bash">mvn -pl nomos-runtime,nomos-core scoverage:report scoverage:check
+# HTML reports: nomos-runtime/target/site/scoverage/index.html
+#               nomos-core/target/site/scoverage/index.html</code></pre>
+    <p>CI enforces the measured runtime baseline at 45% and the core floor at 80%.</p>
 
     <h2 id="tdd">Test-driven workflow</h2>
     <p>
@@ -88,11 +86,12 @@ cd nomos-example &amp;&amp; mvn test</code></pre>
     <p>
       User docs live under <code>docs/</code> and are served as the project site. Two build-time
       gates keep them honest: <code>dev/scripts/readme-has-version.sh</code> fails the build unless
-      <code>README.md</code> and <code>getting-started.html</code> reference the current version,
+      release docs and every consumer POM reference the current version,
       and <code>dev/scripts/docs-no-stale-refs.sh</code> fails it if any doc or comment names a
       third-party JSON library or a removed symbol. Regenerate the API reference under
-      <code>docs/api</code> with <code>dev/scripts/build-api-docs.sh</code> whenever the public
-      Scala surface changes.
+      <code>docs/api</code> and <code>docs/runtime-api</code> with
+      <code>dev/scripts/build-api-docs.sh</code> whenever the public Scala surface changes. CI
+      regenerates both references and fails if the checked-in output differs.
     </p>
     <p>
       Releases publish to Maven Central via <code>mvn deploy</code>. Publishing stages a

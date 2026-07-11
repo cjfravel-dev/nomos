@@ -12,7 +12,7 @@ import java.io.File
  * @param listType
  *   The collection type to use for arrays: "List" or "Array" (default: "List")
  * @param mapType
- *   The collection type to use for `$map` fields: "Map" or "java.util.Map" (default: "Map")
+ *   The collection type to use for `$$map` fields: "Map" or "java.util.Map" (default: "Map")
  */
 case class GeneratorConfig(
     basePackage: String,

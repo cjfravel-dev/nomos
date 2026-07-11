@@ -558,11 +558,11 @@
         <span class="name">pruneOrphans</span><span class="params">(<span name="outputDir">outputDir: <span class="extype" name="java.io.File">File</span></span>, <span name="kept">kept: <span class="extype" name="scala.Predef.Set">Set</span>[<span class="extype" name="java.io.File">File</span>]</span>)</span><span class="result">: <span class="extype" name="scala.List">List</span>[<span class="extype" name="java.io.File">File</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Deletes orphaned generated files under <code>outputDir</code>: <code>.scala</code> files that carry the nomos
-generated-header but were not part of this generation (<code>kept</code>) — i.e.</p><div class="fullcomment"><div class="comment cmt"><p>Deletes orphaned generated files under <code>outputDir</code>: <code>.scala</code> files that carry the nomos
-generated-header but were not part of this generation (<code>kept</code>) — i.e. left behind when a
-definition or template was removed. Only files with the header are removed, so hand-written
-sources are never touched even when the output directory is shared. Returns the deleted files.
+      <p class="shortcomment cmt">Deletes orphaned generated files under <code>outputDir</code>: <code>.scala</code> files that carry the nomos generated-header but were
+not part of this generation (<code>kept</code>) — i.e.</p><div class="fullcomment"><div class="comment cmt"><p>Deletes orphaned generated files under <code>outputDir</code>: <code>.scala</code> files that carry the nomos generated-header but were
+not part of this generation (<code>kept</code>) — i.e. left behind when a definition or template was removed. Only files with
+the header are removed, so hand-written sources are never touched even when the output directory is shared. Returns
+the deleted files.
 </p></div></div>
     </li><li name="scala.AnyRef#synchronized" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="synchronized[T0](x$1:=&gt;T0):T0"></a><a id="synchronized[T0](⇒T0):T0"></a>
@@ -681,7 +681,10 @@ sources are never touched even when the output directory is shared. Returns the 
       
       <p class="shortcomment cmt">Writes a single generated file to disk
 </p><div class="fullcomment"><div class="comment cmt"><p>Writes a single generated file to disk
-</p></div><dl class="paramcmts block"><dt class="param">file</dt><dd class="cmt"><p>The generated file to write</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>The base output directory</p></dd><dt>returns</dt><dd class="cmt"><p>Either an error message or the written file</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">file</dt><dd class="cmt"><p>
+  The generated file to write</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>
+  The base output directory</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either an error message or the written file</p></dd></dl></div>
     </li><li name="dev.cjfravel.nomos.generation.FileWriter#writeFiles" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="writeFiles(files:List[dev.cjfravel.nomos.generation.GeneratedFile],outputDir:java.io.File):Either[List[dev.cjfravel.nomos.generation.WriteError],List[java.io.File]]"></a><a id="writeFiles(List[GeneratedFile],File):Either[List[WriteError],List[File]]"></a>
       <span class="permalink">
@@ -699,7 +702,10 @@ sources are never touched even when the output directory is shared. Returns the 
       
       <p class="shortcomment cmt">Writes multiple generated files to disk
 </p><div class="fullcomment"><div class="comment cmt"><p>Writes multiple generated files to disk
-</p></div><dl class="paramcmts block"><dt class="param">files</dt><dd class="cmt"><p>The list of generated files to write</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>The base output directory</p></dd><dt>returns</dt><dd class="cmt"><p>Either a list of errors or a list of written files</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">files</dt><dd class="cmt"><p>
+  The list of generated files to write</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>
+  The base output directory</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either a list of errors or a list of written files</p></dd></dl></div>
     </li><li name="dev.cjfravel.nomos.generation.FileWriter#writeFilesWithReport" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="writeFilesWithReport(files:List[dev.cjfravel.nomos.generation.GeneratedFile],outputDir:java.io.File):dev.cjfravel.nomos.generation.WriteReport"></a><a id="writeFilesWithReport(List[GeneratedFile],File):WriteReport"></a>
       <span class="permalink">
@@ -717,7 +723,10 @@ sources are never touched even when the output directory is shared. Returns the 
       
       <p class="shortcomment cmt">Writes files and returns a report of what was written
 </p><div class="fullcomment"><div class="comment cmt"><p>Writes files and returns a report of what was written
-</p></div><dl class="paramcmts block"><dt class="param">files</dt><dd class="cmt"><p>The list of generated files to write</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>The base output directory</p></dd><dt>returns</dt><dd class="cmt"><p>A write report containing successes and failures</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">files</dt><dd class="cmt"><p>
+  The list of generated files to write</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>
+  The base output directory</p></dd><dt>returns</dt><dd class="cmt"><p>
+  A write report containing successes and failures</p></dd></dl></div>
     </li>
               </ol>
             </div>

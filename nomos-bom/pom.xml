@@ -15,6 +15,7 @@
 
     <name>Nomos BOM</name>
     <description>Bill of Materials for Nomos - manages dependency versions</description>
+    <url>https://github.com/cjfravel-dev/nomos</url>
 
     <dependencyManagement>
         <dependencies>

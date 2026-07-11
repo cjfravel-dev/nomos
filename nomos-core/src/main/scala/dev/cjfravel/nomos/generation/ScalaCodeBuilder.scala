@@ -12,7 +12,7 @@ class ScalaCodeBuilder(indentSize: Int = 2, visibility: String = "") {
    */
   def line(text: String): ScalaCodeBuilder = {
     if (text.nonEmpty) {
-      buffer.append("  " * currentIndent)
+      buffer.append(" " * (indentSize * currentIndent))
       buffer.append(text)
     }
     buffer.append("\n")

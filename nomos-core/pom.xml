@@ -15,6 +15,7 @@
 
     <name>Nomos Core</name>
     <description>Core library for template parsing and code generation</description>
+    <url>https://github.com/cjfravel-dev/nomos</url>
 
     <dependencies>
         <!-- Scala -->
@@ -82,6 +83,24 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-scaladoc</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>javadoc</classifier>
+                            <classesDirectory>${project.build.directory}/site/scaladocs</classesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- ScalaTest Maven Plugin -->

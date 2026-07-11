@@ -1207,9 +1207,9 @@ class CodeGenerator(config: GeneratorConfig) {
       packageName: String,
       enumName: String,
       values: List[String],
-      withUnknown: Boolean = false,
-      sourcePath: Option[String] = None,
-      visibility: String = ""): GeneratedFile = {
+      withUnknown: Boolean,
+      sourcePath: Option[String],
+      visibility: String): GeneratedFile = {
     val builder = ScalaCodeBuilder(visibility)
     val cases = values.map(v => (v, ScalaCodeBuilder.toPascalCase(v)))
 

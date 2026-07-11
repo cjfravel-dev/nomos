@@ -109,7 +109,7 @@ public class GenerateMojo extends AbstractMojo {
         getLog().info("Found " + templateFiles.size() + " template file(s)");
 
         // Parse each template; refs resolve across all files in a shared definition space
-        int parseFailures = 0;
+        List<String> parseFailures = new ArrayList<>();
         java.util.List<MultiTemplate> templates = new ArrayList<>();
 
         for (File templateFile : templateFiles) {
@@ -124,8 +124,9 @@ public class GenerateMojo extends AbstractMojo {
 
                 scala.util.Either<?, ?> parseResult = Nomos.parseTemplateDeferred(templateContent, basePackage, relativePath);
                 if (parseResult.isLeft()) {
-                    getLog().error("  Failed to parse template: " + parseResult.left().get());
-                    parseFailures++;
+                    String details = String.valueOf(parseResult.left().get());
+                    getLog().error("  Failed to parse template: " + details);
+                    parseFailures.add(relativePath + ": " + details);
                     continue;
                 }
                 MultiTemplate template = (MultiTemplate) parseResult.right().get();
@@ -133,12 +134,14 @@ public class GenerateMojo extends AbstractMojo {
                 templates.add(template);
             } catch (Exception e) {
                 getLog().error("  Error processing template: " + e.getMessage(), e);
-                parseFailures++;
+                parseFailures.add(relativePath + ": " + e.getMessage());
             }
         }
 
-        if (parseFailures > 0) {
-            throw new MojoFailureException("Code generation failed for " + parseFailures + " template(s)");
+        if (!parseFailures.isEmpty()) {
+            throw new MojoFailureException(
+                    "Code generation failed for " + parseFailures.size() + " template(s): "
+                            + String.join("; ", parseFailures));
         }
 
         String resolvedOutputDir = new File(basedir, outputDirectory).getAbsolutePath();

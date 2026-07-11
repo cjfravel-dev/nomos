@@ -22,6 +22,21 @@ class GeneratedFileSpec extends AnyFlatSpec with Matchers with EitherValues {
     scala.io.Source.fromFile(written).mkString shouldBe "object User"
   }
 
+  it should "reject a relative path outside the output directory" in {
+    val dir = new File(System.getProperty("java.io.tmpdir"), "nomos-gf-contained-" + System.nanoTime())
+    val escaped = new File(dir.getParentFile, "escaped.scala")
+    escaped.delete()
+    dir.mkdirs()
+
+    try {
+      GeneratedFile("../escaped.scala", "object Escaped").writeTo(dir) shouldBe a[Left[_, _]]
+      escaped.exists() shouldBe false
+    } finally {
+      escaped.delete()
+      dir.delete()
+    }
+  }
+
   "GeneratorConfig" should "validate package and output dir" in {
     GeneratorConfig("com.example", "out").validate() shouldBe empty
     GeneratorConfig("", "out").validate() should not be empty

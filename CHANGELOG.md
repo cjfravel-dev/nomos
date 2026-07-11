@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Dedicated Maven-plugin tests cover generation, compile-root registration, missing templates,
+  include/exclude patterns, and invalid directory-derived packages.
+- Runtime coverage is enforced at its measured baseline, and CI publishes both runtime and core
+  coverage reports.
+- Release-quality build gates enforce Maven and JDK versions, reject snapshot release dependencies,
+  verify all published version references, validate tags, check generated API documentation, and
+  produce byte-identical binary, source, and API-documentation JARs across clean builds.
+- Generated Scaladoc for the complete runtime API, linked through a stable API-reference landing
+  page.
 - Enforced code style: Scala sources in `nomos-runtime` and `nomos-core` are formatted with
   scalafmt (`.scalafmt.conf`), linted with scalafix (`.scalafix.conf`: `RemoveUnused` +
   `OrganizeImports`), and checked with scalastyle (`scalastyle-config.xml`, adapted from Apache
@@ -17,6 +26,18 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Invalid base packages, sub-packages, Scala package keywords, and empty definition sets now fail
+  before generated source is written.
+- Configured temporal types must be available with a public static `parse(CharSequence)` method;
+  invalid configuration no longer silently uses another temporal parser.
+- Maven plugin failures include per-template parse details.
+- Orphan pruning does not follow directory symlinks, and custom `ScalaCodeBuilder` indentation
+  widths are honored.
+- Direct `GeneratedFile.writeTo` calls use the same output-directory containment checks as
+  `FileWriter`.
+- Published child POMs expose the repository's actual project URL.
+- Contributor instructions install the local reactor before testing the isolated example.
+- API documentation generation is warning-clean.
 - Validation performance: the custom-validator phase now runs only for definitions whose reachable
   subtree declares validators. A validator-free template no longer pays a second whole-document
   traversal on every `validate()` call, and validator-free subtrees (and their union

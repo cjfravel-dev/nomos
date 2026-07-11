@@ -189,10 +189,9 @@
       </h4>
 
       
-          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>Main entry point for the Nomos library.</p><p>Nomos allows you to define JSON templates with multiple type definitions and then:
-1. Generate Scala case classes from templates
-2. Validate JSON strings against templates
-</p></div><dl class="attributes block"> <div class="block">Example:
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>Main entry point for the Nomos library.</p><p>Nomos allows you to define JSON templates with multiple type definitions and then:</p><ol class="decimal"><li>Generate Scala case classes from templates
+  2. Validate JSON strings against templates
+</li></ol></div><dl class="attributes block"> <div class="block">Example:
                <ol><li class="cmt"><p></p><pre><span class="cmt">// Parse a template from JSON (base package derived from its file location)</span>
 <span class="kw">val</span> template = Nomos.parseTemplate(templateJson, <span class="lit">"com.example.models"</span>).right.get
 
@@ -378,7 +377,10 @@
       </span>
       
       <p class="shortcomment cmt">Parse template and create a validator for it.</p><div class="fullcomment"><div class="comment cmt"><p>Parse template and create a validator for it.
-</p></div><dl class="paramcmts block"><dt class="param">templateJson</dt><dd class="cmt"><p>The JSON template definition</p></dd><dt class="param">basePackage</dt><dd class="cmt"><p>Base package for generated code (derived from template location)</p></dd><dt>returns</dt><dd class="cmt"><p>Either ParseError or MultiValidator</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">templateJson</dt><dd class="cmt"><p>
+  The JSON template definition</p></dd><dt class="param">basePackage</dt><dd class="cmt"><p>
+  Base package for generated code (derived from template location)</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either ParseError or MultiValidator</p></dd></dl></div>
     </li><li name="scala.AnyRef#eq" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="eq(x$1:AnyRef):Boolean"></a><a id="eq(AnyRef):Boolean"></a>
       <span class="permalink">
@@ -464,7 +466,7 @@
         <span class="name">generateAll</span><span class="params">(<span name="templates">templates: <span class="extype" name="java.util.List">List</span>[<span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span>]</span>, <span name="outputDir">outputDir: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="generation/GeneratorError.html" class="extype" name="dev.cjfravel.nomos.generation.GeneratorError">GeneratorError</a>, <a href="generation/WriteReport.html" class="extype" name="dev.cjfravel.nomos.generation.WriteReport">WriteReport</a>]</span>
       </span>
       
-      <p class="shortcomment cmt">Generate code from many templates sharing one definition space so $ref resolves across files.</p>
+      <p class="shortcomment cmt">Generate code from many templates sharing one definition space so $$ref resolves across files.</p>
     </li><li name="dev.cjfravel.nomos.Nomos#generateCode" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="generateCode(template:dev.cjfravel.nomos.model.MultiTemplate,outputDir:String):Either[dev.cjfravel.nomos.generation.GeneratorError,dev.cjfravel.nomos.generation.WriteReport]"></a><a id="generateCode(MultiTemplate,String):Either[GeneratorError,WriteReport]"></a>
       <span class="permalink">
@@ -480,10 +482,12 @@
         <span class="name">generateCode</span><span class="params">(<span name="template">template: <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span></span>, <span name="outputDir">outputDir: <span class="extype" name="scala.Predef.String">String</span> = <span class="symbol">&quot;src/main/scala&quot;</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="generation/GeneratorError.html" class="extype" name="dev.cjfravel.nomos.generation.GeneratorError">GeneratorError</a>, <a href="generation/WriteReport.html" class="extype" name="dev.cjfravel.nomos.generation.WriteReport">WriteReport</a>]</span>
       </span>
       
-      <p class="shortcomment cmt">Generate Scala case classes from a template.</p><div class="fullcomment"><div class="comment cmt"><p>Generate Scala case classes from a template.
-Uses the basePackage and listType from the template; outputDir defaults to the standard Maven
-source root.
-</p></div><dl class="paramcmts block"><dt class="param">template</dt><dd class="cmt"><p>The template to generate code from</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>Output directory for generated files (default: src/main/scala)</p></dd><dt>returns</dt><dd class="cmt"><p>Either GeneratorError or WriteReport containing successes and failures</p></dd></dl></div>
+      <p class="shortcomment cmt">Generate Scala case classes from a template.</p><div class="fullcomment"><div class="comment cmt"><p>Generate Scala case classes from a template. Uses the basePackage and listType from the template; outputDir
+defaults to the standard Maven source root.
+</p></div><dl class="paramcmts block"><dt class="param">template</dt><dd class="cmt"><p>
+  The template to generate code from</p></dd><dt class="param">outputDir</dt><dd class="cmt"><p>
+  Output directory for generated files (default: src/main/scala)</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either GeneratorError or WriteReport containing successes and failures</p></dd></dl></div>
     </li><li name="scala.AnyRef#getClass" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="getClass():Class[_]"></a>
       <span class="permalink">
@@ -608,7 +612,9 @@ source root.
       </span>
       
       <p class="shortcomment cmt">Parse a template from JSON string.</p><div class="fullcomment"><div class="comment cmt"><p>Parse a template from JSON string.
-</p></div><dl class="paramcmts block"><dt class="param">json</dt><dd class="cmt"><p>The JSON string containing the template definition with definitions array</p></dd><dt>returns</dt><dd class="cmt"><p>Either ParseError or MultiTemplate</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">json</dt><dd class="cmt"><p>
+  The JSON string containing the template definition with definitions array</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either ParseError or MultiTemplate</p></dd></dl></div>
     </li><li name="dev.cjfravel.nomos.Nomos#parseTemplateDeferred" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="parseTemplateDeferred(json:String,basePackage:String,sourcePath:String):Either[dev.cjfravel.nomos.parser.ParseError,dev.cjfravel.nomos.model.MultiTemplate]"></a><a id="parseTemplateDeferred(String,String,String):Either[ParseError,MultiTemplate]"></a>
       <span class="permalink">
@@ -624,8 +630,8 @@ source root.
         <span class="name">parseTemplateDeferred</span><span class="params">(<span name="json">json: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="basePackage">basePackage: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="sourcePath">sourcePath: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Either">Either</span>[<a href="parser/ParseError.html" class="extype" name="dev.cjfravel.nomos.parser.ParseError">ParseError</a>, <span class="extype" name="dev.cjfravel.nomos.model.MultiTemplate">MultiTemplate</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Parse a deferred template and tag every definition with the template's source file path,
-which the generator emits as a Source pointer in the generated header.</p>
+      <p class="shortcomment cmt">Parse a deferred template and tag every definition with the template's source file path, which the generator emits
+as a Source pointer in the generated header.</p>
     </li><li name="dev.cjfravel.nomos.Nomos#parseTemplateDeferred" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="parseTemplateDeferred(json:String,basePackage:String):Either[dev.cjfravel.nomos.parser.ParseError,dev.cjfravel.nomos.model.MultiTemplate]"></a><a id="parseTemplateDeferred(String,String):Either[ParseError,MultiTemplate]"></a>
       <span class="permalink">
@@ -658,7 +664,10 @@ which the generator emits as a Source pointer in the generated header.</p>
       </span>
       
       <p class="shortcomment cmt">Complete workflow: parse template, generate code, and provide a validator.</p><div class="fullcomment"><div class="comment cmt"><p>Complete workflow: parse template, generate code, and provide a validator.
-</p></div><dl class="paramcmts block"><dt class="param">templateJson</dt><dd class="cmt"><p>The JSON template definition</p></dd><dt class="param">basePackage</dt><dd class="cmt"><p>Base package for generated code (derived from template location)</p></dd><dt>returns</dt><dd class="cmt"><p>Either error or NomosResult with template and write report</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">templateJson</dt><dd class="cmt"><p>
+  The JSON template definition</p></dd><dt class="param">basePackage</dt><dd class="cmt"><p>
+  Base package for generated code (derived from template location)</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either error or NomosResult with template and write report</p></dd></dl></div>
     </li><li name="scala.AnyRef#synchronized" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="synchronized[T0](x$1:=&gt;T0):T0"></a><a id="synchronized[T0](⇒T0):T0"></a>
       <span class="permalink">
@@ -707,7 +716,11 @@ which the generator emits as a Source pointer in the generated header.</p>
       </span>
       
       <p class="shortcomment cmt">Validate a JSON string against a template.</p><div class="fullcomment"><div class="comment cmt"><p>Validate a JSON string against a template.
-</p></div><dl class="paramcmts block"><dt class="param">template</dt><dd class="cmt"><p>The template to validate against</p></dd><dt class="param">json</dt><dd class="cmt"><p>The JSON string to validate</p></dd><dt class="param">definitionName</dt><dd class="cmt"><p>The fully-qualified or simple definition name to validate against</p></dd><dt>returns</dt><dd class="cmt"><p>Either a list of validation errors or the parsed JSON value</p></dd></dl></div>
+</p></div><dl class="paramcmts block"><dt class="param">template</dt><dd class="cmt"><p>
+  The template to validate against</p></dd><dt class="param">json</dt><dd class="cmt"><p>
+  The JSON string to validate</p></dd><dt class="param">definitionName</dt><dd class="cmt"><p>
+  The fully-qualified or simple definition name to validate against</p></dd><dt>returns</dt><dd class="cmt"><p>
+  Either a list of validation errors or the parsed JSON value</p></dd></dl></div>
     </li><li name="dev.cjfravel.nomos.Nomos#validators" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="validators:dev.cjfravel.nomos.validation.ValidatorRegistry.type"></a><a id="validators:ValidatorRegistry.type"></a>
       <span class="permalink">

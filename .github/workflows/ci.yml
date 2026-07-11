@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["*"]
   pull_request:
     branches: [main]
 
@@ -50,26 +51,35 @@ jobs:
       - name: Build and test the example (regenerates via the installed plugin)
         run: mvn -f nomos-example/pom.xml clean test -B
 
-      - name: Coverage report (nomos-core)
-        if: always() && matrix.java == 11
-        run: mvn -pl nomos-core scoverage:report -Dgpg.skip=true -B
-
-      - name: Enforce coverage floor (nomos-core)
+      - name: Check generated API documentation
         if: matrix.java == 11
-        run: mvn -pl nomos-core scoverage:check -Dgpg.skip=true -B
+        run: |
+          dev/scripts/build-api-docs.sh
+          git diff --exit-code -- docs/api docs/runtime-api
+          test -z "$(git status --porcelain --untracked-files=all -- docs/api docs/runtime-api)"
+
+      - name: Coverage reports
+        if: always() && matrix.java == 11
+        run: mvn -pl nomos-runtime,nomos-core scoverage:report -Dgpg.skip=true -B
+
+      - name: Enforce coverage floors
+        if: matrix.java == 11
+        run: mvn -pl nomos-runtime,nomos-core scoverage:check -Dgpg.skip=true -B
 
       - name: Upload coverage report
         if: always() && matrix.java == 11
         uses: actions/upload-artifact@v7
         with:
           name: coverage-nomos-core
-          path: nomos-core/target/cobertura.xml
+          path: |
+            nomos-runtime/target/cobertura.xml
+            nomos-core/target/cobertura.xml
 
       - name: Post coverage to PR
         if: github.event_name == 'pull_request' && matrix.java == 11
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: nomos-core/target/cobertura.xml
+          filename: nomos-runtime/target/cobertura.xml,nomos-core/target/cobertura.xml
           format: markdown
           output: both
           badge: true
@@ -80,7 +90,7 @@ jobs:
       - name: Prepend header to coverage report
         if: github.event_name == 'pull_request' && matrix.java == 11
         run: |
-          sed -i '1s/^/## Code Coverage — nomos-core\n\n/' code-coverage-results.md
+          sed -i '1s/^/## Code Coverage — nomos-runtime + nomos-core\n\n/' code-coverage-results.md
 
       - name: Add coverage comment to PR
         if: github.event_name == 'pull_request' && matrix.java == 11

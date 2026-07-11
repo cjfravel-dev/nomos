@@ -59,7 +59,7 @@ case class TemplateDefinition(
  * @param listType
  *   The collection type to use for arrays: "List" or "Array" (default: "List")
  * @param mapType
- *   The collection type to use for `$map` fields: "Map" or "java.util.Map" (default: "Map")
+ *   The collection type to use for `$$map` fields: "Map" or "java.util.Map" (default: "Map")
  * @param visibility
  *   Optional access modifier (e.g. "private[incentives]") prepended to every generated top-level definition; absent
  *   means public
@@ -98,11 +98,26 @@ case class MultiTemplate(
   def validate(checkRefs: Boolean = true): List[String] = {
     var errors = List.empty[String]
 
+    if (definitions.isEmpty) {
+      errors = "Template must contain at least one definition" :: errors
+    }
+
+    if (basePackage.nonEmpty && !MultiTemplate.isValidPackage(basePackage)) {
+      errors = s"basePackage is not a valid lowercase Scala package: '$basePackage'" :: errors
+    }
+
     // Validate that all definition names are valid
     definitions.foreach { definition =>
       definition.validateName() match {
         case Some(error) => errors = s"Definition '${definition.name}': $error" :: errors
         case None =>
+      }
+      definition.subPackage.filter(_.nonEmpty).foreach { subPackage =>
+        if (!MultiTemplate.isValidPackage(subPackage)) {
+          errors =
+            s"Definition '${definition.name}' subPackage is not a valid lowercase Scala package: '$subPackage'" ::
+              errors
+        }
       }
     }
 
@@ -209,6 +224,57 @@ case class MultiTemplate(
 
 object MultiTemplate {
 
+  private val ScalaKeywords: Set[String] =
+    Set(
+      "abstract",
+      "case",
+      "catch",
+      "class",
+      "def",
+      "do",
+      "else",
+      "extends",
+      "false",
+      "final",
+      "finally",
+      "for",
+      "forSome",
+      "if",
+      "implicit",
+      "import",
+      "lazy",
+      "macro",
+      "match",
+      "new",
+      "null",
+      "object",
+      "override",
+      "package",
+      "private",
+      "protected",
+      "return",
+      "sealed",
+      "super",
+      "this",
+      "throw",
+      "trait",
+      "true",
+      "try",
+      "type",
+      "val",
+      "var",
+      "while",
+      "with",
+      "yield")
+
+  private def isValidPackage(value: String): Boolean =
+    value.split("\\.", -1).forall { part =>
+      part.nonEmpty &&
+      part.head.isLower &&
+      part.forall(c => c.isLetterOrDigit || c == '_') &&
+      !ScalaKeywords.contains(part)
+    }
+
   /**
    * A safe Scala access modifier: `private` / `protected`, optionally qualified with `[this]` or a (dotted) enclosing
    * package/type name. Restricts what may be emitted verbatim as a definition prefix so a template cannot inject
@@ -235,7 +301,7 @@ object MultiTemplate {
     MultiTemplate(basePackage, List(definition))
 
   /**
-   * Combines templates into one shared definition space so $ref resolves across files. Each definition's package is
+   * Combines templates into one shared definition space so $$ref resolves across files. Each definition's package is
    * flattened into an absolute subPackage; the base package is empty.
    *
    * Generation settings (listType, dateType, fromJsonStyle, ...) are project-wide: each may be set in one file and

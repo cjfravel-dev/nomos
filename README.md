@@ -16,7 +16,7 @@
 
 ## Install
 
-Nomos targets Java 8 bytecode (build with **JDK 9+**; CI verifies Java 11 and 17). Manage versions
+Nomos targets Java 8 bytecode (build with **JDK 11+**; CI verifies Java 11 and 17). Manage versions
 with the BOM, depend on the runtime, and add the plugin to generate at build time. Centralize the
 version in a property so a bump is a single edit:
 
@@ -99,8 +99,9 @@ Everything lives on the [docs site](https://cjfravel-dev.github.io/nomos/):
 `nomos-runtime` provides the JSON model that generated code uses: a first-party,
 **public, supported, intentionally minimal** immutable tree in `dev.cjfravel.nomos.json` with
 parse/write, typed accessors, and single-level transforms. It is **not** a general-purpose JSON
-toolkit (no path queries, streaming, schema, or reflection mapping). See the `JsonValue` scaladoc
-for the full contract.
+toolkit (no path queries, streaming, schema, or reflection mapping). See the
+[`JsonValue` Scaladoc](https://cjfravel-dev.github.io/nomos/runtime-api/dev/cjfravel/nomos/json/JsonValue.html)
+for the full contract, or browse the [complete API reference](https://cjfravel-dev.github.io/nomos/api-reference.html).
 
 ## Examples
 
@@ -115,12 +116,14 @@ mvn -f nomos-example/pom.xml test    # regenerates via the installed plugin, the
 Build and test the reactor (BOM, runtime, core, plugin), then the example separately (the end-to-end plugin path, which the reactor excludes):
 
 ```bash
-mvn clean test
-mvn -f nomos-example/pom.xml test
+mvn clean install -Dgpg.skip=true
+mvn -f nomos-example/pom.xml clean test
 ```
 
 More in the [contributor guide](https://cjfravel-dev.github.io/nomos/contributors/index.html).
 
 ## License
 
-Nomos is licensed under the [MIT License with a SaaS provision](LICENSE.md). © 2026 CJ Fravel.
+Nomos is source-available under the [MIT License with a SaaS provision](LICENSE.md). These are
+custom terms rather than the standard OSI MIT License, so GitHub and automated scanners may
+classify the license as “Other.” © 2026 CJ Fravel.

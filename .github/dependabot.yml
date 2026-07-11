@@ -6,8 +6,8 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     ignore:
-      # Primary consumer builds on Scala 2.12, and nomos publishes plain artifactIds (no _2.x
-      # suffix), so stay on the 2.12.x line. Patch updates (2.12.x) are still allowed.
+      # Nomos publishes plain artifactIds tied to Scala 2.12 compatibility (no _2.x suffix), so
+      # stay on the 2.12.x line. Patch updates (2.12.x) are still allowed.
       - dependency-name: "org.scala-lang:*"
         update-types:
           - "version-update:semver-minor"

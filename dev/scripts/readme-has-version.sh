@@ -20,6 +20,7 @@ fi
 # Files that must reference the current version
 FILES=(
     "README.md"
+    "CHANGELOG.md"
     "docs/users/getting-started.html"
 )
 
@@ -37,5 +38,29 @@ for f in "${FILES[@]}"; do
         STATUS=1
     fi
 done
+
+PARENT_POMS=(
+    "nomos-bom/pom.xml"
+    "nomos-runtime/pom.xml"
+    "nomos-core/pom.xml"
+    "nomos-maven-plugin/pom.xml"
+)
+for f in "${PARENT_POMS[@]}"; do
+    parent_version=$(sed -n '/<parent>/,/<\/parent>/s:.*<version>\(.*\)</version>.*:\1:p' "$f" | head -1)
+    if [[ "$parent_version" == "$VERSION" ]]; then
+        echo "Parent version $VERSION is present in $f."
+    else
+        echo "Parent version in $f is '$parent_version', expected '$VERSION'."
+        STATUS=1
+    fi
+done
+
+example_version=$(sed -n 's:.*<nomos.version>\(.*\)</nomos.version>.*:\1:p' nomos-example/pom.xml | head -1)
+if [[ "$example_version" == "$VERSION" ]]; then
+    echo "Nomos example version matches $VERSION."
+else
+    echo "Nomos example version is '$example_version', expected '$VERSION'."
+    STATUS=1
+fi
 
 exit $STATUS

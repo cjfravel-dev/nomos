@@ -95,23 +95,23 @@ class TemplateParser {
           val values = parseEnum(json).map(_.values).getOrElse(Nil)
           Right(EnumType(name, values))
         } else {
-          Right(StringType(parseStringConstraints(json, path)))
+          Right(StringType(parseStringConstraints(json)))
         }
 
       case "number" =>
-        Right(NumberType(parseNumberConstraints(json, path)))
+        Right(NumberType(parseNumberConstraints(json)))
 
       case "int" =>
-        Right(IntType(parseNumberConstraints(json, path)))
+        Right(IntType(parseNumberConstraints(json)))
 
       case "long" =>
-        Right(LongType(parseNumberConstraints(json, path)))
+        Right(LongType(parseNumberConstraints(json)))
 
       case "decimal" =>
-        Right(DecimalType(parseNumberConstraints(json, path)))
+        Right(DecimalType(parseNumberConstraints(json)))
 
       case "double" =>
-        Right(NumberType(parseNumberConstraints(json, path)))
+        Right(NumberType(parseNumberConstraints(json)))
 
       case "boolean" =>
         Right(BooleanType())
@@ -148,7 +148,7 @@ class TemplateParser {
   /**
    * Parses string constraints
    */
-  private def parseStringConstraints(json: JsonValue, path: String): List[Constraint] = {
+  private def parseStringConstraints(json: JsonValue): List[Constraint] = {
     var constraints = List.empty[Constraint]
 
     extractOptionalInt(json, "minLength").foreach(len => constraints = MinLength(len) :: constraints)
@@ -174,7 +174,7 @@ class TemplateParser {
   /**
    * Parses number constraints
    */
-  private def parseNumberConstraints(json: JsonValue, path: String): List[Constraint] = {
+  private def parseNumberConstraints(json: JsonValue): List[Constraint] = {
     var constraints = List.empty[Constraint]
 
     extractOptionalDouble(json, "min").foreach(v => constraints = Min(v) :: constraints)
@@ -344,7 +344,7 @@ class TemplateParser {
       variants <- parseVariants(variantsJson, s"$path.$$type.variants")
       commonFields <- parseCommonFields(typeObj, s"$path.$$type")
       includeInOutput = extractOptionalBoolean(typeObj, "includeDiscriminator").getOrElse(true)
-      variantNames = parseVariantNames(typeObj, s"$path.$$type")
+      variantNames = parseVariantNames(typeObj)
       variantMatch = extractOptionalString(typeObj, "variantMatch").getOrElse("exact")
       variantSubPackage = extractOptionalString(typeObj, "variantSubPackage")
       fallbackVariant = extractOptionalString(typeObj, "fallbackVariant")
@@ -401,7 +401,7 @@ class TemplateParser {
   /**
    * Parses variant names mapping for discriminator
    */
-  private def parseVariantNames(json: JsonValue, path: String): Map[String, String] =
+  private def parseVariantNames(json: JsonValue): Map[String, String] =
     extractOptionalField(json, "variantNames").flatMap(_.asObject) match {
       case Some(obj) =>
         obj.fields.collect { case (k, JsonString(v)) => k -> v }.toMap
