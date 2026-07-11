@@ -15,6 +15,7 @@
 
     <name>Nomos Runtime</name>
     <description>Zero-dependency runtime: JSON model, validation, and codecs used by generated code</description>
+    <url>https://github.com/cjfravel-dev/nomos</url>
 
     <dependencies>
         <!-- Scala standard library is the ONLY third-party dependency; nothing else may be added here. -->
@@ -41,6 +42,10 @@
                 <version>2.0.0</version>
                 <configuration>
                     <scalacPluginVersion>2.5.2</scalacPluginVersion>
+                    <!-- Establish a floor just below the current baseline (~46%); ratchet upward as
+                         focused runtime tests are added. -->
+                    <minimumCoverage>45</minimumCoverage>
+                    <failOnMinimumCoverage>true</failOnMinimumCoverage>
                 </configuration>
             </plugin>
 
@@ -48,6 +53,24 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-scaladoc</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>javadoc</classifier>
+                            <classesDirectory>${project.build.directory}/site/scaladocs</classesDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- ScalaTest Maven Plugin -->

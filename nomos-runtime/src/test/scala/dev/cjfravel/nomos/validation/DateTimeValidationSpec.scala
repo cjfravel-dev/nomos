@@ -6,6 +6,10 @@ import dev.cjfravel.nomos.model._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+class InstanceTemporalParser {
+  def parse(_value: CharSequence): InstanceTemporalParser = this
+}
+
 /**
  * Datetime validation must accept exactly what the generated decoder accepts. With the default dateTimeType
  * (LocalDateTime) the decoder uses LocalDateTime.parse, which rejects a trailing-Z value, so validation must reject it
@@ -20,6 +24,25 @@ class DateTimeValidationSpec extends AnyFlatSpec with Matchers {
         "com.example",
         List(TemplateDefinition("E", ObjectType(ListMap("ts" -> FieldDef(DateTimeType(), optional = false))))),
         dateTimeType = dateTimeType))
+
+  "MultiValidator" should "reject an unavailable configured temporal type" in {
+    val error =
+      intercept[IllegalArgumentException] {
+        validatorFor("com.example.DoesNotExist")
+      }
+
+    error.getMessage should include("com.example.DoesNotExist")
+    error.getMessage should include("parse(CharSequence)")
+  }
+
+  it should "reject a non-static temporal parse method" in {
+    val error =
+      intercept[IllegalArgumentException] {
+        validatorFor(classOf[InstanceTemporalParser].getName)
+      }
+
+    error.getMessage should include("public static")
+  }
 
   "datetime validation (default LocalDateTime)" should "accept a naive local datetime" in {
     validatorFor("java.time.LocalDateTime").validate("""{"ts":"2025-11-11T11:11:11"}""", "E") shouldBe a[Right[_, _]]

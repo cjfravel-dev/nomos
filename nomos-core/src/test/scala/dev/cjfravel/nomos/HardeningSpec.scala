@@ -46,6 +46,24 @@ class HardeningSpec extends AnyFlatSpec with Matchers with EitherValues {
     err.message should include("includeDiscriminator")
   }
 
+  it should "reject an invalid base package before emitting source" in {
+    val template =
+      MultiTemplate(
+        "Bad.Package-Name",
+        List(TemplateDefinition("Thing", ObjectType(ListMap("value" -> FieldDef(StringType(), optional = false))))))
+
+    val err = gen.generateMulti(template).left.value
+    err shouldBe a[GeneratorError.TemplateError]
+    err.message should include("basePackage")
+    err.message should include("Bad.Package-Name")
+  }
+
+  it should "reject an empty definition set before emitting a package declaration" in {
+    val err = gen.generateMulti(MultiTemplate("", Nil)).left.value
+    err shouldBe a[GeneratorError.TemplateError]
+    err.message should include("at least one definition")
+  }
+
   it should "reject an enum name that is not a valid identifier (closes path traversal)" in {
     val evil =
       TemplateDefinition(

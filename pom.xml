@@ -45,6 +45,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputTimestamp>2026-07-11T00:00:00Z</project.build.outputTimestamp>
         <scala.version>2.12.21</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <scalatest.version>3.2.20</scalatest.version>
@@ -118,6 +119,33 @@
     <build>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.6.2</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-build-and-release-requirements</id>
+                            <goals>
+                                <goal>enforce</goal>
+                            </goals>
+                            <configuration>
+                                <rules>
+                                    <requireMavenVersion>
+                                        <version>[3.9.0,)</version>
+                                    </requireMavenVersion>
+                                    <requireJavaVersion>
+                                        <version>[11,)</version>
+                                    </requireJavaVersion>
+                                    <requireReleaseDeps>
+                                        <failWhenParentIsSnapshot>true</failWhenParentIsSnapshot>
+                                    </requireReleaseDeps>
+                                </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
                 <!-- Scala Maven Plugin -->
                 <plugin>
                     <groupId>net.alchim31.maven</groupId>
@@ -125,10 +153,17 @@
                     <version>4.9.10</version>
                     <executions>
                         <execution>
+                            <id>scala-compile</id>
                             <goals>
                                 <goal>compile</goal>
                                 <goal>testCompile</goal>
-                                <goal>doc-jar</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>scala-doc</id>
+                            <phase>prepare-package</phase>
+                            <goals>
+                                <goal>doc</goal>
                             </goals>
                         </execution>
                     </executions>
@@ -151,6 +186,12 @@
                             </compilerPlugin>
                         </compilerPlugins>
                     </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.5.0</version>
                 </plugin>
 
                 <!-- Maven Surefire Plugin -->
@@ -281,6 +322,11 @@
              and Maven Central publishing. Signing is skippable for local/CI builds with
              -Dgpg.skip=true; publishing only runs on `mvn deploy`. -->
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+            </plugin>
+
             <!-- Fail the build unless README/getting-started reference the current version -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

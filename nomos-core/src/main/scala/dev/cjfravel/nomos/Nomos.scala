@@ -103,7 +103,7 @@ object Nomos {
   }
 
   /**
-   * Generate code from many templates sharing one definition space so $ref resolves across files.
+   * Generate code from many templates sharing one definition space so $$ref resolves across files.
    */
   def generateAll(templates: java.util.List[MultiTemplate], outputDir: String): Either[GeneratorError, WriteReport] =
     MultiTemplate.combine(scala.collection.JavaConverters.asScalaBuffer(templates).toList) match {

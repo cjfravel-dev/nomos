@@ -15,6 +15,7 @@ Closes #
 ## Checklist
 
 - [ ] Tests added/updated for new behavior
-- [ ] `mvn clean test` and the example build (`mvn -f nomos-example/pom.xml test`) pass
+- [ ] `mvn clean install -Dgpg.skip=true` and the clean example build
+      (`mvn -f nomos-example/pom.xml clean test`) pass
 - [ ] Scala sources are formatted and linted (`mvn scalafmt:format`; scalafix clean)
 - [ ] User docs under `docs/` updated if behavior changed

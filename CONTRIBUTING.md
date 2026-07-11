@@ -4,13 +4,13 @@ Thanks for your interest in contributing!
 
 ## Building and testing
 
-Nomos targets Java 8 (compiled with `--release 8`, so **JDK 9+ is required to build**) and
+Nomos targets Java 8 (compiled with `--release 8`, using **JDK 11+ to build**) and
 Scala 2.12. Build and test the reactor, then the example separately — it exercises the
 end-to-end Maven-plugin path, which the reactor excludes:
 
 ```bash
-mvn clean test
-mvn -f nomos-example/pom.xml test
+mvn clean install -Dgpg.skip=true
+mvn -f nomos-example/pom.xml clean test
 ```
 
 CI runs the reactor and the example on both Java 11 and Java 17, and additionally verifies
@@ -22,7 +22,7 @@ coverage, the release artifacts, and the end-to-end example build.
   (`CompileHarness`) that compiles — and can execute — generated output; prefer it over
   string-only assertions for codegen changes.
 - Update the user docs under `docs/` when behavior changes.
-- Make sure `mvn clean test` and the example build pass before opening a PR.
+- Make sure `mvn clean install -Dgpg.skip=true` and the clean example build pass before opening a PR.
 
 ## Code style
 

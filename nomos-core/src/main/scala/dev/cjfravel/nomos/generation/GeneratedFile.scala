@@ -16,18 +16,7 @@ case class GeneratedFile(relativePath: String, content: String) {
    * Writes the file to the given output directory
    */
   def writeTo(outputDir: File): Either[String, File] =
-    try {
-      val file = new File(outputDir, relativePath)
-
-      // Create parent directories if they don't exist
-      file.getParentFile.mkdirs()
-
-      // Write as UTF-8 so output is reproducible and non-ASCII content is not corrupted.
-      java.nio.file.Files.write(file.toPath, content.getBytes(java.nio.charset.StandardCharsets.UTF_8))
-      Right(file)
-    } catch {
-      case e: Exception => Left(s"Failed to write file $relativePath: ${e.getMessage}")
-    }
+    new FileWriter().writeFile(this, outputDir).left.map(_.message)
 
   /**
    * Gets the file name (without path)

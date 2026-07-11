@@ -85,11 +85,16 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         // scalastyle:off classforname
         val method = Class.forName(typeName).getMethod("parse", classOf[CharSequence])
         // scalastyle:on classforname
+        if (!java.lang.reflect.Modifier.isStatic(method.getModifiers)) {
+          throw new NoSuchMethodException(s"$typeName.parse(CharSequence) is not static")
+        }
         (s: String) => { method.invoke(null, s); () }
       } catch {
-        case _: Throwable =>
-          if (isDate) (s: String) => { java.time.LocalDate.parse(s); () }
-          else (s: String) => { java.time.LocalDateTime.parse(s); () }
+        case error: ReflectiveOperationException =>
+          throw new IllegalArgumentException(
+            s"Configured temporal type '$typeName' must be available and expose a public static " +
+              "parse(CharSequence) method",
+            error)
       }
     }
 
@@ -113,7 +118,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   /**
    * Validates a JSON string against a specific definition in the multi-template.
    *
-   * Structural fields are validated against the template; external-typed fields (`$gen:`/`$extern:`) are not
+   * Structural fields are validated against the template; external-typed fields (`$$gen:`/`$$extern:`) are not
    * schema-validated here — their validation is delegated to the referenced type's generated decode or the
    * application-registered codec.
    *
@@ -138,7 +143,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
    * reference-tail-optimized and depth-bounded, so cyclic schemas fail with an error rather than a StackOverflowError.
    * Phase two runs custom validators, and only if phase one found no structural errors anywhere in the document — so
    * validators never see structurally invalid data. A definition's validators run wherever the definition appears (top
-   * level and at every `$ref`), each receiving a [[ValidatorContext]] with the node at that level, the document root,
+   * level and at every `$$ref`), each receiving a [[ValidatorContext]] with the node at that level, the document root,
    * and the JSON path.
    */
   def validateJson(json: JsonValue, definitionName: String): Either[List[ValidationError], JsonValue] =
@@ -490,7 +495,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       path: String,
       currentPackage: String,
       depth: Int,
-      constraints: List[Constraint] = List.empty): List[ValidationError] =
+      constraints: List[Constraint]): List[ValidationError] =
     json.asArray match {
       case Some(array) =>
         val elements = array.values.toList
@@ -534,7 +539,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       path: String,
       currentPackage: String,
       depth: Int,
-      additional: AdditionalProperties = ForbidExtra): List[ValidationError] =
+      additional: AdditionalProperties): List[ValidationError] =
     json.asObject match {
       case Some(obj) =>
         val jsonFieldMap = obj.fieldMap
@@ -592,8 +597,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       path: String,
       currentPackage: String,
       depth: Int,
-      variantMatch: String = "exact",
-      hasFallback: Boolean = false): List[ValidationError] =
+      variantMatch: String,
+      hasFallback: Boolean): List[ValidationError] =
     json.asObject match {
       case Some(obj) =>
         val jsonFieldMap = obj.fieldMap

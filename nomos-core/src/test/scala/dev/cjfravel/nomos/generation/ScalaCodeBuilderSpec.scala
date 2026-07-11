@@ -13,6 +13,12 @@ class ScalaCodeBuilderSpec extends AnyFlatSpec with Matchers {
     out should include("object X {")
   }
 
+  it should "honor a custom indentation width" in {
+    val b = new ScalaCodeBuilder(indentSize = 4)
+    b.line("object X {").indent().line("val a = 1").dedent().line("}")
+    b.build() should include("\n    val a = 1\n")
+  }
+
   it should "emit case classes with and without parent" in {
     val b = ScalaCodeBuilder()
     b.caseClass("User", List(("id", "String"), ("age", "Int")), Some("Base"))

@@ -6,7 +6,7 @@ import dev.cjfravel.nomos.json._
  * Decoder combinators used by generated `decode` methods. Keeping these in the runtime keeps generated code compact
  * while remaining free of any third-party JSON library.
  *
- * A `Decoder[A]` turns a [[JsonValue]] into either an error message or a value of type `A`.
+ * A `Decoder[A]` turns a [[dev.cjfravel.nomos.json.JsonValue]] into either an error message or a value of type `A`.
  */
 object Codecs {
   type Decoder[A] = JsonValue => Either[String, A]

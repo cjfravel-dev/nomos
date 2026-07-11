@@ -15,6 +15,11 @@
 
     <name>Nomos Maven Plugin</name>
     <description>Maven plugin for generating Scala code from Nomos templates</description>
+    <url>https://github.com/cjfravel-dev/nomos</url>
+
+    <prerequisites>
+        <maven>3.9.0</maven>
+    </prerequisites>
 
     <dependencies>
         <!-- Nomos Core -->
@@ -53,6 +58,20 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.36</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -67,6 +86,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-plugin-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>false</skipTests>
+                </configuration>
             </plugin>
 
             <!-- Source + Javadoc jars required for Maven Central (Java module) -->
@@ -88,6 +115,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.12.0</version>
+                <configuration>
+                    <noindex>true</noindex>
+                    <notimestamp>true</notimestamp>
+                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
