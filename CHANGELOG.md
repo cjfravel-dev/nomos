@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Maven Central publishing supplies the signing passphrase through
+  `MAVEN_GPG_PASSPHRASE`, keeping sensitive content out of the runner's generated
+  Maven settings.
+
 ## [0.0.1-alpha8]
 
 ### Added

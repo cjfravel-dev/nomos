@@ -19,7 +19,7 @@ jobs:
     env:
       CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
       CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
-      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
       GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
       RELEASE_TAG: ${{ github.event.release.tag_name }}
 
@@ -39,7 +39,6 @@ jobs:
           server-username: CENTRAL_USERNAME
           server-password: CENTRAL_TOKEN
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: GPG_PASSPHRASE
 
       - name: Verify release identity and credentials
         env:
@@ -81,7 +80,6 @@ jobs:
           ./mvnw clean deploy -B \
             -Dgpg.skip=false \
             -Dgpg.keyname="$GPG_KEY_ID" \
-            -Dgpg.pinentryMode=loopback \
             -Dcentral.autoPublish=true \
             -Dcentral.waitUntil=published \
             -Dcentral.waitMaxTime=3600
