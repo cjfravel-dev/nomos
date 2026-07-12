@@ -7,7 +7,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class InstanceTemporalParser {
-  def parse(_value: CharSequence): InstanceTemporalParser = this
+  def parse(value: CharSequence): InstanceTemporalParser = {
+    value.length()
+    this
+  }
 }
 
 /**

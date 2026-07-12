@@ -36,4 +36,16 @@ class ValidatorLimitsSpec extends AnyFlatSpec with Matchers {
     // Re-validate to exercise the cached compiled pattern.
     v.validate("""{"code":"999"}""", "N") shouldBe a[Right[_, _]]
   }
+
+  "numeric constraint validation" should "reject a magnitude that cannot be evaluated as BigDecimal" in {
+    val t =
+      MultiTemplate(
+        "com.example",
+        List(
+          TemplateDefinition(
+            "N",
+            ObjectType(ListMap("value" -> FieldDef(NumberType(List(Max(10.0))), optional = false))))))
+
+    new MultiValidator(t).validate("""{"value":1e2147483648}""", "N") shouldBe a[Left[_, _]]
+  }
 }

@@ -453,7 +453,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       path: String,
       constraints: List[Constraint]): List[ValidationError] =
     n.asBigDecimalOption match {
-      case None => List.empty // magnitude beyond BigDecimal's range; constraints cannot be evaluated exactly
+      case None =>
+        List(ValidationError.constraintViolation(path, "representable number", n.raw))
       case Some(value) =>
         constraints.flatMap {
           case Min(min) if value < BigDecimal(min.toString) =>

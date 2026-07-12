@@ -75,7 +75,7 @@ User.validate("""{"id":"1","username":"jo","email":"jo@x.com","roles":["admin"]}
 <pre><code class="language-scala">case class ValidationError(path: String, message: String, expected: String, actual: String) {
   def fullMessage: String  // "path: message (expected: …, got: …)"
 }</code></pre>
-    <p>Schema checks include: required vs. optional fields, type mismatches, string/number/array constraints, enum membership, whole-number checks for <code>int</code>/<code>long</code>, temporal parsing for <code>date</code>/<code>datetime</code>, discriminator resolution, and unexpected extra keys (unless <code>$additionalProperties</code> allows them).</p>
+    <p>Schema checks include: required vs. optional fields, type mismatches, string/number/array constraints, enum membership, whole-number checks for <code>int</code>/<code>long</code>, temporal parsing for <code>date</code>/<code>datetime</code>, discriminator resolution, and unexpected extra keys (unless <code>$additionalProperties</code> allows them). Numeric magnitudes outside the runtime's exact <code>BigDecimal</code> representation are rejected rather than bypassing constraints.</p>
     <div class="callout note"><p>Validation is depth-bounded — recursion is capped to guard against pathological or deeply nested input — and constraint <code>pattern</code> regexes are compiled once and cached.</p></div>
 
     <h2 id="api">Validating with the API</h2>
