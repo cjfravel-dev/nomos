@@ -1,0 +1,133 @@
+name: Maven Central
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maven-central
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    environment: maven-central
+    env:
+      CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+      CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      GPG_KEY_ID: ${{ vars.GPG_KEY_ID }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Java and release credentials
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_TOKEN
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Verify release identity and credentials
+        env:
+          CENTRAL_USER_TOKEN_EXPIRATION_DATE: ${{ vars.CENTRAL_USER_TOKEN_EXPIRATION_DATE }}
+          GPG_KEY_EXPIRATION_DATE: ${{ vars.GPG_KEY_EXPIRATION_DATE }}
+        run: |
+          set -euo pipefail
+          version=$(./mvnw -q help:evaluate -Dexpression=project.version -DforceStdout)
+          test "$RELEASE_TAG" = "$version"
+          test "${version%-SNAPSHOT}" = "$version"
+
+          for expiration in "$CENTRAL_USER_TOKEN_EXPIRATION_DATE" "$GPG_KEY_EXPIRATION_DATE"; do
+            test "$(date -u +%s)" -lt "$(date -u -d "$expiration" +%s)"
+          done
+
+          imported_fingerprint=$(
+            gpg --batch --with-colons --fingerprint "$GPG_KEY_ID" |
+              awk -F: '$1 == "fpr" { print $10; exit }'
+          )
+          test "$imported_fingerprint" = "$GPG_KEY_ID"
+          gpg --batch --with-colons --list-keys "$GPG_KEY_ID" |
+            awk -F: '$1 == "uid" { print $10 }' |
+            grep -F 'Nomos Release <nomos-releases@cjfravel.dev>'
+
+          artifact_url="https://repo1.maven.org/maven2/dev/cjfravel/nomos-runtime/$version/nomos-runtime-$version.pom"
+          if curl --fail --silent --show-error --location --output /dev/null "$artifact_url"; then
+            echo "Version $version is already published." >&2
+            exit 1
+          fi
+
+      - name: Validate reactor
+        run: ./mvnw clean install -Dgpg.skip=true -B
+
+      - name: Validate end-to-end example
+        run: ./mvnw -f nomos-example/pom.xml clean test -B
+
+      - name: Sign and publish
+        run: |
+          ./mvnw clean deploy -B \
+            -Dgpg.skip=false \
+            -Dgpg.keyname="$GPG_KEY_ID" \
+            -Dgpg.pinentryMode=loopback \
+            -Dcentral.autoPublish=true \
+            -Dcentral.waitUntil=published \
+            -Dcentral.waitMaxTime=3600
+
+      - name: Wait for Central resolution
+        run: |
+          set -euo pipefail
+          version="$RELEASE_TAG"
+          base="https://repo1.maven.org/maven2/dev/cjfravel"
+          paths=(
+            "nomos-bom/$version/nomos-bom-$version.pom"
+            "nomos-runtime/$version/nomos-runtime-$version.jar"
+            "nomos-core/$version/nomos-core-$version.jar"
+            "nomos-maven-plugin/$version/nomos-maven-plugin-$version.jar"
+          )
+
+          for attempt in $(seq 1 40); do
+            missing=0
+            for path in "${paths[@]}"; do
+              if ! curl --fail --silent --show-error --location --output /dev/null "$base/$path"; then
+                missing=1
+              fi
+            done
+            if [[ "$missing" -eq 0 ]]; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Published artifacts did not become resolvable within 10 minutes." >&2
+          exit 1
+
+      - name: Test a clean Central consumer
+        run: |
+          ./mvnw -f nomos-example/pom.xml \
+            -Dmaven.repo.local="$RUNNER_TEMP/nomos-central-smoke" \
+            clean test -B
+
+      - name: Write release summary
+        run: |
+          {
+            echo "## Nomos $RELEASE_TAG"
+            echo
+            echo "Published and verified:"
+            echo
+            echo "- \`dev.cjfravel:nomos-bom:$RELEASE_TAG\`"
+            echo "- \`dev.cjfravel:nomos-runtime:$RELEASE_TAG\`"
+            echo "- \`dev.cjfravel:nomos-core:$RELEASE_TAG\`"
+            echo "- \`dev.cjfravel:nomos-maven-plugin:$RELEASE_TAG\`"
+          } >> "$GITHUB_STEP_SUMMARY"

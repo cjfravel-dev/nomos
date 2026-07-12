@@ -6,7 +6,7 @@
 
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-parent</artifactId>
-    <version>0.0.1-alpha7</version>
+    <version>0.0.1-alpha8</version>
     <packaging>pom</packaging>
 
     <name>Nomos Parent</name>
@@ -45,7 +45,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>2026-07-11T00:00:00Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2026-07-12T03:49:56Z</project.build.outputTimestamp>
+        <!-- Official GitHub releases override these safe local defaults. -->
+        <central.autoPublish>false</central.autoPublish>
+        <central.waitUntil>validated</central.waitUntil>
+        <central.waitMaxTime>1800</central.waitMaxTime>
         <scala.version>2.12.21</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <scalatest.version>3.2.20</scalatest.version>
@@ -387,10 +391,12 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
-                    <!-- Upload to the Central portal but require an explicit "Publish" there, so an
-                         accidental `mvn deploy` stages a (droppable) deployment instead of an
-                         irreversible release. -->
-                    <autoPublish>false</autoPublish>
+                    <deploymentName>nomos-${project.version}</deploymentName>
+                    <!-- Local deploys remain user-managed and droppable. The protected GitHub
+                         release workflow explicitly enables automatic publication. -->
+                    <autoPublish>${central.autoPublish}</autoPublish>
+                    <waitUntil>${central.waitUntil}</waitUntil>
+                    <waitMaxTime>${central.waitMaxTime}</waitMaxTime>
                 </configuration>
             </plugin>
         </plugins>

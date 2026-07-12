@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Releasing — Nomos</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="icon" type="image/png" href="../assets/logo-mark.png">
+</head>
+<body data-section="contributors" data-page="releasing">
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-icon" src="../assets/logo-mark.png" alt="" aria-hidden="true">
+      <span class="brand-name">nomos</span>
+    </a>
+    <nav class="primary-nav">
+      <a href="../index.html" data-section="home">Home</a>
+      <a href="../users/getting-started.html" data-section="users">User Guide</a>
+      <a href="index.html" data-section="contributors">Contributors</a>
+      <a href="../api-reference.html" data-section="api">API</a>
+      <a class="gh" href="https://github.com/cjfravel-dev/nomos">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <aside class="sidebar">
+    <h5>Contributors</h5>
+    <ul>
+      <li><a href="index.html" data-page="index">Contributing</a></li>
+      <li><a href="architecture.html" data-page="architecture">Architecture</a></li>
+      <li><a href="releasing.html" data-page="releasing">Releasing</a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <span class="eyebrow">Maintainers</span>
+      <h1>Releasing Nomos</h1>
+      <p class="lede">A published GitHub Release builds, signs, publishes, and verifies the matching Maven Central version.</p>
+    </div>
+
+    <h2>Prepare the version</h2>
+    <ol>
+      <li>Update the reactor, example, README, docs, and changelog to one non-SNAPSHOT version.</li>
+      <li>Regenerate API documentation with <code>dev/scripts/build-api-docs.sh</code>.</li>
+      <li>Merge the focused release pull request after Java 11/17 CI and CodeQL pass.</li>
+    </ol>
+
+    <h2>Publish the GitHub Release</h2>
+    <ol>
+      <li>Create a tag exactly equal to the Maven project version, without a <code>v</code> prefix.</li>
+      <li>Review release notes and mark prerelease versions appropriately.</li>
+      <li>Publish the GitHub Release. This is the intentional release approval.</li>
+    </ol>
+
+    <p>The protected <code>Maven Central</code> workflow checks the tag/version pair, credential expiration, signing-key fingerprint, and duplicate-version status. It then runs the reactor and example, signs every Central artifact, publishes only after Central validation succeeds, waits for the published state, and tests a clean consumer.</p>
+
+    <h2>Safe defaults</h2>
+    <p>A local <code>mvn deploy</code> uses user-managed Central deployment by default and stops after validation. Only the protected GitHub Release workflow enables automatic publication.</p>
+
+    <h2>Failure handling</h2>
+    <ul>
+      <li>A build, test, signing, upload, or Central validation failure publishes nothing.</li>
+      <li>A version already present on Central fails before deployment.</li>
+      <li>A published Central version is immutable; corrections require a new version.</li>
+      <li>Rotate the Central token and PGP key before the expiration dates recorded in the <code>maven-central</code> environment.</li>
+    </ul>
+  </main>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span>Nomos — Scala models &amp; validators from one template.</span>
+    <span class="footer-links"><a href="../index.html">Home</a><a href="https://github.com/cjfravel-dev/nomos">GitHub</a></span>
+  </div>
+</footer>
+
+<script src="../assets/site.js"></script>
+</body>
+</html>

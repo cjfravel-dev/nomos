@@ -2,6 +2,8 @@
 
 This is a working example demonstrating how to use Nomos for code generation and validation.
 
+The example uses Nomos `0.0.1-alpha8`.
+
 ## What This Example Demonstrates
 
 1. **Template Definition** - JSON templates for User, Column, Limits, and Account models
@@ -172,7 +174,7 @@ The example uses Nomos BOM for dependency management:
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.0.1-alpha7</version>
+            <version>0.0.1-alpha8</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -188,7 +190,7 @@ Minimal plugin setup:
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.0.1-alpha7</version>
+    <version>0.0.1-alpha8</version>
     <executions>
         <execution>
             <phase>generate-sources</phase>
