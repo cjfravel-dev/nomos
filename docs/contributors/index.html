@@ -31,6 +31,7 @@
     <ul>
       <li><a href="index.html" data-page="index">Contributing</a></li>
       <li><a href="architecture.html" data-page="architecture">Architecture</a></li>
+      <li><a href="releasing.html" data-page="releasing">Releasing</a></li>
     </ul>
     <h5>On this page</h5>
     <ul>
@@ -94,9 +95,9 @@ mvn -f nomos-example/pom.xml clean test</code></pre>
       regenerates both references and fails if the checked-in output differs.
     </p>
     <p>
-      Releases publish to Maven Central via <code>mvn deploy</code>. Publishing stages a
-      <em>droppable</em> deployment that requires a manual Publish in the Central portal
-      (<code>autoPublish</code> is off), and CI verifies the release artifacts.
+      A published GitHub Release runs the protected Maven Central workflow, which builds, signs,
+      publishes, waits for Central resolution, and tests a clean consumer. See the
+      <a href="releasing.html">release runbook</a>.
     </p>
 
     <h2 id="style">Code style</h2>

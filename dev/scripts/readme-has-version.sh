@@ -22,6 +22,8 @@ FILES=(
     "README.md"
     "CHANGELOG.md"
     "docs/users/getting-started.html"
+    "docs/users/maven-plugin.html"
+    "nomos-example/README.md"
 )
 
 STATUS=0

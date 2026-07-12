@@ -6,8 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha8]
+
 ### Added
 
+- Automated Maven Central releases: publishing a GitHub Release builds and tests the reactor,
+  signs artifacts with the dedicated Nomos release key, publishes after Central validation,
+  waits for repository availability, and verifies a clean consumer.
 - Comprehensive runtime behavioral coverage for template models, codecs, registries, validation
   constraints, discriminators, custom-validator traversal, and JSON edge cases. Runtime coverage
   is 98.07% statements / 96.11% branches, with a 97% enforced floor.

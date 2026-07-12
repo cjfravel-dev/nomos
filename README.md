@@ -22,7 +22,7 @@ version in a property so a bump is a single edit:
 
 ```xml
 <properties>
-    <nomos.version>0.0.1-alpha7</nomos.version>
+    <nomos.version>0.0.1-alpha8</nomos.version>
 </properties>
 
 <dependencyManagement>
