@@ -39,6 +39,8 @@ class JsonNumberSpec extends AnyFlatSpec with Matchers {
     JsonNumber("3.14").asDouble shouldBe 3.14
     JsonNumber("3.14").asInt shouldBe None
     JsonNumber("3.5").asBigDecimal shouldBe BigDecimal("3.5")
+    JsonNumber("1e2147483648").asBigDecimalOption shouldBe None
+    JsonNumber("1e2147483648").isIntegral shouldBe false
   }
 
   it should "build from primitives" in {
@@ -86,6 +88,7 @@ class JsonWriterSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   it should "escape control characters as \\u" in {
     Json.write(JsonString("\u0001")) shouldBe "\"\\u0001\""
+    Json.write(JsonString("\b\f\r")) shouldBe "\"\\b\\f\\r\""
   }
 
   it should "preserve object key order on output" in {
@@ -150,5 +153,66 @@ class JsonObjectSpec extends AnyFlatSpec with Matchers {
     o.mapKeys(_.toUpperCase(java.util.Locale.ROOT)).keys shouldBe Vector("A", "B")
     // original is unchanged (immutable)
     o.keys shouldBe Vector("a", "b")
+  }
+
+  it should "expose collection metadata and stable value semantics" in {
+    JsonObject.empty.isEmpty shouldBe true
+    JsonObject.empty.size shouldBe 0
+    val one = JsonObject("x" -> JsonNumber("1"))
+    one.isEmpty shouldBe false
+    one.size shouldBe 1
+    one.hashCode() shouldBe JsonObject("x" -> JsonNumber("1")).hashCode()
+    one.equals("not an object") shouldBe false
+    one.toString should include("JsonObject")
+  }
+
+  it should "collapse duplicate construction keys at their first position" in {
+    val obj =
+      JsonObject.fromFields(Vector("a" -> JsonNumber("1"), "b" -> JsonNumber("2"), "a" -> JsonNumber("3")))
+    obj.keys shouldBe Vector("a", "b")
+    obj.field("a") shouldBe Some(JsonNumber("3"))
+  }
+}
+
+class JsonFacadeSpec extends AnyFlatSpec with Matchers with EitherValues {
+
+  "Json construction helpers" should "build every public JSON value shape" in {
+    Json.obj("a" -> Json.num(1)).field("a") shouldBe Some(JsonNumber("1"))
+    Json.obj(List("a" -> Json.str("x"))).field("a") shouldBe Some(JsonString("x"))
+    Json.arr(Json.bool(true), Json.nul).values shouldBe Vector(JsonBoolean(true), JsonNull)
+    Json.arr(List(Json.str("x"))).values shouldBe Vector(JsonString("x"))
+    Json.num(1L) shouldBe JsonNumber("1")
+    Json.num(1.5) shouldBe JsonNumber("1.5")
+    Json.num(BigDecimal("1.50")) shouldBe JsonNumber("1.50")
+  }
+
+  it should "expose every type predicate and accessor" in {
+    val values =
+      List[JsonValue](JsonNull, JsonString("x"), JsonNumber("1"), JsonBoolean(true), JsonArray.empty, JsonObject.empty)
+    values.map(_.typeName) shouldBe List("null", "string", "number", "boolean", "array", "object")
+    JsonNull.isNull shouldBe true
+    JsonString("x").isString shouldBe true
+    JsonNumber("1").isNumber shouldBe true
+    JsonBoolean(true).isBoolean shouldBe true
+    JsonObject.empty.isObject shouldBe true
+    JsonArray.empty.isArray shouldBe true
+    JsonString("x").asBoolean shouldBe None
+    JsonString("x").asNumber shouldBe None
+    JsonString("x").asArray shouldBe None
+    JsonString("x").asObject shouldBe None
+    JsonBoolean(true).asBoolean shouldBe Some(true)
+    JsonArray.empty.asArray shouldBe Some(JsonArray.empty)
+    JsonObject.empty.asObject shouldBe Some(JsonObject.empty)
+  }
+
+  "JsonArray" should "support indexed access and bounds-safe lookup" in {
+    val array = JsonArray.of(JsonString("a"), JsonString("b"))
+    array.size shouldBe 2
+    array.isEmpty shouldBe false
+    array(1) shouldBe JsonString("b")
+    array.get(0) shouldBe Some(JsonString("a"))
+    array.get(-1) shouldBe None
+    array.get(2) shouldBe None
+    JsonArray.empty.isEmpty shouldBe true
   }
 }

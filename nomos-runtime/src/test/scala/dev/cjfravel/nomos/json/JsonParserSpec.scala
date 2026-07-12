@@ -33,6 +33,7 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with EitherValues {
 
   it should "decode string escapes" in {
     Json.parse(""""a\"b\\c\n\t\/d"""").value shouldBe JsonString("a\"b\\c\n\t/d")
+    Json.parse("\"\\b\\f\\r\"").value shouldBe JsonString("\b\f\r")
   }
 
   it should "decode BMP unicode escapes" in {
@@ -110,5 +111,38 @@ class JsonParserSpec extends AnyFlatSpec with Matchers with EitherValues {
   it should "reject input exceeding the max size" in {
     val cfg = JsonParser.Config(maxInputChars = 4)
     JsonParser.parse("12345", cfg) shouldBe a[Left[_, _]]
+  }
+
+  it should "reject null input" in {
+    JsonParser.parse(null) shouldBe Left("JSON input is null")
+  }
+
+  it should "report malformed object and array separators" in {
+    Json.parse("{1:2}").left.value should include("Expected string key")
+    Json.parse("""{"a" 1}""").left.value should include("Expected ':'")
+    Json.parse("""{"a":1 "b":2}""").left.value should include("Expected ',' or '}'")
+    Json.parse("[1 2]").left.value should include("Expected ',' or ']'")
+  }
+
+  it should "report incomplete escapes and invalid surrogate pairs" in {
+    Json.parse("\"abc\\").left.value should include("Unterminated escape")
+    Json.parse("\"\\u12\"").left.value should include("Incomplete unicode escape")
+    Json.parse("\"\\u12xz\"").left.value should include("Invalid unicode escape")
+    Json.parse("\"\\uD83D\\u0041\"").left.value should include("Invalid low surrogate")
+  }
+
+  it should "reject incomplete literals and signed numbers without digits" in {
+    Json.parse("tru").left.value should include("Invalid literal")
+    Json.parse("fals").left.value should include("Invalid literal")
+    Json.parse("nul").left.value should include("Invalid literal")
+    Json.parse("-").left.value should include("expected digit")
+    Json.parse("-x").left.value should include("expected digit")
+    Json.parse("1e+").left.value should include("digit in exponent")
+  }
+
+  it should "include line and column information in errors" in {
+    val error = Json.parse("{\n\"a\": 1,\n}").left.value
+    error should include("line 3")
+    error should include("column 1")
   }
 }

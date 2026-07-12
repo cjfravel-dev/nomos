@@ -71,7 +71,7 @@ mvn -f nomos-example/pom.xml clean test</code></pre>
 <pre><code class="language-bash">mvn -pl nomos-runtime,nomos-core scoverage:report scoverage:check
 # HTML reports: nomos-runtime/target/site/scoverage/index.html
 #               nomos-core/target/site/scoverage/index.html</code></pre>
-    <p>CI enforces the measured runtime baseline at 45% and the core floor at 80%.</p>
+    <p>CI enforces a 97% runtime floor and an 80% core floor.</p>
 
     <h2 id="tdd">Test-driven workflow</h2>
     <p>

@@ -8,6 +8,9 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Comprehensive runtime behavioral coverage for template models, codecs, registries, validation
+  constraints, discriminators, custom-validator traversal, and JSON edge cases. Runtime coverage
+  is 98.07% statements / 96.11% branches, with a 97% enforced floor.
 - Dedicated Maven-plugin tests cover generation, compile-root registration, missing templates,
   include/exclude patterns, and invalid directory-derived packages.
 - Runtime coverage is enforced at its measured baseline, and CI publishes both runtime and core
@@ -26,6 +29,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 
+- Numeric validation now rejects magnitudes that cannot be represented as `BigDecimal`, matching
+  the generated decoder instead of allowing an unevaluable value to bypass constraints.
 - Invalid base packages, sub-packages, Scala package keywords, and empty definition sets now fail
   before generated source is written.
 - Configured temporal types must be available with a public static `parse(CharSequence)` method;

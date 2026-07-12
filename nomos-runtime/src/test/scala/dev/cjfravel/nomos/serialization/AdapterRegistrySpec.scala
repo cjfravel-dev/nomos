@@ -17,6 +17,7 @@ class AdapterRegistrySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "register decode and encode together" in {
+    AdapterRegistry.clear()
     AdapterRegistry.register("rt-pair-adapter")(decode = _ + "-d", encode = _ + "-e")
     AdapterRegistry.isRegistered("rt-pair-adapter") shouldBe true
     AdapterRegistry.decode("rt-pair-adapter", "x") shouldBe "x-d"
@@ -24,6 +25,19 @@ class AdapterRegistrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Codecs.adapted" should "return Left for an unregistered adapter instead of passing through" in {
+    AdapterRegistry.clear()
     Codecs.adapted("nope-unregistered-abc")(JsonString("x")) shouldBe a[Left[_, _]]
+  }
+
+  it should "decode and encode through a registered adapter" in {
+    AdapterRegistry.clear()
+    AdapterRegistry.register("case-adapter")(_.toLowerCase(java.util.Locale.ROOT), _.toUpperCase(java.util.Locale.ROOT))
+
+    Codecs.adapted("case-adapter")(JsonString("WIRE")) shouldBe Right("wire")
+    Codecs.adapted("case-adapter")(dev.cjfravel.nomos.json.JsonNumber("1")) shouldBe a[Left[_, _]]
+    Codecs.adaptedEncode("case-adapter", "model") shouldBe JsonString("MODEL")
+
+    AdapterRegistry.clear()
+    AdapterRegistry.isRegistered("case-adapter") shouldBe false
   }
 }
