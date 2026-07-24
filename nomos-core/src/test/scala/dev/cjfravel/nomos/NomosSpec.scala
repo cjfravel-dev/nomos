@@ -1,6 +1,7 @@
 package dev.cjfravel.nomos
 import java.io.File
 
+import dev.cjfravel.nomos.generation.GeneratorError
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -61,5 +62,60 @@ class NomosSpec extends AnyFlatSpec with Matchers with EitherValues {
   "Nomos.createValidator" should "build a validator from template JSON" in {
     val v = Nomos.createValidator(templateJson, "com.example").value
     v.validate("""{"id":"a","tags":[]}""", "User") shouldBe a[Right[_, _]]
+  }
+
+  "Nomos.parseTemplateDeferred" should "tag every definition with the given source path" in {
+    val t = Nomos.parseTemplateDeferred(templateJson, "com.example", "src/models/user.json").value
+    t.definitions should not be empty
+    all(t.definitions.map(_.sourcePath)) shouldBe Some("src/models/user.json")
+  }
+
+  it should "leave the source path unset when none is provided" in {
+    val t = Nomos.parseTemplateDeferred(templateJson, "com.example").value
+    all(t.definitions.map(_.sourcePath)) shouldBe None
+  }
+
+  "Nomos.generateAll" should "merge multiple templates into one output" in {
+    val other =
+      """
+        |{
+        |  "definitions": [
+        |    { "name": "Order", "subPackage": "models",
+        |      "template": { "sku": "string" } }
+        |  ]
+        |}
+      """.stripMargin
+    val a = Nomos.parseTemplateDeferred(templateJson, "com.example").value
+    val b = Nomos.parseTemplateDeferred(other, "com.example").value
+    val templates = new java.util.ArrayList[dev.cjfravel.nomos.model.MultiTemplate]()
+    templates.add(a)
+    templates.add(b)
+    val report = Nomos.generateAll(templates, tmpDir.getAbsolutePath).value
+    report.failures shouldBe empty
+    new File(tmpDir, "com/example/models/Order.scala").exists() shouldBe true
+  }
+
+  it should "surface a TemplateError when the templates conflict" in {
+    val listA =
+      """{ "dateType": "com.foo.DateX", "definitions": [ { "name": "A", "template": { "x": "string" } } ] }"""
+    val listB =
+      """{ "dateType": "com.foo.DateY", "definitions": [ { "name": "B", "template": { "y": "string" } } ] }"""
+    val first = Nomos.parseTemplateDeferred(listA, "com.example").value
+    val second = Nomos.parseTemplateDeferred(listB, "com.example").value
+    val templates = new java.util.ArrayList[dev.cjfravel.nomos.model.MultiTemplate]()
+    templates.add(first)
+    templates.add(second)
+    Nomos.generateAll(templates, tmpDir.getAbsolutePath).left.value shouldBe a[GeneratorError.TemplateError]
+  }
+
+  "NomosError.GenerationFailed" should "describe the underlying generator error" in {
+    val err: NomosError = NomosError.GenerationFailed(GeneratorError.IOError("disk full"))
+    err.message should include("generate")
+    err.message should include("disk full")
+  }
+
+  "NomosResult.errors" should "be empty for a successful result" in {
+    val result = Nomos.process(templateJson, "com.example", tmpDir.getAbsolutePath).value
+    result.errors shouldBe empty
   }
 }
