@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha9]
+
 ### Changed
 
 - The documentation site is built and deployed by the `Pages` workflow instead of being served
