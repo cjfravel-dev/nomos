@@ -197,8 +197,8 @@ class CodeGenerator(config: GeneratorConfig) {
         else s"Codecs.list(${decoderExpr(elem)})"
       case MapType(v) => mapDecoderExpr(decoderExpr(v))
       // Inline empty object with an additionalProperties policy renders as a Map field.
-      case ObjectType(f, TypedExtra(vt)) if f.isEmpty => mapDecoderExpr(decoderExpr(vt))
-      case ObjectType(f, AllowExtra) if f.isEmpty => mapDecoderExpr("((j: JsonValue) => Right(j))", "Any")
+      case ObjectType(f, TypedExtra(vt), _) if f.isEmpty => mapDecoderExpr(decoderExpr(vt))
+      case ObjectType(f, AllowExtra, _) if f.isEmpty => mapDecoderExpr("((j: JsonValue) => Right(j))", "Any")
       case UnionType(_) => "Codecs.any"
       case ReferenceType(n) => s"$n.decode"
       case RecursiveRef(n) => s"$n.decode"
@@ -233,9 +233,9 @@ class CodeGenerator(config: GeneratorConfig) {
       case MapType(vt) =>
         s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
       // Inline empty object with an additionalProperties policy renders as a Map field.
-      case ObjectType(f, TypedExtra(vt)) if f.isEmpty =>
+      case ObjectType(f, TypedExtra(vt), _) if f.isEmpty =>
         s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, ${encodeValueExpr(vt, "x")}) }.toSeq)"
-      case ObjectType(f, AllowExtra) if f.isEmpty =>
+      case ObjectType(f, AllowExtra, _) if f.isEmpty =>
         val coerce = "(x match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
         s"JsonObject.fromFields(${mapEntriesExpr(v)}.map { case (k, x) => (k, $coerce) }.toSeq)"
       case UnionType(_) => s"($v match { case jv: JsonValue => jv; case o => JsonString(String.valueOf(o)) })"
@@ -463,7 +463,7 @@ class CodeGenerator(config: GeneratorConfig) {
 
     def walk(tt: TemplateType, ctx: String): List[String] =
       tt match {
-        case ObjectType(fields, additional) =>
+        case ObjectType(fields, additional, _) =>
           val fieldErrs =
             fields.toList.flatMap { case (fieldName, fieldDef) =>
               ident(fieldName, s"$ctx field name") ++ walk(fieldDef.fieldType, s"$ctx.$fieldName")
@@ -1123,10 +1123,10 @@ class CodeGenerator(config: GeneratorConfig) {
         case RecursiveRef(typeName) => typeName
         case ExternalType(qn, _) => qn
         case EnumType(enumName, _) => enumName
-        case ObjectType(fields, AllowExtra) if fields.isEmpty => mapScalaType("Any")
-        case ObjectType(fields, TypedExtra(vt)) if fields.isEmpty =>
+        case ObjectType(fields, AllowExtra, _) if fields.isEmpty => mapScalaType("Any")
+        case ObjectType(fields, TypedExtra(vt), _) if fields.isEmpty =>
           mapScalaType(scalaTypeForDefinition(vt, optional = false, definitionsMap))
-        case ObjectType(_, _) =>
+        case ObjectType(_, _, _) =>
           "???" // Inline objects not supported in multi-definition mode
         case TypeDiscriminator(_, _, _, _, _, _, _, _, _) =>
           "???" // Inline discriminators not supported in multi-definition mode
@@ -1150,7 +1150,7 @@ class CodeGenerator(config: GeneratorConfig) {
       case ArrayType(elementType, _) => collectEnums(elementType)
       case MapType(valueType) => collectEnums(valueType)
       case UnionType(types) => types.flatMap(collectEnums)
-      case ObjectType(fields, _) => fields.values.flatMap(f => collectEnums(f.fieldType)).toList
+      case ObjectType(fields, _, _) => fields.values.flatMap(f => collectEnums(f.fieldType)).toList
       case TypeDiscriminator(_, variants, commonFields, _, _, _, _, fallbackVariant, discriminatorEnum) =>
         val v = variants.values.flatMap(o => o.fields.values.flatMap(f => collectEnums(f.fieldType)))
         val c = commonFields.values.flatMap(f => collectEnums(f.fieldType))
@@ -1169,8 +1169,8 @@ class CodeGenerator(config: GeneratorConfig) {
   private def collectInlineTypeErrors(multiTemplate: MultiTemplate): List[String] = {
     def fieldTypeError(tt: TemplateType, ctx: String): List[String] =
       tt match {
-        case ObjectType(fields, AllowExtra) if fields.isEmpty => Nil
-        case ObjectType(fields, TypedExtra(_)) if fields.isEmpty => Nil
+        case ObjectType(fields, AllowExtra, _) if fields.isEmpty => Nil
+        case ObjectType(fields, TypedExtra(_), _) if fields.isEmpty => Nil
         case _: ObjectType =>
           List(
             s"$ctx: inline nested objects are not supported as a field type; " +
@@ -1185,7 +1185,7 @@ class CodeGenerator(config: GeneratorConfig) {
       }
     def walkFields(tt: TemplateType, ctx: String): List[String] =
       tt match {
-        case ObjectType(fields, _) =>
+        case ObjectType(fields, _, _) =>
           fields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") }
         case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
           commonFields.toList.flatMap { case (n, fd) => fieldTypeError(fd.fieldType, s"$ctx.$n") } ++
@@ -1266,7 +1266,7 @@ class CodeGenerator(config: GeneratorConfig) {
     templateType match {
       case ReferenceType(typeName) => Set(typeName)
       case ArrayType(elementType, _) => collectReferences(elementType)
-      case ObjectType(fields, _) =>
+      case ObjectType(fields, _, _) =>
         fields.values.flatMap(f => collectReferences(f.fieldType)).toSet
       case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
         val variantRefs = variants.values.flatMap(v => v.fields.values.flatMap(f => collectReferences(f.fieldType)))

@@ -30,7 +30,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   // against `state`; used both to compute reachability and, once final, to prune the phase-two walk.
   private def typeReaches(tt: TemplateType, pkg: String, state: Map[String, Boolean]): Boolean =
     tt match {
-      case ObjectType(fields, additional) =>
+      case ObjectType(fields, additional, _) =>
         fields.values.exists(f => typeReaches(f.fieldType, pkg, state)) ||
         (additional match { case TypedExtra(t) => typeReaches(t, pkg, state); case _ => false })
       case ArrayType(e, _) => typeReaches(e, pkg, state)
@@ -182,7 +182,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
     // the whole walk for a validator-free document and skips the union re-validation below).
     if (!typeReaches(templateType, currentPackage, defReaches)) return Nil
     templateType match {
-      case ObjectType(fields, additional) =>
+      case ObjectType(fields, additional, _) =>
         json.asObject match {
           case Some(obj) =>
             val fieldErrors =
@@ -347,7 +347,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       case UnionType(types) =>
         if (types.exists(t => validateTypeWithRefs(t, json, path, currentPackage, depth + 1).isEmpty)) List.empty
         else List(ValidationError.typeMismatch(path, "one of union types", jsonType(json)))
-      case ObjectType(fields, additional) => validateObject(fields, json, path, currentPackage, depth, additional)
+      case ObjectType(fields, additional, presence) =>
+        validateObject(fields, json, path, currentPackage, depth, additional, presence)
       case TypeDiscriminator(fieldName, variants, commonFields, _, _, variantMatch, _, fallbackVariant, _) =>
         validateDiscriminator(
           fieldName,
@@ -514,9 +515,36 @@ class MultiValidator(multiTemplate: MultiTemplate) {
               Some(ValidationError.constraintViolation(path, "uniqueItems", "duplicates"))
             case _ => None
           }
-        itemErrors ++ countErrors
+        itemErrors ++ countErrors ++ uniqueByErrors(elements, path, constraints)
       case None =>
         List(ValidationError.typeMismatch(path, "array", jsonType(json)))
+    }
+
+  /**
+   * Reports each element whose `uniqueBy` key duplicates an earlier element's, naming the element index and the
+   * field(s) forming the key. Elements that are not objects, or that omit a key field, carry no key and are skipped —
+   * their shape is already reported by the element's own type validation.
+   */
+  private def uniqueByErrors(
+      elements: List[JsonValue],
+      path: String,
+      constraints: List[Constraint]): List[ValidationError] =
+    constraints.collect { case UniqueBy(keyFields) => keyFields }.flatMap { keyFields =>
+      val label = s"uniqueBy: ${keyFields.mkString(", ")}"
+      var seen = Set.empty[List[JsonValue]]
+      elements.zipWithIndex.flatMap { case (element, idx) =>
+        val key = element.asObject.map(obj => keyFields.flatMap(obj.field)).filter(_.size == keyFields.size)
+        key match {
+          case Some(k) if seen.contains(k) =>
+            Some(
+              ValidationError
+                .constraintViolation(s"$path[$idx]", label, s"duplicate ${k.map(Json.write).mkString(", ")}"))
+          case Some(k) =>
+            seen += k
+            None
+          case None => None
+        }
+      }
     }
 
   private def validateMap(
@@ -540,7 +568,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
       path: String,
       currentPackage: String,
       depth: Int,
-      additional: AdditionalProperties): List[ValidationError] =
+      additional: AdditionalProperties,
+      presence: List[PresenceGroup]): List[ValidationError] =
     json.asObject match {
       case Some(obj) =>
         val jsonFieldMap = obj.fieldMap
@@ -584,10 +613,28 @@ class MultiValidator(multiTemplate: MultiTemplate) {
               }
           }
 
-        missingFields ++ fieldErrors ++ extraFields
+        missingFields ++ fieldErrors ++ extraFields ++ presenceErrors(presence, jsonFieldMap, path)
 
       case None =>
         List(ValidationError.typeMismatch(path, "object", jsonType(json)))
+    }
+
+  /**
+   * Checks each cross-field presence group against the object's keys. A key present with a JSON null counts as absent,
+   * matching how decode treats null for the optional fields a group governs.
+   */
+  private def presenceErrors(
+      presence: List[PresenceGroup],
+      jsonFieldMap: Map[String, JsonValue],
+      path: String): List[ValidationError] =
+    presence.flatMap { group =>
+      val present = group.keys.filter(k => jsonFieldMap.get(k).exists(_ != JsonNull))
+      val label = s"${group.ruleName}: ${group.keys.mkString(", ")}"
+      if (present.isEmpty && !group.optional)
+        Some(ValidationError.constraintViolation(path, label, "none present"))
+      else if (group.rule == ExactlyOne && present.size > 1)
+        Some(ValidationError.constraintViolation(path, label, s"${present.size} present: ${present.mkString(", ")}"))
+      else None
     }
 
   private def validateDiscriminator(
@@ -657,7 +704,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
                       extraField)
                   }
 
-                commonErrors ++ variantErrors ++ extraFields
+                commonErrors ++ variantErrors ++ extraFields ++ presenceErrors(variantType.presence, jsonFieldMap, path)
 
               case None =>
                 if (hasFallback) {

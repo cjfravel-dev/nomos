@@ -109,6 +109,66 @@ class ValidationBehaviorSpec extends AnyFlatSpec with Matchers with EitherValues
       .exists(_.message.contains("uniqueItems")) shouldBe true
   }
 
+  it should "enforce uniqueBy across array elements" in {
+    val element = ObjectType(ListMap("id" -> FieldDef(StringType()), "label" -> FieldDef(StringType())))
+    val v = validator(ArrayType(element, List(UniqueBy(List("id")))))
+    v.validate("""[{"id":"a","label":"x"},{"id":"b","label":"x"}]""", "Root") shouldBe a[Right[_, _]]
+
+    val duplicate = errors(v.validate("""[{"id":"a","label":"x"},{"id":"a","label":"y"}]""", "Root"))
+    duplicate.map(_.path) shouldBe List("root[1]")
+    duplicate.head.expected shouldBe "uniqueBy: id"
+    duplicate.head.actual should include("\"a\"")
+
+    val composite = validator(ArrayType(element, List(UniqueBy(List("id", "label")))))
+    composite.validate("""[{"id":"a","label":"x"},{"id":"a","label":"y"}]""", "Root") shouldBe a[Right[_, _]]
+    errors(composite.validate("""[{"id":"a","label":"x"},{"id":"a","label":"x"}]""", "Root")).map(_.path) shouldBe
+      List("root[1]")
+
+    // Elements without a key (not an object, or missing the key field) are skipped.
+    validator(ArrayType(StringType(), List(UniqueBy(List("id"))))).validate("""["a","a"]""", "Root") shouldBe
+      a[Right[_, _]]
+    val optionalKey = ObjectType(ListMap("id" -> FieldDef(StringType(), optional = true)))
+    validator(ArrayType(optionalKey, List(UniqueBy(List("id"))))).validate("[{},{}]", "Root") shouldBe a[Right[_, _]]
+  }
+
+  it should "enforce cross-field presence groups" in {
+    def obj(groups: List[PresenceGroup]): ObjectType =
+      ObjectType(
+        ListMap("a" -> FieldDef(StringType(), optional = true), "b" -> FieldDef(StringType(), optional = true)),
+        ForbidExtra,
+        groups)
+
+    val oneOf = validator(obj(List(PresenceGroup(List("a", "b"), ExactlyOne))))
+    oneOf.validate("""{"a":"x"}""", "Root") shouldBe a[Right[_, _]]
+    oneOf.validate("""{"a":"x","b":null}""", "Root") shouldBe a[Right[_, _]]
+    val none = errors(oneOf.validate("{}", "Root")).head
+    none.path shouldBe "root"
+    none.expected shouldBe "$oneOf: a, b"
+    none.actual shouldBe "none present"
+    errors(oneOf.validate("""{"a":"x","b":"y"}""", "Root")).head.actual shouldBe "2 present: a, b"
+
+    val atLeastOne = validator(obj(List(PresenceGroup(List("a", "b"), AtLeastOne))))
+    atLeastOne.validate("""{"a":"x","b":"y"}""", "Root") shouldBe a[Right[_, _]]
+    errors(atLeastOne.validate("{}", "Root")).head.expected shouldBe "$atLeastOne: a, b"
+
+    val optionalGroup = validator(obj(List(PresenceGroup(List("a", "b"), ExactlyOne, optional = true))))
+    optionalGroup.validate("{}", "Root") shouldBe a[Right[_, _]]
+    errors(optionalGroup.validate("""{"a":"x","b":"y"}""", "Root")).head.message should include("$oneOf")
+    validator(obj(List(PresenceGroup(List("a", "b"), AtLeastOne, optional = true))))
+      .validate("{}", "Root") shouldBe a[Right[_, _]]
+  }
+
+  it should "enforce a presence group declared on a discriminator variant" in {
+    val variant =
+      ObjectType(
+        ListMap("a" -> FieldDef(StringType(), optional = true), "b" -> FieldDef(StringType(), optional = true)),
+        ForbidExtra,
+        List(PresenceGroup(List("a", "b"), ExactlyOne)))
+    val v = validator(TypeDiscriminator("kind", ListMap("ref" -> variant)))
+    v.validate("""{"kind":"ref","a":"x"}""", "Root") shouldBe a[Right[_, _]]
+    errors(v.validate("""{"kind":"ref"}""", "Root")).head.expected shouldBe "$oneOf: a, b"
+  }
+
   it should "validate maps and unions" in {
     val mapValidator = validator(MapType(IntType()))
     mapValidator.validate("""{"a":1,"b":2}""", "Root") shouldBe a[Right[_, _]]

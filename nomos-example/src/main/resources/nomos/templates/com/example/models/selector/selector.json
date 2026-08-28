@@ -1,0 +1,23 @@
+{
+  "definitions": [
+    {
+      "name": "Entry",
+      "description": "An entry identified by a key that is unique within a selector",
+      "template": {
+        "key": "string",
+        "label": "string"
+      }
+    },
+    {
+      "name": "Selector",
+      "description": "Selector that names a value either inline or by reference, never both",
+      "template": {
+        "$oneOf": ["inlineValue", "valueRef"],
+        "name": "string",
+        "inlineValue": { "$optional": "string" },
+        "valueRef": { "$optional": "string" },
+        "entries": { "type": "array", "items": "$ref:Entry", "uniqueBy": "key" }
+      }
+    }
+  ]
+}

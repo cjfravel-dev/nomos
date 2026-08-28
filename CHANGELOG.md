@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Cross-field presence groups: an object type can declare `$oneOf` (exactly one of the listed
+  sibling keys must be present) or `$atLeastOne` (one or more). Wrapping the key list in
+  `$optional` also accepts none present. Keys must be declared optional siblings; a `$oneOf`
+  group still rejects more than one present key even when the group is optional.
+- `uniqueBy` array constraint: requires a named field — or a list of fields forming a composite
+  key — to be unique across an array of objects, catching duplicates that `uniqueItems`
+  (whole-element uniqueness) accepts. Violations name the element index and the key fields.
+
 ### Fixed
 
 - Maven Central publishing supplies the signing passphrase through

@@ -6,7 +6,7 @@ The example uses Nomos `0.0.1-alpha8`.
 
 ## What This Example Demonstrates
 
-1. **Template Definition** - JSON templates for User, Column, Limits, and Account models
+1. **Template Definition** - JSON templates for User, Column, Limits, Account, and Selector models
 2. **Code Generation** - Automatic case class generation via Maven plugin
 3. **Serialization** - JSON to/from Scala objects using the generated dependency-free codecs
 4. **Validation** - Runtime JSON validation against template schemas
@@ -21,7 +21,8 @@ nomos-example/
 │       ├── user.json                    # Generates com.example.models.user.User
 │       ├── account/account.json         # Generates com.example.models.account.Account and Tier
 │       ├── column/column.json           # Generates com.example.models.column.Column variants
-│       └── limits/limits.json           # Generates com.example.models.limits.Limits
+│       ├── limits/limits.json           # Generates com.example.models.limits.Limits
+│       └── selector/selector.json       # Generates com.example.models.selector.Selector and Entry
 └── src/main/scala/com/example/
     ├── ExampleApp.scala                 # Demo application
     ├── TestRunner.scala                 # Serialization/validation checks (run via mvn test)
@@ -34,7 +35,9 @@ target/generated-sources/nomos/com/example/models/
     ├── account/Account.scala
     ├── account/Tier.scala
     ├── column/Column.scala
-    └── limits/Limits.scala
+    ├── limits/Limits.scala
+    ├── selector/Selector.scala
+    └── selector/Entry.scala
 ```
 
 ## Running the Example

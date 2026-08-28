@@ -21,3 +21,10 @@ case class MultipleOf(value: Double) extends Constraint
 case class MinItems(count: Int) extends Constraint
 case class MaxItems(count: Int) extends Constraint
 case class UniqueItems(unique: Boolean) extends Constraint
+
+/**
+ * Requires the named field(s) to be unique across an array of objects. Unlike [[UniqueItems]], which compares whole
+ * elements, this compares only the listed fields, so two elements sharing an identifier but differing elsewhere are
+ * rejected. Several field names form a composite key.
+ */
+case class UniqueBy(fields: List[String]) extends Constraint
