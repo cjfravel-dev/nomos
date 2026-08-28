@@ -85,14 +85,18 @@ mvn -f nomos-example/pom.xml clean test</code></pre>
 
     <h2 id="docs-release">Docs &amp; release</h2>
     <p>
-      User docs live under <code>docs/</code> and are served as the project site. Two build-time
-      gates keep them honest: <code>dev/scripts/readme-has-version.sh</code> fails the build unless
-      release docs and every consumer POM reference the current version,
-      and <code>dev/scripts/docs-no-stale-refs.sh</code> fails it if any doc or comment names a
-      third-party JSON library or a removed symbol. Regenerate the API reference under
-      <code>docs/api</code> and <code>docs/runtime-api</code> with
-      <code>dev/scripts/build-api-docs.sh</code> whenever the public Scala surface changes. CI
-      regenerates both references and fails if the checked-in output differs.
+      User docs live under <code>docs/</code> and are the source for the project site. The site
+      itself is built, never checked in: <code>dev/scripts/build-site.sh [out]</code> copies the
+      pages, replaces every <code>&#123;&#123;NOMOS_VERSION&#125;&#125;</code> placeholder with the reactor version,
+      and generates the core and runtime Scaladoc into <code>api/</code> and
+      <code>runtime-api/</code>. The <code>Pages</code> workflow publishes that output on every
+      push to <code>main</code>, and CI builds it on every pull request — so a version bump or an
+      API change never needs a regenerated file in the diff. Two build-time gates keep the
+      hand-written pages honest: <code>dev/scripts/readme-has-version.sh</code> fails the build
+      unless the README, changelog, and every consumer POM reference the current version (and the
+      templated pages still carry the placeholder), and
+      <code>dev/scripts/docs-no-stale-refs.sh</code> fails it if any doc or comment names a
+      third-party JSON library or a removed symbol.
     </p>
     <p>
       A published GitHub Release runs the protected Maven Central workflow, which builds, signs,

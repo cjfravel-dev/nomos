@@ -17,13 +17,20 @@ if [[ -z "$VERSION" ]]; then
     exit 1
 fi
 
-# Files that must reference the current version
+# Files that must reference the current version. The site under docs/ is not listed: it
+# carries a {{NOMOS_VERSION}} placeholder that dev/scripts/build-site.sh substitutes at
+# build time, and TEMPLATED_FILES below checks the placeholder is still there.
 FILES=(
     "README.md"
     "CHANGELOG.md"
+    "nomos-example/README.md"
+)
+
+# Site pages that advertise the version through the build-time placeholder rather than a
+# literal, so a release never has to hand-edit them.
+TEMPLATED_FILES=(
     "docs/users/getting-started.html"
     "docs/users/maven-plugin.html"
-    "nomos-example/README.md"
 )
 
 STATUS=0
@@ -37,6 +44,18 @@ for f in "${FILES[@]}"; do
         echo "Version $VERSION is present in $f."
     else
         echo "Version $VERSION is NOT present in $f."
+        STATUS=1
+    fi
+done
+
+for f in "${TEMPLATED_FILES[@]}"; do
+    if [[ ! -f "$f" ]]; then
+        echo "Version-placeholder file missing: $f"
+        STATUS=1
+    elif grep -qF '{{NOMOS_VERSION}}' "$f"; then
+        echo "Version placeholder is present in $f."
+    else
+        echo "Version placeholder {{NOMOS_VERSION}} is NOT present in $f."
         STATUS=1
     fi
 done

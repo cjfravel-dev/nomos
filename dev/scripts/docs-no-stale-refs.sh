@@ -2,8 +2,9 @@
 # Fail the build if the docs or source comments reference a banned JSON library or a removed
 # symbol. Nomos generates dependency-free code and a first-party runtime, so no doc, README, or
 # source comment may name a third-party JSON library; and the published docs must not mention
-# symbols that no longer exist in the code. This keeps the checked-in docs (including the
-# generated Scaladoc under docs/api) from silently drifting away from the code.
+# symbols that no longer exist in the code. This keeps the hand-written docs from silently
+# drifting away from the code (the API reference is generated at site-build time, so it
+# cannot drift).
 #
 # Wired into the Maven `test` phase (parent pom). Run standalone with:
 #   dev/scripts/docs-no-stale-refs.sh

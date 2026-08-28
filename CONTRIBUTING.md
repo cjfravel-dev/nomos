@@ -21,7 +21,10 @@ coverage, the release artifacts, and the end-to-end example build.
 - Keep changes focused and add tests for new behavior. The generator has a compile harness
   (`CompileHarness`) that compiles — and can execute — generated output; prefer it over
   string-only assertions for codegen changes.
-- Update the user docs under `docs/` when behavior changes.
+- Update the user docs under `docs/` when behavior changes. The published site is built, not
+  checked in — preview it with `dev/scripts/build-site.sh target/site`, which substitutes the
+  `{{NOMOS_VERSION}}` placeholder and generates the API reference into `api/` and `runtime-api/`.
+  Never hard-code a release version in `docs/`; use the placeholder.
 - Make sure `mvn clean install -Dgpg.skip=true` and the clean example build pass before opening a PR.
 
 ## Code style

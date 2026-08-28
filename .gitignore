@@ -94,3 +94,7 @@ playground/
 metals-doctor.txt
 .metals/
 .bloop/
+
+# Generated docs site (built by dev/scripts/build-site.sh)
+/docs/api/
+/docs/runtime-api/
