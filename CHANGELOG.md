@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- The documentation site is built and deployed by the `Pages` workflow instead of being served
+  from checked-in files. `dev/scripts/build-site.sh` assembles it: the pages under `docs/` are
+  copied, `{{NOMOS_VERSION}}` is replaced with the reactor version, and the core and runtime
+  Scaladoc are generated into `api/` and `runtime-api/`. The generated API reference is no longer
+  committed (and `dev/scripts/build-api-docs.sh` is gone), so an API change or a version bump no
+  longer requires regenerated files in a pull request. CI builds the site on every pull request.
+
 ### Added
 
 - Cross-field presence groups: an object type can declare `$oneOf` (exactly one of the listed

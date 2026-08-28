@@ -1,0 +1,53 @@
+name: Pages
+
+# Builds the nomos documentation site (hand-written pages under docs/, with the version
+# substituted and the core/runtime Scaladoc generated fresh) and deploys it to GitHub Pages.
+# Requires Pages Source = "GitHub Actions" (Settings → Pages). CI builds the same site on
+# every pull request, so a broken site fails before it reaches main.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 11
+          cache: maven
+
+      - name: Build the site
+        run: dev/scripts/build-site.sh _site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

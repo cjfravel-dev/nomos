@@ -44,8 +44,9 @@
 
     <h2>Prepare the version</h2>
     <ol>
-      <li>Update the reactor, example, README, docs, and changelog to one non-SNAPSHOT version.</li>
-      <li>Regenerate API documentation with <code>dev/scripts/build-api-docs.sh</code>.</li>
+      <li>Update the reactor, example, README, and changelog to one non-SNAPSHOT version. The site
+        pages pick the version up automatically from the placeholder, and the API reference is
+        generated when the site is built.</li>
       <li>Merge the focused release pull request after Java 11/17 CI and CodeQL pass.</li>
     </ol>
 

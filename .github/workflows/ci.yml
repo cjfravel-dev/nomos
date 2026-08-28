@@ -51,12 +51,11 @@ jobs:
       - name: Build and test the example (regenerates via the installed plugin)
         run: mvn -f nomos-example/pom.xml clean test -B
 
-      - name: Check generated API documentation
+      - name: Build the docs site (Scaladoc + version substitution)
         if: matrix.java == 11
-        run: |
-          dev/scripts/build-api-docs.sh
-          git diff --exit-code -- docs/api docs/runtime-api
-          test -z "$(git status --porcelain --untracked-files=all -- docs/api docs/runtime-api)"
+        env:
+          NOMOS_SITE_SKIP_BUILD: "1"
+        run: dev/scripts/build-site.sh target/site
 
       - name: Coverage reports
         if: always() && matrix.java == 11
