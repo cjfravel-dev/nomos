@@ -43,6 +43,7 @@
       <li><a href="#enums">Enums</a></li>
       <li><a href="#containers">Arrays &amp; maps</a></li>
       <li><a href="#extras">Extra properties</a></li>
+      <li><a href="#presence">Presence groups</a></li>
       <li><a href="#optional">Optional, nullable, defaults</a></li>
       <li><a href="#refs">References</a></li>
       <li><a href="#discriminators">Discriminators</a></li>
@@ -105,7 +106,7 @@
       <tr><th>Applies to</th><th>Constraints</th></tr>
       <tr><td>string</td><td><code>minLength</code>, <code>maxLength</code>, <code>pattern</code>, <code>format</code>, <code>enum</code></td></tr>
       <tr><td>number / int / long / decimal</td><td><code>min</code>, <code>max</code>, <code>multipleOf</code></td></tr>
-      <tr><td>array</td><td><code>minItems</code>, <code>maxItems</code>, <code>uniqueItems</code></td></tr>
+      <tr><td>array</td><td><code>minItems</code>, <code>maxItems</code>, <code>uniqueItems</code>, <code>uniqueBy</code></td></tr>
     </table>
     <p>Built-in <code>format</code> values (register more — see <a href="validation.html#formats">Validation</a>):</p>
     <table>
@@ -139,9 +140,11 @@
 <pre><code class="language-json">{
   "tags":   ["string"],
   "scores": { "type": "array", "items": "number", "minItems": 1, "uniqueItems": true },
+  "entries": { "type": "array", "items": "$ref:Entry", "uniqueBy": "id" },
   "labels": { "type": "array", "items": "string", "enum": ["red", "green", "blue"] },
   "settings": { "$map": "string" }
 }</code></pre>
+    <p><code>uniqueItems</code> compares whole elements, so two objects sharing an <code>id</code> but differing elsewhere both pass it. <code>uniqueBy</code> compares only the named field, and a list of names forms a composite key (<code>"uniqueBy": ["group", "name"]</code>). A duplicate is reported at the offending element's index, naming the key fields. Elements that are not objects, or that omit a key field, carry no key and are skipped — their shape is already reported by the element's own type check.</p>
     <p><code>$map</code> generates a <code>Map[String, T]</code> with unrestricted keys and validated values. Set the project-wide <code>mapType</code> to <code>java.util.Map</code> to generate <code>java.util.Map[String, T]</code> instead — useful when the generated models are consumed from Java.</p>
     <p>A JSON array with <strong>more than one</strong> element type is a <em>union</em>. It generates an <code>Any</code>-typed field whose value round-trips as-is (the codec passes the raw JSON through, so branches aren't validated individually):</p>
 <pre><code class="language-json">{ "value": ["string", "number"] }</code></pre>
@@ -155,6 +158,23 @@
       <tr><td><code>true</code></td><td>Allow any extras, collected as <code>Map[String, Any]</code> (kept but unvalidated)</td></tr>
       <tr><td>a type (e.g. <code>"string"</code>)</td><td>Allow extras typed as <code>Map[String, T]</code>; each extra value is validated against that type</td></tr>
     </table>
+
+    <h2 id="presence">Presence groups</h2>
+    <p>Some objects offer several mutually exclusive ways to say the same thing — an inline value <em>or</em> a reference to one, but not both. Each key is optional on its own, and a <strong>presence group</strong> declared on the enclosing object decides how many of them must be present.</p>
+<pre><code class="language-json">{
+  "$oneOf": ["inline_value", "value_ref"],
+  "inline_value": { "$optional": "string" },
+  "value_ref":    { "$optional": "string" }
+}</code></pre>
+    <table>
+      <tr><th>Directive</th><th>Requires</th></tr>
+      <tr><td><code>$oneOf</code></td><td>Exactly one of the listed keys is present</td></tr>
+      <tr><td><code>$atLeastOne</code></td><td>One or more of the listed keys is present</td></tr>
+    </table>
+    <p>Wrap the key list in <code>$optional</code> to also accept none of them being present — a <code>$oneOf</code> group still rejects more than one:</p>
+<pre><code class="language-json">{ "$oneOf": { "$optional": ["inline_value", "value_ref"] } }</code></pre>
+    <p>A key present with a JSON <code>null</code> counts as absent, matching how decoding treats <code>null</code> for an optional field. Both directives may appear on the same object (and on a discriminator variant), and each is checked independently.</p>
+    <p>The listed keys must be declared siblings and must be optional — the group, not the field, decides what is required. A group naming an undeclared key, a required key, a duplicate key, or fewer than two keys is a template error rather than a rule that can never hold.</p>
 
     <h2 id="optional">Optional, nullable &amp; defaults</h2>
 <pre><code class="language-json">{

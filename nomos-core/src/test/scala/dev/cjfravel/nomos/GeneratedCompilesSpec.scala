@@ -119,4 +119,20 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
     val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
     compileErrors(files) shouldBe empty
   }
+
+  "generated code embedding presence groups and uniqueBy" should "compile" in {
+    val tmpl =
+      """{"definitions":[
+        |{"name":"Entry","template":{"id":"string","label":"string"}},
+        |{"name":"N","template":{
+        |"$oneOf":["inline_value","value_ref"],
+        |"$atLeastOne":{"$optional":["inline_value","note"]},
+        |"inline_value":{"$optional":"string"},
+        |"value_ref":{"$optional":"string"},
+        |"note":{"$optional":"string"},
+        |"entries":{"type":"array","items":"$ref:Entry","uniqueBy":["id","label"]}
+        |}}]}""".stripMargin
+    val files = generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))
+    compileErrors(files) shouldBe empty
+  }
 }
