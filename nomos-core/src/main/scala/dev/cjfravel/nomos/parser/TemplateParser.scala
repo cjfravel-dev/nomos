@@ -11,6 +11,8 @@ import dev.cjfravel.nomos.model._
  */
 class TemplateParser {
 
+  import TemplateParser.{ObjectDirectives, PresenceDirectives}
+
   /**
    * Parses a type definition
    */
@@ -168,8 +170,24 @@ class TemplateParser {
     extractOptionalInt(json, "minItems").foreach(n => constraints = MinItems(n) :: constraints)
     extractOptionalInt(json, "maxItems").foreach(n => constraints = MaxItems(n) :: constraints)
     extractOptionalBoolean(json, "uniqueItems").foreach(u => constraints = UniqueItems(u) :: constraints)
+    parseUniqueBy(json).foreach(u => constraints = u :: constraints)
     constraints
   }
+
+  /**
+   * Returns a UniqueBy constraint if the node carries a "uniqueBy" field name or list of field names (a composite key).
+   * A non-string entry is ignored, and an empty selection yields no constraint.
+   */
+  private def parseUniqueBy(json: JsonValue): Option[UniqueBy] =
+    json.asObject
+      .flatMap(_.field("uniqueBy"))
+      .flatMap {
+        case JsonString(field) => Some(List(field))
+        case arr: JsonArray => Some(arr.values.collect { case JsonString(s) => s }.toList)
+        case _ => None
+      }
+      .filter(_.nonEmpty)
+      .map(UniqueBy)
 
   /**
    * Parses number constraints
@@ -190,7 +208,7 @@ class TemplateParser {
   private def parseObjectType(json: JsonValue, path: String): Either[ParseError, ObjectType] =
     json.asObject match {
       case Some(obj) =>
-        val fields = obj.fields.toList.filterNot(_._1 == "$additionalProperties")
+        val fields = obj.fields.toList.filterNot { case (key, _) => ObjectDirectives.contains(key) }
         val fieldResults =
           fields.map { case (key, fieldValue) =>
             val fieldName = unescapeKey(key)
@@ -201,14 +219,71 @@ class TemplateParser {
         if (errors.nonEmpty) {
           Left(ParseError.MultipleErrors(errors))
         } else {
-          parseAdditional(json, path).map { additional =>
-            val fieldMap = ListMap(fieldResults.collect { case Right(pair) => pair }: _*)
-            ObjectType(fieldMap, additional)
-          }
+          val fieldMap = ListMap(fieldResults.collect { case Right(pair) => pair }: _*)
+          for {
+            additional <- parseAdditional(json, path)
+            presence <- parsePresenceGroups(json, fieldMap, path)
+          } yield ObjectType(fieldMap, additional, presence)
         }
       case None =>
         Left(ParseError.InvalidType("object", path, "Expected JSON object"))
     }
+
+  /**
+   * Parses the `$oneOf` / `$atLeastOne` cross-field presence groups declared on an object. Each takes the sibling keys
+   * it governs, either directly (`"$oneOf": ["a", "b"]`) or wrapped in `$optional` to also accept none of them being
+   * present (`"$oneOf": { "$optional": ["a", "b"] }`).
+   */
+  private def parsePresenceGroups(
+      json: JsonValue,
+      fields: ListMap[String, FieldDef],
+      path: String): Either[ParseError, List[PresenceGroup]] = {
+    val parsed =
+      PresenceDirectives.toList.flatMap { case (directive, rule) =>
+        extractOptionalField(json, directive).map(node => parsePresenceGroup(directive, rule, node, fields, path))
+      }
+    parsed.collect { case Left(err) => err } match {
+      case Nil => Right(parsed.collect { case Right(group) => group })
+      case errs => Left(if (errs.lengthCompare(1) == 0) errs.head else ParseError.MultipleErrors(errs))
+    }
+  }
+
+  private def parsePresenceGroup(
+      directive: String,
+      rule: PresenceRule,
+      node: JsonValue,
+      fields: ListMap[String, FieldDef],
+      path: String): Either[ParseError, PresenceGroup] = {
+    def invalid(actual: String): ParseError =
+      ParseError.InvalidFieldValue(directive, "an array of sibling field names", actual, path)
+
+    val (keysNode, optional) =
+      extractOptionalField(node, "$optional") match {
+        case Some(inner) => (inner, true)
+        case None => (node, false)
+      }
+
+    keysNode.asArray match {
+      case None => Left(invalid(Json.write(node)))
+      case Some(arr) =>
+        val entries = arr.values.toList
+        val nonStrings = entries.filterNot(_.isString)
+        val names = entries.flatMap(_.asString)
+        val duplicates = names.diff(names.distinct).distinct
+        val undeclared = names.filterNot(fields.contains)
+        val required = names.filter(n => fields.get(n).exists(_.required))
+        def bad(details: String): Either[ParseError, PresenceGroup] =
+          Left(ParseError.InvalidConstraint(directive, path, details))
+
+        if (nonStrings.nonEmpty) Left(invalid(nonStrings.map(Json.write).mkString(", ")))
+        else if (names.lengthCompare(2) < 0) bad(s"a presence group needs at least two keys, got ${names.size}")
+        else if (duplicates.nonEmpty) bad(s"duplicate keys: ${duplicates.mkString(", ")}")
+        else if (undeclared.nonEmpty) bad(s"undeclared sibling keys: ${undeclared.mkString(", ")}")
+        else if (required.nonEmpty)
+          bad(s"keys in a presence group must be optional, but these are required: ${required.mkString(", ")}")
+        else Right(PresenceGroup(names, rule, optional))
+    }
+  }
 
   /**
    * Strips surrounding backticks so a quoted key like `type` becomes the literal field name "type".
@@ -393,7 +468,19 @@ class TemplateParser {
   private def parseCommonFields(json: JsonValue, path: String): Either[ParseError, ListMap[String, FieldDef]] =
     extractOptionalField(json, "commonFields") match {
       case Some(commonJson) =>
-        parseObjectType(commonJson, s"$path.commonFields").map(_.fields)
+        parseObjectType(commonJson, s"$path.commonFields").flatMap { obj =>
+          obj.presence match {
+            case Nil => Right(obj.fields)
+            case groups =>
+              // commonFields carries only field definitions, so a group declared there would be
+              // silently dropped; declare it on the variants that need it instead.
+              Left(
+                ParseError.InvalidDiscriminator(
+                  s"${groups.map(_.ruleName).mkString(" and ")} is not supported on commonFields; " +
+                    "declare the presence group on each variant",
+                  s"$path.commonFields"))
+          }
+        }
       case None =>
         Right(ListMap.empty)
     }
@@ -565,6 +652,17 @@ class TemplateParser {
 
 object TemplateParser {
   def apply(): TemplateParser = new TemplateParser()
+
+  /**
+   * The presence-group directives an object type may declare, mapped to the rule they impose.
+   */
+  private[parser] val PresenceDirectives: ListMap[String, PresenceRule] =
+    ListMap("$oneOf" -> ExactlyOne, "$atLeastOne" -> AtLeastOne)
+
+  /**
+   * Keys of an object type that configure the object itself rather than declaring a field.
+   */
+  private[parser] val ObjectDirectives: Set[String] = PresenceDirectives.keySet + "$additionalProperties"
 
   /**
    * Convenience method to parse multi-template from string

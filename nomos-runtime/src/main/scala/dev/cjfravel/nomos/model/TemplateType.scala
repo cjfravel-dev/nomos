@@ -71,14 +71,49 @@ case object AllowExtra extends AdditionalProperties
 case class TypedExtra(valueType: TemplateType) extends AdditionalProperties
 
 /**
+ * How many of a presence group's keys must be present.
+ */
+sealed trait PresenceRule
+case object ExactlyOne extends PresenceRule
+case object AtLeastOne extends PresenceRule
+
+/**
+ * A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the
+ * group decides how many of them must be present.
+ *
+ * @param keys
+ *   the sibling field names the rule applies to (declaration order)
+ * @param rule
+ *   [[ExactlyOne]] (at most and at least one) or [[AtLeastOne]]
+ * @param optional
+ *   when true, none of the keys being present is also accepted; an [[ExactlyOne]] group still rejects more than one
+ */
+case class PresenceGroup(keys: List[String], rule: PresenceRule, optional: Boolean = false) {
+
+  /**
+   * The rule as it appears in a template and in validation messages.
+   */
+  def ruleName: String =
+    rule match {
+      case ExactlyOne => "$oneOf"
+      case AtLeastOne => "$atLeastOne"
+    }
+}
+
+/**
  * Object type with named fields
  *
  * @param fields
  *   The fields in this object (order-preserving)
  * @param additional
  *   Policy for keys not declared in fields (default: forbid)
+ * @param presence
+ *   Cross-field presence groups over sibling keys (default: none)
  */
-case class ObjectType(fields: ListMap[String, FieldDef], additional: AdditionalProperties = ForbidExtra)
+case class ObjectType(
+    fields: ListMap[String, FieldDef],
+    additional: AdditionalProperties = ForbidExtra,
+    presence: List[PresenceGroup] = List.empty)
     extends TemplateType
 
 /**

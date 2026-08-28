@@ -83,14 +83,15 @@ object TemplateSerializer {
       case UnionType(types) =>
         s"UnionType(List(${types.map(serializeTemplateType).mkString(", ")}))"
 
-      case ObjectType(fields, additional) =>
+      case ObjectType(fields, additional, presence) =>
         val fieldsList =
           fields
             .map { case (name, fieldDef) =>
               s""""${escapeString(name)}" -> ${serializeFieldDef(fieldDef)}"""
             }
             .mkString(", ")
-        s"ObjectType(ListMap($fieldsList), ${serializeAdditional(additional)})"
+        val presenceList = presence.map(serializePresenceGroup).mkString(", ")
+        s"ObjectType(ListMap($fieldsList), ${serializeAdditional(additional)}, List($presenceList))"
 
       case ReferenceType(typeName) =>
         s"""ReferenceType("${escapeString(typeName)}")"""
@@ -202,7 +203,22 @@ object TemplateSerializer {
       case MinItems(count) => s"MinItems($count)"
       case MaxItems(count) => s"MaxItems($count)"
       case UniqueItems(unique) => s"UniqueItems($unique)"
+      case UniqueBy(fields) =>
+        s"""UniqueBy(List(${fields.map(f => s""""${escapeString(f)}"""").mkString(", ")}))"""
     }
+
+  /**
+   * Generates Scala code to reconstruct a cross-field PresenceGroup
+   */
+  def serializePresenceGroup(group: PresenceGroup): String = {
+    val keys = group.keys.map(k => s""""${escapeString(k)}"""").mkString(", ")
+    val rule =
+      group.rule match {
+        case ExactlyOne => "ExactlyOne"
+        case AtLeastOne => "AtLeastOne"
+      }
+    s"PresenceGroup(List($keys), $rule, ${group.optional})"
+  }
 
   /**
    * Escapes special characters in strings for Scala source code
