@@ -147,6 +147,10 @@
                         <a href="ArrayType.html" title="Array type containing elements of a specific type, with optional item constraints.">ArrayType</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
+                        <a class="object" href="AtLeastOne$.html" title=""></a>
+                        <a href="AtLeastOne$.html" title="">AtLeastOne</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
                         <a class="class" href="BooleanType.html" title="Boolean type"></a>
                         <a href="BooleanType.html" title="Boolean type">BooleanType</a>
                       </li><li class="current-entities indented4">
@@ -173,6 +177,10 @@
                         <span class="separator"></span>
                         <a class="class" href="EnumType.html" title="Closed enum generated as a named sealed-trait type with string (de)serialization."></a>
                         <a href="EnumType.html" title="Closed enum generated as a named sealed-trait type with string (de)serialization.">EnumType</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
+                        <a class="object" href="ExactlyOne$.html" title=""></a>
+                        <a href="ExactlyOne$.html" title="">ExactlyOne</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
                         <a class="class" href="ExternalType.html" title="Reference to an external, hand-written type that nomos does not generate or validate."></a>
@@ -247,6 +255,14 @@
                         <a href="Pattern.html" title="">Pattern</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
+                        <a class="class" href="PresenceGroup.html" title="A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the group decides how many of them must be present."></a>
+                        <a href="PresenceGroup.html" title="A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the group decides how many of them must be present.">PresenceGroup</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
+                        <a class="trait" href="PresenceRule.html" title="How many of a presence group's keys must be present."></a>
+                        <a href="PresenceRule.html" title="How many of a presence group's keys must be present.">PresenceRule</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
                         <a class="class" href="RecursiveRef.html" title="Reference to a recursive type (self-reference)."></a>
                         <a href="RecursiveRef.html" title="Reference to a recursive type (self-reference).">RecursiveRef</a>
                       </li><li class="current-entities indented4">
@@ -279,6 +295,10 @@
                         <a href="UnionType.html" title="Union of alternative types; a value is valid if it matches any member.">UnionType</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
+                        <a class="class" href="UniqueBy.html" title="Requires the named field(s) to be unique across an array of objects."></a>
+                        <a href="UniqueBy.html" title="Requires the named field(s) to be unique across an array of objects.">UniqueBy</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
                         <a class="class" href="UniqueItems.html" title=""></a>
                         <a href="UniqueItems.html" title="">UniqueItems</a>
                       </li>
@@ -304,7 +324,7 @@
         <span class="kind">case class</span>
       </span>
       <span class="symbol">
-        <span class="name">ObjectType</span><span class="params">(<span name="fields">fields: <span class="extype" name="scala.collection.immutable.ListMap">ListMap</span>[<span class="extype" name="scala.Predef.String">String</span>, <a href="FieldDef.html" class="extype" name="dev.cjfravel.nomos.model.FieldDef">FieldDef</a>]</span>, <span name="additional">additional: <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> = <span class="symbol"><span class="name"><a href="ForbidExtra$.html">ForbidExtra</a></span></span></span>)</span><span class="result"> extends <a href="TemplateType.html" class="extype" name="dev.cjfravel.nomos.model.TemplateType">TemplateType</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+        <span class="name">ObjectType</span><span class="params">(<span name="fields">fields: <span class="extype" name="scala.collection.immutable.ListMap">ListMap</span>[<span class="extype" name="scala.Predef.String">String</span>, <a href="FieldDef.html" class="extype" name="dev.cjfravel.nomos.model.FieldDef">FieldDef</a>]</span>, <span name="additional">additional: <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> = <span class="symbol"><span class="name"><a href="ForbidExtra$.html">ForbidExtra</a></span></span></span>, <span name="presence">presence: <span class="extype" name="scala.List">List</span>[<a href="PresenceGroup.html" class="extype" name="dev.cjfravel.nomos.model.PresenceGroup">PresenceGroup</a>] = <span class="symbol">List.empty</span></span>)</span><span class="result"> extends <a href="TemplateType.html" class="extype" name="dev.cjfravel.nomos.model.TemplateType">TemplateType</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
       </span>
       </h4>
 
@@ -312,7 +332,8 @@
           <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>Object type with named fields
 </p></div><dl class="paramcmts block"><dt class="param">fields</dt><dd class="cmt"><p>
   The fields in this object (order-preserving)</p></dd><dt class="param">additional</dt><dd class="cmt"><p>
-  Policy for keys not declared in fields (default: forbid)</p></dd></dl><div class="toggleContainer block">
+  Policy for keys not declared in fields (default: forbid)</p></dd><dt class="param">presence</dt><dd class="cmt"><p>
+  Cross-field presence groups over sibling keys (default: none)</p></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -363,9 +384,9 @@
         <div id="constructors" class="members">
               <h3>Instance Constructors</h3>
               <ol><li name="dev.cjfravel.nomos.model.ObjectType#&lt;init&gt;" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="&lt;init&gt;(fields:scala.collection.immutable.ListMap[String,dev.cjfravel.nomos.model.FieldDef],additional:dev.cjfravel.nomos.model.AdditionalProperties):dev.cjfravel.nomos.model.ObjectType"></a><a id="&lt;init&gt;:ObjectType"></a>
+      <a id="&lt;init&gt;(fields:scala.collection.immutable.ListMap[String,dev.cjfravel.nomos.model.FieldDef],additional:dev.cjfravel.nomos.model.AdditionalProperties,presence:List[dev.cjfravel.nomos.model.PresenceGroup]):dev.cjfravel.nomos.model.ObjectType"></a><a id="&lt;init&gt;:ObjectType"></a>
       <span class="permalink">
-      <a href="../../../../dev/cjfravel/nomos/model/ObjectType.html#&lt;init&gt;(fields:scala.collection.immutable.ListMap[String,dev.cjfravel.nomos.model.FieldDef],additional:dev.cjfravel.nomos.model.AdditionalProperties):dev.cjfravel.nomos.model.ObjectType" title="Permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/ObjectType.html#&lt;init&gt;(fields:scala.collection.immutable.ListMap[String,dev.cjfravel.nomos.model.FieldDef],additional:dev.cjfravel.nomos.model.AdditionalProperties,presence:List[dev.cjfravel.nomos.model.PresenceGroup]):dev.cjfravel.nomos.model.ObjectType" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -374,12 +395,13 @@
         <span class="kind">new</span>
       </span>
       <span class="symbol">
-        <span class="name">ObjectType</span><span class="params">(<span name="fields">fields: <span class="extype" name="scala.collection.immutable.ListMap">ListMap</span>[<span class="extype" name="scala.Predef.String">String</span>, <a href="FieldDef.html" class="extype" name="dev.cjfravel.nomos.model.FieldDef">FieldDef</a>]</span>, <span name="additional">additional: <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> = <span class="symbol"><span class="name"><a href="ForbidExtra$.html">ForbidExtra</a></span></span></span>)</span>
+        <span class="name">ObjectType</span><span class="params">(<span name="fields">fields: <span class="extype" name="scala.collection.immutable.ListMap">ListMap</span>[<span class="extype" name="scala.Predef.String">String</span>, <a href="FieldDef.html" class="extype" name="dev.cjfravel.nomos.model.FieldDef">FieldDef</a>]</span>, <span name="additional">additional: <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> = <span class="symbol"><span class="name"><a href="ForbidExtra$.html">ForbidExtra</a></span></span></span>, <span name="presence">presence: <span class="extype" name="scala.List">List</span>[<a href="PresenceGroup.html" class="extype" name="dev.cjfravel.nomos.model.PresenceGroup">PresenceGroup</a>] = <span class="symbol">List.empty</span></span>)</span>
       </span>
       
       <p class="shortcomment cmt"></p><div class="fullcomment"><div class="comment cmt"></div><dl class="paramcmts block"><dt class="param">fields</dt><dd class="cmt"><p>
   The fields in this object (order-preserving)</p></dd><dt class="param">additional</dt><dd class="cmt"><p>
-  Policy for keys not declared in fields (default: forbid)</p></dd></dl></div>
+  Policy for keys not declared in fields (default: forbid)</p></dd><dt class="param">presence</dt><dd class="cmt"><p>
+  Cross-field presence groups over sibling keys (default: none)</p></dd></dl></div>
     </li></ol>
             </div>
 
@@ -637,6 +659,22 @@
                 <span class="name">@native</span><span class="args">()</span>
               
         </dd></dl></div>
+    </li><li name="dev.cjfravel.nomos.model.ObjectType#presence" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="presence:List[dev.cjfravel.nomos.model.PresenceGroup]"></a><a id="presence:List[PresenceGroup]"></a>
+      <span class="permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/ObjectType.html#presence:List[dev.cjfravel.nomos.model.PresenceGroup]" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">val</span>
+      </span>
+      <span class="symbol">
+        <span class="name">presence</span><span class="result">: <span class="extype" name="scala.List">List</span>[<a href="PresenceGroup.html" class="extype" name="dev.cjfravel.nomos.model.PresenceGroup">PresenceGroup</a>]</span>
+      </span>
+      
+      
     </li><li name="scala.AnyRef#synchronized" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="synchronized[T0](x$1:=&gt;T0):T0"></a><a id="synchronized[T0](⇒T0):T0"></a>
       <span class="permalink">

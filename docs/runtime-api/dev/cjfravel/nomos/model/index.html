@@ -163,6 +163,10 @@
                         <a href="ArrayType.html" title="Array type containing elements of a specific type, with optional item constraints.">ArrayType</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
+                        <a class="object" href="AtLeastOne$.html" title=""></a>
+                        <a href="AtLeastOne$.html" title="">AtLeastOne</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
                         <a class="class" href="BooleanType.html" title="Boolean type"></a>
                         <a href="BooleanType.html" title="Boolean type">BooleanType</a>
                       </li><li class="current-entities indented4">
@@ -189,6 +193,10 @@
                         <span class="separator"></span>
                         <a class="class" href="EnumType.html" title="Closed enum generated as a named sealed-trait type with string (de)serialization."></a>
                         <a href="EnumType.html" title="Closed enum generated as a named sealed-trait type with string (de)serialization.">EnumType</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
+                        <a class="object" href="ExactlyOne$.html" title=""></a>
+                        <a href="ExactlyOne$.html" title="">ExactlyOne</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
                         <a class="class" href="ExternalType.html" title="Reference to an external, hand-written type that nomos does not generate or validate."></a>
@@ -263,6 +271,14 @@
                         <a href="Pattern.html" title="">Pattern</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
+                        <a class="class" href="PresenceGroup.html" title="A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the group decides how many of them must be present."></a>
+                        <a href="PresenceGroup.html" title="A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the group decides how many of them must be present.">PresenceGroup</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
+                        <a class="trait" href="PresenceRule.html" title="How many of a presence group's keys must be present."></a>
+                        <a href="PresenceRule.html" title="How many of a presence group's keys must be present.">PresenceRule</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
                         <a class="class" href="RecursiveRef.html" title="Reference to a recursive type (self-reference)."></a>
                         <a href="RecursiveRef.html" title="Reference to a recursive type (self-reference).">RecursiveRef</a>
                       </li><li class="current-entities indented4">
@@ -293,6 +309,10 @@
                         <span class="separator"></span>
                         <a class="class" href="UnionType.html" title="Union of alternative types; a value is valid if it matches any member."></a>
                         <a href="UnionType.html" title="Union of alternative types; a value is valid if it matches any member.">UnionType</a>
+                      </li><li class="current-entities indented4">
+                        <span class="separator"></span>
+                        <a class="class" href="UniqueBy.html" title="Requires the named field(s) to be unique across an array of objects."></a>
+                        <a href="UniqueBy.html" title="Requires the named field(s) to be unique across an array of objects.">UniqueBy</a>
                       </li><li class="current-entities indented4">
                         <span class="separator"></span>
                         <a class="class" href="UniqueItems.html" title=""></a>
@@ -814,14 +834,15 @@ $$extern:fully.qualified.Name syntax.
         <span class="kind">case class</span>
       </span>
       <span class="symbol">
-        <a title="Object type with named fields" href="ObjectType.html"><span class="name">ObjectType</span></a><span class="params">(<span name="fields">fields: <span class="extype" name="scala.collection.immutable.ListMap">ListMap</span>[<span class="extype" name="scala.Predef.String">String</span>, <a href="FieldDef.html" class="extype" name="dev.cjfravel.nomos.model.FieldDef">FieldDef</a>]</span>, <span name="additional">additional: <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> = <span class="symbol"><span class="name"><a href="ForbidExtra$.html">ForbidExtra</a></span></span></span>)</span><span class="result"> extends <a href="TemplateType.html" class="extype" name="dev.cjfravel.nomos.model.TemplateType">TemplateType</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+        <a title="Object type with named fields" href="ObjectType.html"><span class="name">ObjectType</span></a><span class="params">(<span name="fields">fields: <span class="extype" name="scala.collection.immutable.ListMap">ListMap</span>[<span class="extype" name="scala.Predef.String">String</span>, <a href="FieldDef.html" class="extype" name="dev.cjfravel.nomos.model.FieldDef">FieldDef</a>]</span>, <span name="additional">additional: <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> = <span class="symbol"><span class="name"><a href="ForbidExtra$.html">ForbidExtra</a></span></span></span>, <span name="presence">presence: <span class="extype" name="scala.List">List</span>[<a href="PresenceGroup.html" class="extype" name="dev.cjfravel.nomos.model.PresenceGroup">PresenceGroup</a>] = <span class="symbol">List.empty</span></span>)</span><span class="result"> extends <a href="TemplateType.html" class="extype" name="dev.cjfravel.nomos.model.TemplateType">TemplateType</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
       </span>
       
       <p class="shortcomment cmt">Object type with named fields
 </p><div class="fullcomment"><div class="comment cmt"><p>Object type with named fields
 </p></div><dl class="paramcmts block"><dt class="param">fields</dt><dd class="cmt"><p>
   The fields in this object (order-preserving)</p></dd><dt class="param">additional</dt><dd class="cmt"><p>
-  Policy for keys not declared in fields (default: forbid)</p></dd></dl></div>
+  Policy for keys not declared in fields (default: forbid)</p></dd><dt class="param">presence</dt><dd class="cmt"><p>
+  Cross-field presence groups over sibling keys (default: none)</p></dd></dl></div>
     </li><li name="dev.cjfravel.nomos.model.Pattern" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="PatternextendsConstraintwithProductwithSerializable"></a><a id="Pattern:Pattern"></a>
       <span class="permalink">
@@ -838,6 +859,44 @@ $$extern:fully.qualified.Name syntax.
       </span>
       
       
+    </li><li name="dev.cjfravel.nomos.model.PresenceGroup" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="PresenceGroupextendsProductwithSerializable"></a><a id="PresenceGroup:PresenceGroup"></a>
+      <span class="permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/PresenceGroup.html" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a title="A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the group decides how many of them must be present." href="PresenceGroup.html"><span class="name">PresenceGroup</span></a><span class="params">(<span name="keys">keys: <span class="extype" name="scala.List">List</span>[<span class="extype" name="scala.Predef.String">String</span>]</span>, <span name="rule">rule: <a href="PresenceRule.html" class="extype" name="dev.cjfravel.nomos.model.PresenceRule">PresenceRule</a></span>, <span name="optional">optional: <span class="extype" name="scala.Boolean">Boolean</span> = <span class="symbol">false</span></span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      
+      <p class="shortcomment cmt">A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the
+group decides how many of them must be present.</p><div class="fullcomment"><div class="comment cmt"><p>A cross-field presence constraint over sibling keys of an object: the listed keys are individually optional, and the
+group decides how many of them must be present.
+</p></div><dl class="paramcmts block"><dt class="param">keys</dt><dd class="cmt"><p>
+  the sibling field names the rule applies to (declaration order)</p></dd><dt class="param">rule</dt><dd class="cmt"><p>
+  <a href="ExactlyOne$.html" class="extype" name="dev.cjfravel.nomos.model.ExactlyOne">ExactlyOne</a> (at most and at least one) or <a href="AtLeastOne$.html" class="extype" name="dev.cjfravel.nomos.model.AtLeastOne">AtLeastOne</a></p></dd><dt class="param">optional</dt><dd class="cmt"><p>
+  when true, none of the keys being present is also accepted; an <a href="ExactlyOne$.html" class="extype" name="dev.cjfravel.nomos.model.ExactlyOne">ExactlyOne</a> group still rejects more than one</p></dd></dl></div>
+    </li><li name="dev.cjfravel.nomos.model.PresenceRule" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PresenceRuleextendsAnyRef"></a><a id="PresenceRule:PresenceRule"></a>
+      <span class="permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/PresenceRule.html" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">sealed </span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a title="How many of a presence group's keys must be present." href="PresenceRule.html"><span class="name">PresenceRule</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      
+      <p class="shortcomment cmt">How many of a presence group's keys must be present.</p>
     </li><li name="dev.cjfravel.nomos.model.RecursiveRef" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="RecursiveRefextendsTemplateTypewithProductwithSerializable"></a><a id="RecursiveRef:RecursiveRef"></a>
       <span class="permalink">
@@ -992,6 +1051,25 @@ sealed trait with case class variants in the generated code.
       </span>
       
       <p class="shortcomment cmt">Union of alternative types; a value is valid if it matches any member.</p>
+    </li><li name="dev.cjfravel.nomos.model.UniqueBy" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="UniqueByextendsConstraintwithProductwithSerializable"></a><a id="UniqueBy:UniqueBy"></a>
+      <span class="permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/UniqueBy.html" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a title="Requires the named field(s) to be unique across an array of objects." href="UniqueBy.html"><span class="name">UniqueBy</span></a><span class="params">(<span name="fields">fields: <span class="extype" name="scala.List">List</span>[<span class="extype" name="scala.Predef.String">String</span>]</span>)</span><span class="result"> extends <a href="Constraint.html" class="extype" name="dev.cjfravel.nomos.model.Constraint">Constraint</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      
+      <p class="shortcomment cmt">Requires the named field(s) to be unique across an array of objects.</p><div class="fullcomment"><div class="comment cmt"><p>Requires the named field(s) to be unique across an array of objects. Unlike <a href="UniqueItems.html" class="extype" name="dev.cjfravel.nomos.model.UniqueItems">UniqueItems</a>, which compares whole
+elements, this compares only the listed fields, so two elements sharing an identifier but differing elsewhere are
+rejected. Several field names form a composite key.
+</p></div></div>
     </li><li name="dev.cjfravel.nomos.model.UniqueItems" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="UniqueItemsextendsConstraintwithProductwithSerializable"></a><a id="UniqueItems:UniqueItems"></a>
       <span class="permalink">
@@ -1029,6 +1107,38 @@ sealed trait with case class variants in the generated code.
       </span>
       <span class="symbol">
         <a title="" href="AllowExtra$.html"><span class="name">AllowExtra</span></a><span class="result"> extends <a href="AdditionalProperties.html" class="extype" name="dev.cjfravel.nomos.model.AdditionalProperties">AdditionalProperties</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      
+      
+    </li><li name="dev.cjfravel.nomos.model.AtLeastOne" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="AtLeastOne"></a><a id="AtLeastOne:AtLeastOne"></a>
+      <span class="permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/AtLeastOne$.html" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a title="" href="AtLeastOne$.html"><span class="name">AtLeastOne</span></a><span class="result"> extends <a href="PresenceRule.html" class="extype" name="dev.cjfravel.nomos.model.PresenceRule">PresenceRule</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      
+      
+    </li><li name="dev.cjfravel.nomos.model.ExactlyOne" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ExactlyOne"></a><a id="ExactlyOne:ExactlyOne"></a>
+      <span class="permalink">
+      <a href="../../../../dev/cjfravel/nomos/model/ExactlyOne$.html" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a title="" href="ExactlyOne$.html"><span class="name">ExactlyOne</span></a><span class="result"> extends <a href="PresenceRule.html" class="extype" name="dev.cjfravel.nomos.model.PresenceRule">PresenceRule</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
       </span>
       
       
