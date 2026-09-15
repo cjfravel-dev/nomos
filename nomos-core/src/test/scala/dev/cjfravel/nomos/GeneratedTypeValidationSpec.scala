@@ -23,7 +23,8 @@ class GeneratedTypeValidationSpec extends AnyFlatSpec with Matchers with EitherV
       else Nil
     }
     val producer =
-      """{"visibility":"private[example]","definitions":[{"name":"Producer","validators":["producer.contact"],"template":{
+      """{"visibility":"private[example]","definitions":[
+        |{"name":"Producer","validators":["producer.contact"],"template":{
         |"contact_id":{"type":"string","minLength":3}}}]}""".stripMargin
     val consumer =
       """{"definitions":[{"name":"Record","template":{
@@ -32,8 +33,10 @@ class GeneratedTypeValidationSpec extends AnyFlatSpec with Matchers with EitherV
       """package com.example.consumer
         |object GeneratedValidationDriver {
         |  def run(): String = {
-        |    val structural = Record.validate("{\"id\":\"r1\",\"producer\":{\"contact_id\":1}}").left.toOption.get.head.path
-        |    val custom = Record.validate("{\"id\":\"r1\",\"producer\":{\"contact_id\":\"blocked\"}}").left.toOption.get.head.path
+        |    val structuralJson = "{\"id\":\"r1\",\"producer\":{\"contact_id\":1}}"
+        |    val customJson = "{\"id\":\"r1\",\"producer\":{\"contact_id\":\"blocked\"}}"
+        |    val structural = Record.validate(structuralJson).left.toOption.get.head.path
+        |    val custom = Record.validate(customJson).left.toOption.get.head.path
         |    structural + "|" + custom
         |  }
         |}
