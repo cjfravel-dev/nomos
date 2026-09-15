@@ -135,6 +135,13 @@ object Codecs {
       case Some(v) => dec(v).left.map(e => s"$name: $e")
     }
 
+  /** Decodes an optional raw field: absence yields null, while an explicit JSON null is decoded and rejected. */
+  def optionalNonNull[A >: Null](o: JsonObject, name: String, dec: Decoder[A]): Either[String, A] =
+    o.field(name) match {
+      case None => Right(null)
+      case Some(v) => dec(v).left.map(e => s"$name: $e")
+    }
+
   /** Decodes a JSON string then maps it through the named adapter (wire -> model). */
   def adapted(name: String): Decoder[String] =
     (j: JsonValue) =>

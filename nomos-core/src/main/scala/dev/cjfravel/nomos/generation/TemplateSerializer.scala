@@ -184,7 +184,9 @@ object TemplateSerializer {
     val default = fieldDef.default.map(d => s""", default = Some("${escapeString(d)}")""").getOrElse("")
     val adapter = fieldDef.adapter.map(a => s""", adapter = Some("${escapeString(a)}")""").getOrElse("")
     val nullable = if (fieldDef.nullable) ", nullable = true" else ""
-    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}$default$adapter$nullable)"
+    val rejectExplicitNull = if (fieldDef.rejectExplicitNull) ", rejectExplicitNull = true" else ""
+    s"FieldDef(${serializeTemplateType(fieldDef.fieldType)}, optional = ${fieldDef.optional}" +
+      s"$default$adapter$nullable$rejectExplicitNull)"
   }
 
   /**
