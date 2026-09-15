@@ -403,6 +403,14 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line("}")
     builder.dedent()
     builder.line("}")
+    builder.emptyLine()
+    builder.line(
+      s"def validateStructure(json: JsonValue, path: String, depth: Int): List[ValidationError] = " +
+        s"""validator.validateStructure(json, "$fqn", path, depth)""")
+    builder.line(
+      s"def validateCustom(json: JsonValue, root: JsonValue, path: String, depth: Int): List[ValidationError] = " +
+        s"""validator.validateCustom(json, root, "$fqn", path, depth)""")
+    builder.line(s"""def reachesAnyValidator: Boolean = validator.definitionReachesAnyValidator("$fqn")""")
   }
 
   /** Common imports for a generated file's companion: runtime JSON, codecs, validation, formats. */
@@ -1259,6 +1267,25 @@ class CodeGenerator(config: GeneratorConfig) {
     GeneratedFile(packageName, enumName, builder.build())
   }
 
+  /** Collects fully-qualified `$gen:` targets reachable from a template type. */
+  private def collectGeneratedTypes(templateType: TemplateType): Set[String] =
+    templateType match {
+      case ExternalType(name, true) => Set(name)
+      case ArrayType(elementType, _) => collectGeneratedTypes(elementType)
+      case MapType(valueType) => collectGeneratedTypes(valueType)
+      case UnionType(types) => types.flatMap(collectGeneratedTypes).toSet
+      case ObjectType(fields, additional, _) =>
+        fields.values.flatMap(f => collectGeneratedTypes(f.fieldType)).toSet ++
+          (additional match {
+            case TypedExtra(valueType) => collectGeneratedTypes(valueType)
+            case _ => Set.empty
+          })
+      case TypeDiscriminator(_, variants, commonFields, _, _, _, _, _, _) =>
+        variants.values.flatMap(collectGeneratedTypes).toSet ++
+          commonFields.values.flatMap(f => collectGeneratedTypes(f.fieldType)).toSet
+      case _ => Set.empty
+    }
+
   /**
    * Collects all ReferenceType names from a template type
    */
@@ -1321,7 +1348,8 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.line(s"package $basePackage")
     builder.emptyLine()
     builder.line("import dev.cjfravel.nomos.model._")
-    builder.line("import dev.cjfravel.nomos.validation.MultiValidator")
+    builder.line("import dev.cjfravel.nomos.validation.{GeneratedValidator, MultiValidator, ValidationError}")
+    builder.line("import dev.cjfravel.nomos.json.JsonValue")
     builder.line("import scala.collection.immutable.ListMap")
     builder.emptyLine()
     builder.line("/**")
@@ -1338,8 +1366,27 @@ class CodeGenerator(config: GeneratorConfig) {
     builder.dedent()
     builder.line("}")
     builder.emptyLine()
-    builder.line("// Validator instance using the embedded template")
-    builder.line("lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate)")
+    val generatedTypes = multiTemplate.definitions.flatMap(d => collectGeneratedTypes(d.templateType)).distinct.sorted
+    builder.line("private lazy val generatedValidators: Map[String, GeneratedValidator] = Map(")
+    builder.indent()
+    generatedTypes.zipWithIndex.foreach { case (name, index) =>
+      val comma = if (index < generatedTypes.size - 1) "," else ""
+      builder.line(s""""${ScalaCodeBuilder.escapeStringLiteral(name)}" -> new GeneratedValidator {""")
+      builder.indent()
+      builder.line(
+        s"def validateStructure(json: JsonValue, path: String, depth: Int): List[ValidationError] = " +
+          s"_root_.$name.validateStructure(json, path, depth)")
+      builder.line(
+        s"def validateCustom(json: JsonValue, root: JsonValue, path: String, depth: Int): List[ValidationError] = " +
+          s"_root_.$name.validateCustom(json, root, path, depth)")
+      builder.line("def reachesAnyValidator: Boolean = true")
+      builder.dedent()
+      builder.line(s"}$comma")
+    }
+    builder.dedent()
+    builder.line(")")
+    builder.emptyLine()
+    builder.line("lazy val validator: MultiValidator = new MultiValidator(embeddedTemplate, generatedValidators)")
     builder.dedent()
     builder.line("}")
 

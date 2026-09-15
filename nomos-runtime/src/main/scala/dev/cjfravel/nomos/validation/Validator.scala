@@ -6,7 +6,7 @@ import dev.cjfravel.nomos.model._
 /**
  * Validates JSON data against multi-template definitions with reference resolution
  */
-class MultiValidator(multiTemplate: MultiTemplate) {
+class MultiValidator(multiTemplate: MultiTemplate, generatedValidators: Map[String, GeneratedValidator] = Map.empty) {
 
   private val basePackage = multiTemplate.basePackage
 
@@ -41,6 +41,7 @@ class MultiValidator(multiTemplate: MultiTemplate) {
         variants.values.exists(v => typeReaches(v, pkg, state))
       case ReferenceType(n) => resolveRef(n, pkg).exists(rd => state.getOrElse(multiTemplate.fqn(rd), false))
       case RecursiveRef(n) => resolveRef(n, pkg).exists(rd => state.getOrElse(multiTemplate.fqn(rd), false))
+      case ExternalType(name, true) => generatedValidators.get(name).exists(_.reachesAnyValidator)
       case _ => false
     }
 
@@ -118,9 +119,8 @@ class MultiValidator(multiTemplate: MultiTemplate) {
   /**
    * Validates a JSON string against a specific definition in the multi-template.
    *
-   * Structural fields are validated against the template; external-typed fields (`$$gen:`/`$$extern:`) are not
-   * schema-validated here — their validation is delegated to the referenced type's generated decode or the
-   * application-registered codec.
+   * Structural fields are validated against the template. Generated external fields (`$$gen:`) delegate to the
+   * referenced generated validator, while hand-written external fields (`$$extern:`) remain opaque.
    *
    * @param jsonString
    *   The JSON string to validate
@@ -147,23 +147,53 @@ class MultiValidator(multiTemplate: MultiTemplate) {
    * and the JSON path.
    */
   def validateJson(json: JsonValue, definitionName: String): Either[List[ValidationError], JsonValue] =
-    multiTemplate.getDefinition(definitionName) match {
-      case Some(definition) =>
-        val pkg = definition.fullPackage(multiTemplate.basePackage)
-        validateTypeWithRefs(definition.templateType, json, "root", pkg, 0) match {
-          case Nil =>
-            val topLevel =
-              definition.validators.flatMap(name => ValidatorRegistry.run(name, ValidatorContext(json, json, "root")))
-            topLevel ++ collectValidatorErrors(definition.templateType, json, json, "root", pkg, 0) match {
-              case Nil => Right(json)
-              case customErrors => Left(customErrors)
-            }
+    validateStructure(json, definitionName, "root", 0) match {
+      case Nil =>
+        validateCustom(json, json, definitionName, "root", 0) match {
+          case Nil => Right(json)
           case errors => Left(errors)
         }
-      case None =>
-        Left(List(
-          ValidationError("root", s"Definition '$definitionName' not found", "valid definition name", definitionName)))
+      case errors => Left(errors)
     }
+
+  /** Validates structure at a caller-supplied path for generated-type composition. */
+  def validateStructure(json: JsonValue, definitionName: String, path: String, depth: Int): List[ValidationError] =
+    multiTemplate.getDefinition(definitionName) match {
+      case Some(definition) =>
+        validateTypeWithRefs(
+          definition.templateType,
+          json,
+          path,
+          definition.fullPackage(multiTemplate.basePackage),
+          depth)
+      case None =>
+        List(ValidationError(path, s"Definition '$definitionName' not found", "valid definition name", definitionName))
+    }
+
+  /** Runs custom validators at a caller-supplied path after structural validation succeeds. */
+  def validateCustom(
+      json: JsonValue,
+      root: JsonValue,
+      definitionName: String,
+      path: String,
+      depth: Int): List[ValidationError] =
+    multiTemplate.getDefinition(definitionName) match {
+      case Some(definition) =>
+        val here =
+          definition.validators.flatMap(name => ValidatorRegistry.run(name, ValidatorContext(json, root, path)))
+        here ++ collectValidatorErrors(
+          definition.templateType,
+          json,
+          root,
+          path,
+          definition.fullPackage(multiTemplate.basePackage),
+          depth)
+      case None =>
+        List(ValidationError(path, s"Definition '$definitionName' not found", "valid definition name", definitionName))
+    }
+
+  /** Whether a definition reaches any named validator. */
+  def definitionReachesAnyValidator(definitionName: String): Boolean = reachesAnyValidator(definitionName)
 
   // Phase two: runs custom validators over an already structurally-valid document. Because phase one
   // validated the structure (bounding cycles via the depth guard), this walk terminates on the same
@@ -250,7 +280,9 @@ class MultiValidator(multiTemplate: MultiTemplate) {
           variantMatch)
       case ReferenceType(typeName) => collectRefValidatorErrors(typeName, json, root, path, currentPackage, depth)
       case RecursiveRef(typeName) => collectRefValidatorErrors(typeName, json, root, path, currentPackage, depth)
-      case _ => Nil // scalars, enums, and external types carry no descendant definitions to validate
+      case ExternalType(name, true) =>
+        generatedValidators.get(name).toList.flatMap(_.validateCustom(json, root, path, depth + 1))
+      case _ => Nil
     }
   }
 
@@ -374,13 +406,9 @@ class MultiValidator(multiTemplate: MultiTemplate) {
           case None =>
             List(ValidationError(path, s"Unresolved recursive reference: $typeName", "valid definition", typeName))
         }
-      case ExternalType(_, _) =>
-        // External-typed fields are not schema-validated here: a `$gen:` type's schema lives in
-        // another module, and a `$extern:` type is (de)serialized by an application-registered
-        // codec. Validation of these values is delegated to the referenced type's generated decode
-        // (`$gen:`) or the registered codec (`$extern:`); validate() intentionally does not re-check
-        // their internal structure.
-        List.empty
+      case ExternalType(name, true) =>
+        generatedValidators.get(name).toList.flatMap(_.validateStructure(json, path, depth + 1))
+      case ExternalType(_, false) => List.empty
       case EnumType(_, values) =>
         json.asString match {
           case Some(s) if values.contains(s) => List.empty

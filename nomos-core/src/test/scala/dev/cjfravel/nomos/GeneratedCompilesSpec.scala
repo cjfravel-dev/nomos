@@ -59,12 +59,12 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
   }
 
   "generated code with a $gen reference to another generated type" should
-    "compile against that type's decode/encode" in {
-      // A stand-in for a nomos-generated type defined in another module: a companion with the
-      // same decode/encode shape the generator emits.
+    "compile against that type's validation and codec surface" in {
+      // A stand-in for a nomos-generated type defined in another module.
       val ownerStub =
         """package com.other.models
         |import dev.cjfravel.nomos.json._
+        |import dev.cjfravel.nomos.validation.ValidationError
         |case class Owner(team: String)
         |object Owner {
         |  def decode(json: JsonValue): Either[String, Owner] = json match {
@@ -75,6 +75,8 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
         |    case _ => Left("expected object")
         |  }
         |  def encode(obj: Owner): JsonValue = JsonObject("team" -> JsonString(obj.team))
+        |  def validateStructure(json: JsonValue, path: String, depth: Int): List[ValidationError] = Nil
+        |  def validateCustom(json: JsonValue, root: JsonValue, path: String, depth: Int): List[ValidationError] = Nil
         |}
         |""".stripMargin
       val tmpl =
