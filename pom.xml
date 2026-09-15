@@ -57,7 +57,7 @@
              uses a Java 9+ API fails the build instead of throwing NoSuchMethodError on a Java 8 consumer. -->
         <maven.compiler.release>8</maven.compiler.release>
         <maven.plugin.api.version>3.9.16</maven.plugin.api.version>
-        <maven.plugin.annotations.version>3.15.2</maven.plugin.annotations.version>
+        <maven.plugin.annotations.version>3.16.0</maven.plugin.annotations.version>
         <plexus.utils.version>4.1.0</plexus.utils.version>
         <!-- Formatting (scalafmt) and linting (scalafix) tooling. scalafmt reads .scalafmt.conf;
              scalafix reads .scalafix.conf and needs SemanticDB, pinned to scalafix's scalameta. -->
