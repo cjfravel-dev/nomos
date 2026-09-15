@@ -242,7 +242,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-plugin-plugin</artifactId>
-                    <version>3.15.2</version>
+                    <version>3.16.0</version>
                 </plugin>
 
                 <!-- scalafmt: format check bound to `validate` (fails the build if a Scala source is
