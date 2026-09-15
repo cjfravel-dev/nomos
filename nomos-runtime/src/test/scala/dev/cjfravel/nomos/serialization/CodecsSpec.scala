@@ -103,5 +103,9 @@ class CodecsSpec extends AnyFlatSpec with Matchers with EitherValues {
     Codecs.nullable[String](obj, "nullValue", Codecs.string) shouldBe Right(null)
     Codecs.nullable[String](obj, "value", Codecs.string) shouldBe Right("x")
     Codecs.nullable[String](obj, "value", _ => Left("bad")).left.value shouldBe "value: bad"
+
+    Codecs.optionalNonNull[String](obj, "missing", Codecs.string) shouldBe Right(null)
+    Codecs.optionalNonNull[String](obj, "nullValue", Codecs.string).left.value should startWith("nullValue:")
+    Codecs.optionalNonNull[String](obj, "value", Codecs.string) shouldBe Right("x")
   }
 }

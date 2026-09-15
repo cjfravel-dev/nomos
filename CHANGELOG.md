@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Optional fields support `nullable: "surfaceOnly"` to generate a raw, null-defaulted field while rejecting an
+  explicit JSON `null`; an omitted key still decodes to `null`.
+
 ## [0.0.1-alpha9]
 
 ### Changed

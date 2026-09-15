@@ -180,10 +180,11 @@
 <pre><code class="language-json">{
   "nickname": { "$optional": "string" },
   "tags":     { "$optional": ["string"], "nullable": true },
+  "region":   { "$optional": "string", "nullable": "surfaceOnly" },
   "retries":  { "$optional": "int", "nullable": true },
   "verbose":  { "type": "boolean", "default": false }
 }</code></pre>
-    <div class="callout tip"><p><code>nickname</code> becomes <code>Option[String]</code>. <code>nullable: true</code> generates a raw nullable type instead of <code>Option</code>. Because a Scala value type like <code>Int</code> can't hold <code>null</code>, a nullable <code>int</code> is generated as its <em>boxed</em> Java wrapper — e.g. <code>retries: java.lang.Integer</code> (a reference type, so it can be <code>null</code>) rather than <code>retries: Int</code> (which can't). <code>verbose</code> becomes <code>verbose: Boolean = false</code>.</p></div>
+    <div class="callout tip"><p><code>nickname</code> becomes <code>Option[String]</code>. <code>nullable: true</code> generates a raw nullable type instead of <code>Option</code> and accepts an explicit JSON <code>null</code>. <code>nullable: "surfaceOnly"</code> generates the same raw, null-defaulted surface but rejects an explicit JSON <code>null</code>; omission still decodes to <code>null</code>. Because a Scala value type like <code>Int</code> can't hold <code>null</code>, a nullable <code>int</code> is generated as its <em>boxed</em> Java wrapper — e.g. <code>retries: java.lang.Integer</code> (a reference type, so it can be <code>null</code>) rather than <code>retries: Int</code> (which can't). <code>verbose</code> becomes <code>verbose: Boolean = false</code>.</p></div>
 
     <h2 id="refs">References</h2>
 <pre><code class="language-json">{

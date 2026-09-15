@@ -302,6 +302,16 @@ class TemplateParser {
       case Some(node) => parseType(node, s"$path.$$additionalProperties").map(TypedExtra)
     }
 
+  /** Parses the nullable setting into its generated-surface and wire-domain flags. */
+  private def parseNullable(json: JsonValue, path: String): Either[ParseError, (Boolean, Boolean)] =
+    json.asObject.flatMap(_.field("nullable")) match {
+      case None => Right((false, false))
+      case Some(JsonBoolean(value)) => Right((value, false))
+      case Some(JsonString("surfaceOnly")) => Right((true, true))
+      case Some(other) =>
+        Left(ParseError.InvalidFieldValue("nullable", "a boolean or \"surfaceOnly\"", Json.write(other), path))
+    }
+
   /**
    * Parses a field definition
    */
@@ -310,7 +320,11 @@ class TemplateParser {
       for {
         innerType <- extractField(json, "$optional", path)
         fieldType <- parseType(innerType, path)
-      } yield FieldDef(fieldType, optional = true, nullable = extractOptionalBoolean(json, "nullable").getOrElse(false))
+        nullableSetting <- parseNullable(json, path)
+      } yield {
+        val (nullable, rejectExplicitNull) = nullableSetting
+        FieldDef(fieldType, optional = true, nullable = nullable, rejectExplicitNull = rejectExplicitNull)
+      }
     } else {
       parseType(json, path).flatMap { tpe =>
         extractOptionalString(json, "adapter") match {
@@ -543,7 +557,7 @@ class TemplateParser {
     val byName = definitions.map(d => d.name -> d).toMap
     def resolveVariant(v: ObjectType): ObjectType =
       v.fields.get("$ref") match {
-        case Some(FieldDef(ReferenceType(name), _, _, _, _)) =>
+        case Some(FieldDef(ReferenceType(name), _, _, _, _, _)) =>
           byName.get(name).map(_.templateType).collect { case o: ObjectType => o }.getOrElse(v)
         case _ => v
       }

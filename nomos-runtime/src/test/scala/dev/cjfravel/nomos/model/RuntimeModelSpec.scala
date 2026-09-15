@@ -45,6 +45,10 @@ class RuntimeModelSpec extends AnyFlatSpec with Matchers with EitherValues with 
     val defaulted = FieldDef(StringType(), default = Some("\"x\""))
     defaulted.required shouldBe false
     defaulted.acceptsNull shouldBe true
+
+    val surfaceOnly = FieldDef(StringType(), optional = true, nullable = true, rejectExplicitNull = true)
+    surfaceOnly.required shouldBe false
+    surfaceOnly.acceptsNull shouldBe false
   }
 
   "MultiTemplate" should "look up definitions and expose a simple-name map" in {

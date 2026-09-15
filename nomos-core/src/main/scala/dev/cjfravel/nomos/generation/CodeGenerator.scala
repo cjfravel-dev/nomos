@@ -295,7 +295,9 @@ class CodeGenerator(config: GeneratorConfig) {
     // Order mirrors renderFieldType: a nullable field is a raw (boxed) type, not an Option,
     // even when also marked optional, so the nullable codec must take precedence.
     val rhs =
-      if (fieldDef.nullable) {
+      if (fieldDef.nullable && fieldDef.rejectExplicitNull) {
+        s"""Codecs.optionalNonNull(o, "$keyLit", ${boxedDecoderExpr(fieldDef.fieldType)})"""
+      } else if (fieldDef.nullable) {
         s"""Codecs.nullable(o, "$keyLit", ${boxedDecoderExpr(fieldDef.fieldType)})"""
       } else if (fieldDef.optional) {
         s"""Codecs.optional(o, "$keyLit", $decoder)"""

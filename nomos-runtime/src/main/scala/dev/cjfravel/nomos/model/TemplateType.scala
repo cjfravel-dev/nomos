@@ -195,13 +195,16 @@ case class EnumType(name: String, values: List[String]) extends TemplateType
  *   Optional named (de)serialization adapter for the field
  * @param nullable
  *   When true, an optional field generates a raw nullable type (no Option wrapper)
+ * @param rejectExplicitNull
+ *   When true, an omitted field decodes to null but an explicit JSON null is rejected
  */
 case class FieldDef(
     fieldType: TemplateType,
     optional: Boolean = false,
     default: Option[String] = None,
     adapter: Option[String] = None,
-    nullable: Boolean = false) {
+    nullable: Boolean = false,
+    rejectExplicitNull: Boolean = false) {
 
   /**
    * Whether the field must be present in the JSON. A field with a default is not required (it is defaulted when
@@ -211,9 +214,9 @@ case class FieldDef(
   def required: Boolean = !optional && default.isEmpty
 
   /**
-   * Whether a present JSON `null` is acceptable for this field. Decode treats null the same as absent for
-   * optional/defaulted fields (yielding None / the default) and as `null` for nullable fields, so validation must not
-   * reject a present null in those cases.
+   * Whether a present JSON `null` is acceptable for this field. Optional/defaulted fields normally treat null as
+   * absent, and nullable fields normally decode it as `null`; `rejectExplicitNull` preserves the nullable surface while
+   * excluding null from the wire domain.
    */
-  def acceptsNull: Boolean = optional || nullable || default.isDefined
+  def acceptsNull: Boolean = !rejectExplicitNull && (optional || nullable || default.isDefined)
 }
