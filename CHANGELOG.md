@@ -6,10 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.0.1-alpha10]
+
 ### Added
 
 - Optional fields support `nullable: "surfaceOnly"` to generate a raw, null-defaulted field while rejecting an
   explicit JSON `null`; an omitted key still decodes to `null`.
+- `$gen:` fields compose structural and custom validation across generated types and compiled modules, preserving
+  nested error paths.
 
 ## [0.0.1-alpha9]
 
