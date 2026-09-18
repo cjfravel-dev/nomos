@@ -10,7 +10,23 @@
 [![License](https://img.shields.io/badge/license-MIT%20%2B%20SaaS-blue)](LICENSE.md)
 [![Scala](https://img.shields.io/badge/Scala-2.12-DC322F?logo=scala&logoColor=white)](https://www.scala-lang.org/)
 
-**A JSON templating engine for Scala.** Define a template once; nomos generates matching case classes that validate, serialize, and deserialize JSON.
+# Nomos: Schema-First JSON Tooling for Scala
+
+Inspired by schema-first ORM tooling, Nomos applies code generation to JSON-heavy Scala systems,
+where models, serialization, and validation are often maintained separately. Define the JSON
+structure once, then generate the code that represents, reads, writes, and validates it.
+
+A single declarative JSON template produces:
+
+- typed Scala models
+- JSON codecs with no runtime dependency beyond the Scala standard library
+- runtime structural validation against the embedded template
+- precise errors that identify the failing JSON path
+- extension points for domain validators, string formats, and serialization adapters
+
+The goal is not to be an ORM or a general-purpose JSON library. Nomos is a build-time source
+generator: it keeps Scala types, serialization behavior, and runtime validation derived from the
+same template so they cannot drift independently.
 
 📖 **[Full documentation →](https://cjfravel-dev.github.io/nomos/)**
 
