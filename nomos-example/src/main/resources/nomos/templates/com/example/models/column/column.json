@@ -7,10 +7,14 @@
       "template": {
         "$type": {
           "discriminator": "type",
-          "variantMatch": "prefix",
+          "variantMatch": "regex",
+          "variantNames": {
+            "^Decimal(\\((\\d{1,2}),(\\d{1,2})\\))?$": "DecimalColumn",
+            "^Varchar$": "VarcharColumn"
+          },
           "variants": {
-            "Decimal": { "scale": "int" },
-            "Varchar": {}
+            "^Decimal(\\((\\d{1,2}),(\\d{1,2})\\))?$": { "scale": "int" },
+            "^Varchar$": {}
           }
         }
       }

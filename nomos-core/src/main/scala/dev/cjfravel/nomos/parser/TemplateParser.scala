@@ -1,5 +1,7 @@
 package dev.cjfravel.nomos.parser
 
+import java.util.regex.{Pattern => JavaPattern, PatternSyntaxException}
+
 import scala.collection.immutable.ListMap
 
 import dev.cjfravel.nomos.generation.ScalaCodeBuilder
@@ -434,7 +436,7 @@ class TemplateParser {
       commonFields <- parseCommonFields(typeObj, s"$path.$$type")
       includeInOutput = extractOptionalBoolean(typeObj, "includeDiscriminator").getOrElse(true)
       variantNames = parseVariantNames(typeObj)
-      variantMatch = extractOptionalString(typeObj, "variantMatch").getOrElse("exact")
+      variantMatch <- parseVariantMatch(typeObj, variants, variantNames, s"$path.$$type")
       variantSubPackage = extractOptionalString(typeObj, "variantSubPackage")
       fallbackVariant = extractOptionalString(typeObj, "fallbackVariant")
       discriminatorEnum = extractOptionalString(typeObj, "discriminatorEnum")
@@ -497,6 +499,43 @@ class TemplateParser {
         }
       case None =>
         Right(ListMap.empty)
+    }
+
+  private def parseVariantMatch(
+      json: JsonValue,
+      variants: ListMap[String, ObjectType],
+      variantNames: Map[String, String],
+      path: String): Either[ParseError, String] = {
+    val mode = extractOptionalString(json, "variantMatch").getOrElse("exact")
+    mode match {
+      case "exact" | "prefix" => Right(mode)
+      case "regex" =>
+        val unnamed = variants.keys.filterNot(variantNames.contains).toList
+        if (unnamed.nonEmpty)
+          Left(
+            ParseError.InvalidDiscriminator(
+              s"variantNames is required for every regex variant (missing: ${unnamed.mkString(", ")})",
+              path))
+        else {
+          variants.keys.collectFirst {
+            case pattern if !isValidRegex(pattern) =>
+              ParseError.InvalidDiscriminator(s"invalid regular expression '$pattern'", s"$path.variants")
+          } match {
+            case Some(error) => Left(error)
+            case None => Right(mode)
+          }
+        }
+      case other =>
+        Left(ParseError.InvalidDiscriminator(s"variantMatch must be one of: exact, prefix, regex (got '$other')", path))
+    }
+  }
+
+  private def isValidRegex(value: String): Boolean =
+    try {
+      JavaPattern.compile(value)
+      true
+    } catch {
+      case _: PatternSyntaxException => false
     }
 
   /**

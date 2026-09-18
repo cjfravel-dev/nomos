@@ -717,11 +717,10 @@ class CodeGenerator(config: GeneratorConfig) {
       definitionsMap: Map[String, TemplateDefinition],
       basePackage: String,
       currentPackage: String): Unit = {
-    // The discriminator is a fixed per-variant override only for exact matching. With "prefix"
-    // matching the on-the-wire value is parameterized (e.g. "Decimal(28,8)" matches key "Decimal"),
-    // so it must stay a constructor field to preserve the actual value on round-trip.
-    val discFixed = discriminator.includeInOutput && discriminator.variantMatch != "prefix"
-    val discAsCtor = discriminator.includeInOutput && !discFixed // prefix: keep as ctor field
+    // Value-preserving match modes keep the on-the-wire discriminator in the constructor.
+    val valuePreserving = discriminator.variantMatch == "prefix" || discriminator.variantMatch == "regex"
+    val discFixed = discriminator.includeInOutput && !valuePreserving
+    val discAsCtor = discriminator.includeInOutput && !discFixed
 
     // Non-discriminator ctor fields of a variant case class: common, then variant.
     def variantCtorFields(variantType: ObjectType): List[(String, FieldDef)] =
@@ -745,9 +744,7 @@ class CodeGenerator(config: GeneratorConfig) {
       builder.indent()
     }
 
-    // Generate case classes for each variant. For exact matching the discriminator is a fixed
-    // `override val` in the body (out of the constructor / unapply); for prefix matching it is a
-    // leading constructor field (the value is parameterized, so it must be preserved).
+    // Exact matches use a fixed discriminator override; value-preserving matches use a constructor field.
     discriminator.variants.foreach { case (variantName, variantType) =>
       val caseClassName = ScalaCodeBuilder.toPascalCase(variantName)
       val discCtor = if (discAsCtor) List(discriminator.fieldName -> FieldDef(StringType(), optional = false)) else Nil
@@ -804,12 +801,14 @@ class CodeGenerator(config: GeneratorConfig) {
       variantMap.foreach { case (variantKey, className, vt) =>
         val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
         val matchPat =
-          if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>"""
-          else s"""case "$keyLit" =>"""
+          discriminator.variantMatch match {
+            case "prefix" => s"""case d2 if d2.startsWith("$keyLit") =>"""
+            case "regex" => s"""case d2 if d2.matches("$keyLit") =>"""
+            case _ => s"""case "$keyLit" =>"""
+          }
         builder.line(matchPat)
         builder.indent()
-        // Prefix variants keep the (parameterized) matched value as a constructor arg; exact
-        // variants fix it via an override, so no arg is passed.
+        // Value-preserving matches pass the discriminator; exact matches fix it via an override.
         val discCtorArg = if (discAsCtor) Some("d") else None
         emitVariantDecode(builder, className, discriminator, vt, discCtorArg)
         builder.dedent()
@@ -927,11 +926,12 @@ class CodeGenerator(config: GeneratorConfig) {
       classFields = classFields.updated(cn, merged)
       classKeys = classKeys.updated(cn, classKeys.getOrElse(cn, Nil) :+ variantKey)
     }
-    // A class discriminated by exactly one value gets a fixed override; a class grouping several
-    // discriminator values must keep the value as a constructor field to round-trip which it was.
-    // Prefix matching also keeps a constructor field (the on-the-wire value is parameterized).
-    def classIsFixed(className: String): Boolean =
-      discriminator.variantMatch != "prefix" && classKeys.getOrElse(className, Nil).size == 1
+    // A class discriminated by exactly one fixed value gets an override. Grouped and
+    // value-preserving matches keep the discriminator as a constructor field.
+    def classIsFixed(className: String): Boolean = {
+      val valuePreserving = discriminator.variantMatch == "prefix" || discriminator.variantMatch == "regex"
+      !valuePreserving && classKeys.getOrElse(className, Nil).size == 1
+    }
 
     // Variant case classes (and the fallback) may be relocated into a sub-package while the trait
     // stays put; mirror the inline-variants path so variantSubPackage works here too.
@@ -1024,8 +1024,11 @@ class CodeGenerator(config: GeneratorConfig) {
       variantMap.foreach { case (variantKey, className) =>
         val keyLit = ScalaCodeBuilder.escapeStringLiteral(variantKey)
         val matchPat =
-          if (discriminator.variantMatch == "prefix") s"""case d2 if d2.startsWith("$keyLit") =>"""
-          else s"""case "$keyLit" =>"""
+          discriminator.variantMatch match {
+            case "prefix" => s"""case d2 if d2.startsWith("$keyLit") =>"""
+            case "regex" => s"""case d2 if d2.matches("$keyLit") =>"""
+            case _ => s"""case "$keyLit" =>"""
+          }
         builder.line(matchPat)
         builder.indent()
         val nonDisc =
