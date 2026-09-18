@@ -40,6 +40,12 @@ jobs:
           server-password: CENTRAL_TOKEN
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
 
+      - name: Configure non-interactive GPG signing
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'allow-loopback-pinentry' >> "$GNUPGHOME/gpg-agent.conf"
+          gpgconf --reload gpg-agent
+
       - name: Verify release identity and credentials
         env:
           CENTRAL_USER_TOKEN_EXPIRATION_DATE: ${{ vars.CENTRAL_USER_TOKEN_EXPIRATION_DATE }}
@@ -80,6 +86,7 @@ jobs:
           ./mvnw clean deploy -B \
             -Dgpg.skip=false \
             -Dgpg.keyname="$GPG_KEY_ID" \
+            -Dgpg.pinentry-mode=loopback \
             -Dcentral.autoPublish=true \
             -Dcentral.waitUntil=published \
             -Dcentral.waitMaxTime=3600
