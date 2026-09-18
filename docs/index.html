@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nomos — Scala models &amp; validators from one template</title>
-  <meta name="description" content="Nomos generates Scala case classes and runtime JSON validators from a single declarative template, so your model and its validation never drift apart.">
+  <title>Nomos — Schema-first JSON tooling for Scala</title>
+  <meta name="description" content="Nomos generates typed Scala models, JSON codecs, and runtime validation from one declarative JSON template.">
   <link rel="stylesheet" href="assets/style.css">
   <link rel="icon" type="image/png" href="assets/logo-mark.png">
 </head>
@@ -29,12 +29,12 @@
 <section class="hero">
   <div class="hero-inner">
     <img class="hero-mark" src="assets/logo-mark.png" alt="Nomos logo">
-    <p class="kicker">JSON templating engine for Scala</p>
-    <h1>One template is <em>the law</em> your data follows.</h1>
+    <p class="kicker">Schema-first JSON tooling for Scala</p>
+    <h1>One template for your models, codecs, and validation.</h1>
     <p class="tagline">
-      Nomos generates Scala case classes <em>and</em> a runtime JSON validator
-      from a single declarative template — so your model and its validation are
-      always derived from the same source of truth, and can never drift apart.
+      Declare your JSON structure once. Nomos generates typed Scala models,
+      codecs with no third-party JSON-library dependency, and runtime validation
+      from that same template, keeping every representation aligned by construction.
     </p>
     <div class="badges">
       <img src="https://img.shields.io/badge/Scala-2.12-DC322F?logo=scala&amp;logoColor=white" alt="Scala 2.12">
@@ -52,6 +52,13 @@
   <main class="content">
 
     <h2 id="why">Why Nomos?</h2>
+
+    <p>
+      Nomos takes inspiration from schema-first ORM tooling, which generates application code from
+      a central schema. It applies that workflow to JSON-heavy Scala systems, where models,
+      serialization, and validation are often maintained separately and can drift apart. Define the
+      JSON structure once, then generate the Scala interface used by application code.
+    </p>
 
     <div class="feature-strip">
       <div class="feat">
@@ -88,12 +95,15 @@
     </div>
 
     <p>
-      A hand-written model and its validator are two copies of the same truth,
-      kept in sync by hand. Add a field, tighten a constraint, rename a variant —
-      now you edit the case class, its (de)serialization, and its validation, and
-      hope they agree. They drift. Nomos removes the second copy: you write one
-      template, and the case class, its (de)serialization, and a validator are
-      all generated from it.
+      A hand-written model, its codecs, and its validator are separate descriptions of the same data.
+      Add a field, tighten a constraint, or rename a variant and each copy must change together.
+      Nomos replaces that coordination with generation: one declarative JSON template produces the
+      Scala types, serialization code, and embedded runtime validator.
+    </p>
+    <p>
+      Nomos is not an ORM and does not manage persistence. It is a build-time source generator for
+      the boundary between JSON and Scala, designed to make that boundary typed, validated,
+      lightweight at runtime, and straightforward to extend with domain-specific rules.
     </p>
     <p>
       In Greek, <a href="https://en.wikipedia.org/wiki/Nomos_(sociology)">nomos</a>
@@ -126,9 +136,9 @@
       <div class="split-card contributors">
         <h2>Declaring with Nomos</h2>
         <ul>
-          <li>One language-neutral template declares the shape; the class is generated.</li>
+          <li>One declarative JSON template defines the structure; the class is generated.</li>
           <li>Types, constraints, and structure live together in the declaration.</li>
-          <li>The same template can validate JSON, embed in the artifact, and serve as a shared contract.</li>
+          <li>The same template validates JSON, embeds in the artifact, and remains the shared source of truth.</li>
           <li>Custom validators (any check over the payload, such as comparing or combining several fields) are named in the template and registered as functions; formats and adapters extend the same way.</li>
           <li>Field order and naming come from one place and stay consistent across model, JSON, and validation.</li>
         </ul>
