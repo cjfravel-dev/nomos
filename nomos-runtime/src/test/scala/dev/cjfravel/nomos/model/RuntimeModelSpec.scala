@@ -160,6 +160,15 @@ class RuntimeModelSpec extends AnyFlatSpec with Matchers with EitherValues with 
     MultiTemplate("com.example", List(prefix))
       .validate()
       .exists(_.contains("incompatible with variantMatch 'prefix'")) shouldBe true
+
+    val regex =
+      hidden.copy(templateType =
+        hidden.templateType
+          .asInstanceOf[TypeDiscriminator]
+          .copy(includeInOutput = true, variantNames = Map("a" -> "A"), variantMatch = "regex"))
+    MultiTemplate("com.example", List(regex))
+      .validate()
+      .exists(_.contains("incompatible with variantMatch 'regex'")) shouldBe true
   }
 
   it should "accept supported settings and visibility forms" in {

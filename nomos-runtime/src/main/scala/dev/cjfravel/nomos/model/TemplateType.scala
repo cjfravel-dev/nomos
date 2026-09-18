@@ -131,7 +131,7 @@ case class ObjectType(
  * @param variantNames
  *   Optional mapping from variant keys to custom class names (e.g., "String" -> "StringDataContractColumn")
  * @param variantMatch
- *   How a discriminator value is matched to a variant (default "exact")
+ *   How a discriminator value is matched to a variant: "exact", "prefix", or full-string "regex" (default "exact")
  * @param variantSubPackage
  *   Optional sub-package (relative to the trait's package) for the generated variant case classes; the trait stays in
  *   its own package

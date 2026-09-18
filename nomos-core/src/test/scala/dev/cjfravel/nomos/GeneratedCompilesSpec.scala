@@ -58,6 +58,16 @@ class GeneratedCompilesSpec extends AnyFlatSpec with Matchers with EitherValues 
     compileErrors(generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))) shouldBe empty
   }
 
+  "generated code for a regex discriminator" should "compile" in {
+    val tmpl =
+      """{"definitions":[{"name":"Col","template":{"$type":{
+        |"discriminator":"type","variantMatch":"regex",
+        |"variantNames":{"^Decimal(\\((\\d{1,2}),(\\d{1,2})\\))?$":"DecimalCol","^String$":"StringCol"},
+        |"variants":{"^Decimal(\\((\\d{1,2}),(\\d{1,2})\\))?$":{"scale":"int"},"^String$":{}}
+        |}}}]}""".stripMargin
+    compileErrors(generate(tmpl, GeneratorConfig("com.example", "target/test-gen"))) shouldBe empty
+  }
+
   "generated code with a $gen reference to another generated type" should
     "compile against that type's validation and codec surface" in {
       // A stand-in for a nomos-generated type defined in another module.

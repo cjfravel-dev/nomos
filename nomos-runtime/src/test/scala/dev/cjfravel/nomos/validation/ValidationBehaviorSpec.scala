@@ -256,6 +256,22 @@ class ValidationBehaviorSpec extends AnyFlatSpec with Matchers with EitherValues
     v.validate("""{"kind":"a-suffix","short":"x"}""", "Root") shouldBe a[Right[_, _]]
   }
 
+  it should "match regex discriminators in declaration order against the full value" in {
+    val discriminator =
+      TypeDiscriminator(
+        "kind",
+        ListMap(
+          "^a.*$" -> ObjectType(ListMap("broad" -> FieldDef(StringType()))),
+          "^abc$" -> ObjectType(ListMap("exact" -> FieldDef(StringType())))),
+        variantNames = Map("^a.*$" -> "Broad", "^abc$" -> "Exact"),
+        variantMatch = "regex")
+    val v = validator(discriminator)
+
+    v.validate("""{"kind":"abc","broad":"x"}""", "Root") shouldBe a[Right[_, _]]
+    v.validate("""{"kind":"abc","exact":"x"}""", "Root") shouldBe a[Left[_, _]]
+    v.validate("""{"kind":"zabc","broad":"x"}""", "Root") shouldBe a[Left[_, _]]
+  }
+
   "FormatRegistry" should "validate built-ins, custom formats, and unknown names" in {
     val valid =
       Map(

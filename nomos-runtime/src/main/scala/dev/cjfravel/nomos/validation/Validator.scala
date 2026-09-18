@@ -319,11 +319,7 @@ class MultiValidator(multiTemplate: MultiTemplate, generatedValidators: Map[Stri
       depth: Int,
       variantMatch: String): List[ValidationError] =
     json.asObject.flatMap(obj => obj.field(fieldName).flatMap(_.asString)).toList.flatMap { discriminatorValue =>
-      val matched =
-        variants.get(discriminatorValue).orElse {
-          if (variantMatch == "prefix") variants.find { case (k, _) => discriminatorValue.startsWith(k) }.map(_._2)
-          else None
-        }
+      val matched = matchingVariant(variants, discriminatorValue, variantMatch)
       matched.toList.flatMap { variantType =>
         val obj = json.asObject.get
         val commonErrors =
@@ -665,6 +661,25 @@ class MultiValidator(multiTemplate: MultiTemplate, generatedValidators: Map[Stri
       else None
     }
 
+  private def matchingVariant(
+      variants: Map[String, ObjectType],
+      discriminatorValue: String,
+      variantMatch: String): Option[ObjectType] =
+    variantMatch match {
+      case "prefix" =>
+        variants.get(discriminatorValue).orElse {
+          variants.find { case (key, _) => discriminatorValue.startsWith(key) }.map(_._2)
+        }
+      case "regex" =>
+        variants
+          .find { case (pattern, _) =>
+            try java.util.regex.Pattern.matches(pattern, discriminatorValue)
+            catch { case _: java.util.regex.PatternSyntaxException => false }
+          }
+          .map(_._2)
+      case _ => variants.get(discriminatorValue)
+    }
+
   private def validateDiscriminator(
       fieldName: String,
       variants: Map[String, ObjectType],
@@ -683,12 +698,7 @@ class MultiValidator(multiTemplate: MultiTemplate, generatedValidators: Map[Stri
         jsonFieldMap.get(fieldName) match {
           case Some(discriminatorNode) if discriminatorNode.isString =>
             val discriminatorValue = discriminatorNode.asString.get
-            val matched =
-              variants.get(discriminatorValue).orElse {
-                if (variantMatch == "prefix")
-                  variants.find { case (k, _) => discriminatorValue.startsWith(k) }.map(_._2)
-                else None
-              }
+            val matched = matchingVariant(variants, discriminatorValue, variantMatch)
             matched match {
               case Some(variantType) =>
                 // Validate common fields

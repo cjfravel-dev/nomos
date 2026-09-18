@@ -1,5 +1,7 @@
 package dev.cjfravel.nomos.model
 
+import java.util.regex.{Pattern => JavaPattern, PatternSyntaxException}
+
 /**
  * Represents a single type definition within a multi-definition template
  *
@@ -161,18 +163,39 @@ case class MultiTemplate(
       }
     }
 
-    // Validate discriminator option consistency (e.g. discriminatorEnum requires an emitted,
-    // fixed-value discriminator field).
     definitions.foreach { definition =>
       definition.templateType match {
-        case d: TypeDiscriminator if d.discriminatorEnum.isDefined =>
+        case d: TypeDiscriminator =>
           val ctx = s"Definition '${definition.name}'"
-          if (!d.includeInOutput)
-            errors = s"$ctx: discriminatorEnum requires includeDiscriminator to be true" :: errors
-          if (d.variantMatch == "prefix")
+          if (!MultiTemplate.SupportedVariantMatches.contains(d.variantMatch))
             errors =
-              s"$ctx: discriminatorEnum is incompatible with variantMatch 'prefix' " +
-                "(parameterized values are not a fixed enum set)" :: errors
+              s"$ctx: unsupported variantMatch '${d.variantMatch}' " +
+                s"(supported: ${MultiTemplate.SupportedVariantMatches.toList.sorted.mkString(", ")})" :: errors
+          if (d.variantMatch == "regex") {
+            val unnamed = d.variants.keys.filterNot(d.variantNames.contains).toList
+            if (unnamed.nonEmpty)
+              errors =
+                s"$ctx: variantNames is required for every regex variant (missing: ${unnamed.mkString(", ")})" :: errors
+            d.variants.keys.foreach { value =>
+              try JavaPattern.compile(value)
+              catch {
+                case _: PatternSyntaxException =>
+                  errors = s"$ctx: invalid variant regular expression '$value'" :: errors
+              }
+            }
+          }
+          d.discriminatorEnum.foreach { _ =>
+            if (!d.includeInOutput)
+              errors = s"$ctx: discriminatorEnum requires includeDiscriminator to be true" :: errors
+            if (d.variantMatch == "prefix")
+              errors =
+                s"$ctx: discriminatorEnum is incompatible with variantMatch 'prefix' " +
+                  "(parameterized values are not a fixed enum set)" :: errors
+            if (d.variantMatch == "regex")
+              errors =
+                s"$ctx: discriminatorEnum is incompatible with variantMatch 'regex' " +
+                  "(matched values are not a fixed enum set)" :: errors
+          }
         case _ =>
       }
     }
@@ -287,6 +310,8 @@ object MultiTemplate {
    * only produces `List` (default) or `Array`, so only these compile.
    */
   val SupportedListTypes: Set[String] = Set("List", "Array")
+
+  val SupportedVariantMatches: Set[String] = Set("exact", "prefix", "regex")
 
   /**
    * Map collection types the generator can emit a matching decoder for: the default immutable `Map`, and
