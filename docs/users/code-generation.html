@@ -78,7 +78,7 @@ object User {
   def toJson(obj: User): String = Json.write(encode(obj))
   def validate(json: String): Either[List[ValidationError], User] = { ... }
 }</code></pre>
-    <p>Discriminated unions instead generate a <code>sealed trait</code>, a case class per variant, and a companion whose <code>fromJson</code> dispatches on the discriminator value (using <code>startsWith</code> when <code>variantMatch: prefix</code>). A <code>fallbackVariant</code> adds a catch-all case that preserves an unknown discriminator value and its raw payload, so unrecognized types round-trip rather than fail.</p>
+    <p>Discriminated unions instead generate a <code>sealed trait</code>, a case class per variant, and a companion whose <code>fromJson</code> dispatches on the discriminator value. <code>variantMatch: prefix</code> uses <code>startsWith</code>; <code>variantMatch: regex</code> uses full-string regular-expression matching in declaration order and requires explicit <code>variantNames</code>. Value-preserving modes retain the original discriminator for round trips. A <code>fallbackVariant</code> adds a catch-all case that preserves an unknown discriminator value and its raw payload, so unrecognized types round-trip rather than fail.</p>
 
     <h2 id="formats">NomosFormats</h2>
     <p>A single <code>NomosFormats</code> per base package holds the reconstructed <code>MultiTemplate</code> and a <code>MultiValidator</code> built from it. Generated companions import it to validate without the original template file.</p>

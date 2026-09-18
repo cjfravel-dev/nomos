@@ -12,6 +12,14 @@ All notable changes to this project are documented here. The format is based on
   order, preserve the matched discriminator value during round trips, support fallback variants, and require explicit
   `variantNames`.
 
+## [0.0.1-alpha11]
+
+### Added
+
+- Discriminated unions support `"variantMatch": "regex"`. Variant patterns use full-string matching in declaration
+  order, preserve the matched discriminator value during round trips, support fallback variants, and require explicit
+  `variantNames`.
+
 ## [0.0.1-alpha10]
 
 ### Added
