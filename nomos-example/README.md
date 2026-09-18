@@ -2,7 +2,7 @@
 
 This is a working example demonstrating how to use Nomos for code generation and validation.
 
-The example uses Nomos `0.0.1-alpha10`.
+The example uses Nomos `0.0.1-alpha11`.
 
 ## What This Example Demonstrates
 
@@ -177,7 +177,7 @@ The example uses Nomos BOM for dependency management:
         <dependency>
             <groupId>dev.cjfravel</groupId>
             <artifactId>nomos-bom</artifactId>
-            <version>0.0.1-alpha10</version>
+            <version>0.0.1-alpha11</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -193,7 +193,7 @@ Minimal plugin setup:
 <plugin>
     <groupId>dev.cjfravel</groupId>
     <artifactId>nomos-maven-plugin</artifactId>
-    <version>0.0.1-alpha10</version>
+    <version>0.0.1-alpha11</version>
     <executions>
         <execution>
             <phase>generate-sources</phase>

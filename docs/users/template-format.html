@@ -205,13 +205,16 @@
 <pre><code class="language-json">{
   "$type": {
     "discriminator": "kind",
-    "variantMatch": "prefix",
+    "variantMatch": "regex",
+    "variantNames": {
+      "^Decimal(\\((\\d{1,2}),(\\d{1,2})\\))?$": "DecimalColumn",
+      "^Circle$": "Circle"
+    },
     "variantSubPackage": "shapes",
     "commonFields": { "label": "string" },
     "variants": {
-      "Decimal": { "scale": "int" },
-      "circle":  "$ref:Circle",
-      "square":  {}
+      "^Decimal(\\((\\d{1,2}),(\\d{1,2})\\))?$": { "scale": "int" },
+      "^Circle$":  "$ref:Circle"
     }
   }
 }</code></pre>
@@ -220,7 +223,7 @@
       <tr><td><code>variants</code></td><td>Map of discriminator value → variant body (inline object or <code>$ref</code>)</td></tr>
       <tr><td><code>commonFields</code></td><td>Fields shared by every variant</td></tr>
       <tr><td><code>variantNames</code></td><td>Map several values to one class to collapse identical variants</td></tr>
-      <tr><td><code>variantMatch</code></td><td>Only <code>prefix</code> is special — it matches parameterized tags like <code>Decimal(28,8)</code> by prefix. Any other value, including the default, matches the discriminator value exactly.</td></tr>
+      <tr><td><code>variantMatch</code></td><td><code>exact</code> (the default) matches a literal value; <code>prefix</code> matches values beginning with the variant key; <code>regex</code> applies each key as a full-string regular expression in declaration order. Regex variants require a <code>variantNames</code> entry for every pattern, and invalid patterns are rejected during parsing.</td></tr>
       <tr><td><code>variantSubPackage</code></td><td>Place variant case classes in a sub-package</td></tr>
       <tr><td><code>fallbackVariant</code></td><td>Name of a catch-all variant that captures any unmatched discriminator value, preserving the raw value and payload so unknown types round-trip instead of failing.</td></tr>
       <tr><td><code>discriminatorEnum</code></td><td>Render the discriminator field as a generated enum type instead of a raw <code>String</code>. Combined with <code>fallbackVariant</code>, the enum is <em>open</em> — it gains an <code>Unknown(value)</code> member so unrecognized values round-trip. See <a href="code-generation.html#enums">Code Generation</a>.</td></tr>
