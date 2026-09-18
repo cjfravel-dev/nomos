@@ -202,6 +202,18 @@
 
     <h2 id="discriminators">Type discriminators</h2>
     <p>A discriminator becomes a <code>sealed trait</code> with a case-class variant per value.</p>
+    <p>Prefix matching supports parameterized tags while preserving the complete discriminator value:</p>
+<pre><code class="language-json">{
+  "$type": {
+    "discriminator": "kind",
+    "variantMatch": "prefix",
+    "variants": {
+      "Decimal": { "scale": "int" },
+      "String": {}
+    }
+  }
+}</code></pre>
+    <p>Regex matching constrains the complete tag syntax and requires an explicit class name for every pattern:</p>
 <pre><code class="language-json">{
   "$type": {
     "discriminator": "kind",
